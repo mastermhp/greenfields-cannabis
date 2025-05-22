@@ -63,7 +63,7 @@ export default function ProductsPage() {
   }, [searchQuery, selectedCategory, priceRange, sortBy])
 
   return (
-    <div className="bg-black min-h-screen">
+    <div className="bg-black min-h-screen py-40">
       <div className="container mx-auto px-4 py-12">
         {/* Hero Section */}
         <motion.div

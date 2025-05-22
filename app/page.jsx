@@ -39,13 +39,14 @@ export default function Home() {
       <section ref={heroRef} className="relative h-screen flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" style={{ y, opacity }}>
           <Image
-            src="https://img.freepik.com/photos-premium/marijuana-plein-air-dans-culture-plein-air-au-soleil_705804-3784.jpg?w=360"
+            src="/greenfieldsbg.jpeg"
+            // src="https://img.freepik.com/photos-premium/marijuana-plein-air-dans-culture-plein-air-au-soleil_705804-3784.jpg?w=360"
             alt="Premium Cannabis"
             fill
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/80" />
+          <div className="absolute inset-0 bg-black/70" />
         </motion.div>
 
         <div className="container mx-auto px-4 z-10 text-center">
@@ -60,7 +61,7 @@ export default function Home() {
               alt="Greenfields Logo"
               width={300}
               height={300}
-              className="mx-auto leaf-animation"
+              className="mx-auto pl-14 leaf-animation"
             />
           </motion.div>
 
@@ -70,11 +71,11 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            GREENFIELDS
+            {/* GREENFIELDS */}
           </motion.h1>
 
           <motion.p
-            className="text-xl md:text-2xl mb-8 text-beige max-w-2xl mx-auto"
+            className="text-xl md:text-2xl pt-24 mb-8 text-beige max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}

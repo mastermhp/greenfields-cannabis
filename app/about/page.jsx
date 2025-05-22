@@ -75,18 +75,18 @@ export default function AboutPage() {
   ]
 
   return (
-    <div className="bg-black min-h-screen">
+    <div className="bg-black min-h-screen py-40">
       {/* Hero Section */}
       <section ref={ref} className="relative h-[70vh] flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" style={{ y, opacity }}>
           <Image
-            src="/placeholder.svg?height=1080&width=1920"
+            src="/about.jpeg"
             alt="About Greenfields"
             fill
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/60" />
+          <div className="absolute inset-0 bg-black/80" />
         </motion.div>
 
         <div className="container mx-auto px-4 z-10 text-center">
@@ -144,12 +144,12 @@ export default function AboutPage() {
               className="relative"
             >
               <div className="aspect-square relative overflow-hidden">
-                <Image src="/placeholder.svg?height=600&width=600" alt="Our Mission" fill className="object-cover" />
+                <Image src="/mission.jpeg" alt="Our Mission" fill className="object-cover" />
               </div>
               <div className="absolute -bottom-10 -left-10 w-2/3 aspect-square bg-[#111] p-8 border border-[#D4AF37]">
                 <div className="relative h-full w-full overflow-hidden">
                   <Image
-                    src="/placeholder.svg?height=300&width=300"
+                    src="/plant.jpeg"
                     alt="Cannabis Plant"
                     fill
                     className="object-cover"

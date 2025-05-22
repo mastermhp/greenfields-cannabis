@@ -85,18 +85,18 @@ export default function TrackOrderPage() {
   }
 
   return (
-    <div className="bg-black min-h-screen">
+    <div className="bg-black min-h-screen py-40">
       {/* Hero Section */}
       <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
-            src="/placeholder.svg?height=800&width=1920"
+            src="/track1.jpeg"
             alt="Track Order"
             fill
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-black/80" />
         </div>
 
         <div className="container mx-auto px-4 z-10 text-center">

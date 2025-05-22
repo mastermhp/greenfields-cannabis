@@ -116,19 +116,19 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
+    <div className="min-h-screen py-40 bg-black flex flex-col">
       {/* Hero Section */}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Image Section */}
         <div className="hidden md:block md:w-1/2 relative">
           <Image
-            src=""
+            src="/register.jpg"
             alt="Cannabis Registration"
             fill
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/50"></div>
+          <div className="absolute inset-0 bg-black/70"></div>
 
           <div className="absolute inset-0 flex flex-col justify-center items-center p-12 z-10">
             <motion.div

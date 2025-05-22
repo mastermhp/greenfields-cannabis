@@ -154,12 +154,12 @@ export default function FAQsPage() {
     : faqData[activeCategory]
 
   return (
-    <div className="bg-black min-h-screen">
+    <div className="bg-black min-h-screen py-40">
       {/* Hero Section */}
       <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
-            src="/placeholder.svg?height=800&width=1920"
+            src="/faq.jpeg"
             alt="Frequently Asked Questions"
             fill
             className="object-cover"
