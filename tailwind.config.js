@@ -2,10 +2,11 @@
 module.exports = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{js,jsx}',
-    './components/**/*.{js,jsx}',
-    './app/**/*.{js,jsx}',
-    './src/**/*.{js,jsx}',
+    "./pages/**/*.{js,jsx}",
+    "./components/**/*.{js,jsx}",
+    "./app/**/*.{js,jsx}",
+    "./src/**/*.{js,jsx}",
+    "*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     container: {
@@ -16,6 +17,16 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        primary: ["Playfair Display", "serif"],
+        secondary: ["Crimson Text", "serif"],
+        elegant: ["Playfair Display", "serif"],
+        body: ["Crimson Text", "serif"],
+      },
+      letterSpacing: {
+        "extra-wide": "0.2em",
+        "ultra-wide": "0.3em",
+      },
       colors: {
         gold: "#d4af37",
         beige: "#f5f5dc",

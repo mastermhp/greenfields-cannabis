@@ -4,8 +4,8 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Lock, Mail, User, Calendar, Check } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Eye, EyeOff, Lock, Mail, User, Calendar, Check, Award } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth"
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const { register } = useAuth()
 
@@ -29,6 +30,9 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [step, setStep] = useState(1)
+
+  // Get referral code from URL if present
+  const referralCode = searchParams.get("ref")
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -96,6 +100,15 @@ export default function RegisterPage() {
           title: "Registration Successful",
           description: "Welcome to Greenfields! Your account has been created.",
         })
+        
+        // If there was a referral, we would handle that here in a real app
+        if (referralCode) {
+          toast({
+            title: "Referral Applied",
+            description: "You've received 250 welcome points!",
+          })
+        }
+        
         router.push("/")
       } else {
         toast({
@@ -196,6 +209,24 @@ export default function RegisterPage() {
               <h1 className="text-3xl font-bold mt-4 mb-2 gold-text">Create Account</h1>
               <p className="text-beige">Join the Greenfields community</p>
             </div>
+
+            {/* Referral Code Banner (if present) */}
+            {referralCode && (
+              <motion.div
+                className="mb-6 bg-[#D4AF37]/10 border border-[#D4AF37] p-4 rounded-md"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <div className="flex items-center">
+                  <Award className="text-[#D4AF37] mr-2" size={20} />
+                  <div>
+                    <p className="font-medium text-[#D4AF37]">Referral Code Applied</p>
+                    <p className="text-sm text-beige">You'll receive 250 points on your first purchase!</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Step Indicator */}
             <div className="mb-8">

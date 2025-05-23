@@ -4,7 +4,7 @@ import { useRef } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
-import { Award, Users, Leaf, TrendingUp, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import TeamMember from "@/components/about/team-member"
 import Timeline from "@/components/about/timeline"
@@ -48,29 +48,34 @@ export default function AboutPage() {
 
   const timelineEvents = [
     {
-      year: "2015",
-      title: "Company Founded",
-      description: "Greenfields was established with a mission to provide premium cannabis products.",
-    },
-    {
-      year: "2017",
-      title: "First Retail Location",
-      description: "Opened our flagship store in California, setting new standards for cannabis retail.",
-    },
-    {
-      year: "2019",
-      title: "Product Line Expansion",
-      description: "Expanded our product offerings to include edibles, concentrates, and topicals.",
-    },
-    {
       year: "2021",
-      title: "Cannabis Cup Winner",
-      description: "Our signature strain won first place at the prestigious Cannabis Cup.",
+      title: "Company Founded",
+      description:
+        "Greenfields Group Inc. was established with a bold mission to build a state-of-the-art cannabis facility from the ground up.",
+    },
+    {
+      year: "2022",
+      title: "Facility Construction",
+      description:
+        "Dedicated innovation and perseverance drove the construction process of our premium cannabis production facility.",
     },
     {
       year: "2023",
-      title: "E-commerce Launch",
-      description: "Launched our online store to serve customers nationwide with premium products.",
+      title: "Brand Launch",
+      description:
+        "We set out to create a brand that stands apart, providing top-quality cannabis products for luxury and recreational users.",
+    },
+    {
+      year: "2023",
+      title: "Signature Product Line",
+      description:
+        "Launched our first signature product line featuring Amelie, Baylie, and Chloe strains, embodying quality and refinement.",
+    },
+    {
+      year: "2024",
+      title: "Expanding Horizons",
+      description:
+        "Continuing to innovate and expand our product offerings while maintaining our commitment to uncompromising quality.",
     },
   ]
 
@@ -86,7 +91,7 @@ export default function AboutPage() {
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/80" />
+          <div className="absolute inset-0 bg-black/60" />
         </motion.div>
 
         <div className="container mx-auto px-4 z-10 text-center">
@@ -105,7 +110,7 @@ export default function AboutPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Discover the passion and expertise behind Greenfields, where quality meets luxury in every product
+            Redefining the cannabis experience by blending luxury, quality, and authenticity
           </motion.p>
         </div>
       </section>
@@ -122,17 +127,19 @@ export default function AboutPage() {
             >
               <h2 className="text-3xl md:text-5xl font-bold mb-6 gold-text">Our Mission</h2>
               <p className="text-beige text-lg mb-6">
-                At Greenfields, we're dedicated to cultivating excellence. Our mission is to provide premium cannabis
-                products that enhance well-being and elevate experiences.
+                At Greenfields Group Inc., we are redefining the cannabis experience by blending luxury, quality, and
+                authenticity. Our journey began in July 2021 with a bold mission—to build a state-of-the-art facility
+                from the ground up.
               </p>
               <p className="text-beige text-lg mb-6">
-                We believe in the power of nature, combined with scientific expertise, to create products of
-                unparalleled quality. Every step of our process is guided by a commitment to purity, potency, and
-                sustainability.
+                After nearly two years of dedication, innovation, and perseverance, we completed the construction
+                process, laying the foundation for something truly exceptional. In 2023, we set out to create a brand
+                that stands apart from the rest.
               </p>
               <p className="text-beige text-lg">
-                From seed to sale, we maintain the highest standards, ensuring that each product bearing the Greenfields
-                name delivers a consistent, exceptional experience.
+                Our vision was clear: to provide top-quality cannabis products that offer an unmatched experience for
+                both luxury consumers and recreational users. We are not just another company in the industry; we are a
+                brand built on excellence, delivering only the finest products with precision and care.
               </p>
             </motion.div>
 
@@ -171,35 +178,37 @@ export default function AboutPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Our Core Values</h2>
-            <p className="text-beige max-w-2xl mx-auto">These principles guide everything we do at Greenfields</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Our Signature Product Line</h2>
+            <p className="text-beige max-w-2xl mx-auto">
+              With sophisticated and elegant names, these strains embody the essence of Greenfields: quality,
+              refinement, and purpose
+            </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                icon: Leaf,
-                title: "Quality",
+                title: "Amelie",
+                subtitle: "Sativa Strain",
                 description:
-                  "We source only the finest cannabis and maintain rigorous quality control throughout our process.",
+                  "Inspired by the French name meaning 'hardworking' or 'industrious,' Amelie reflects the dedication and meticulous care behind our products. This sativa strain is perfect for daytime use, offering energizing and uplifting effects that fuel creativity and productivity.",
+                icon: "🌱",
               },
               {
-                icon: Users,
-                title: "Community",
+                title: "Baylie",
+                subtitle: "Hybrid Strain",
                 description:
-                  "We're committed to giving back to the communities we serve through education and outreach.",
+                  "Baylie represents trust, balance, and transparency. Its name, derived from the idea of 'making something true,' symbolizes harmony in every form. This hybrid strain strikes the perfect balance between the energizing effects of sativa and the calming effects of indica, making it a versatile choice for any time of day.",
+                icon: "⚖️",
               },
               {
-                icon: Award,
-                title: "Excellence",
-                description: "We strive for excellence in everything we do, from cultivation to customer service.",
+                title: "Chloe",
+                subtitle: "Indica Strain",
+                description:
+                  "Rooted in elegance, Chloe is inspired by a name associated with blooming and growth. This indica strain is ideal for nighttime use, offering soothing and relaxing effects that help you unwind and recharge naturally.",
+                icon: "🌙",
               },
-              {
-                icon: TrendingUp,
-                title: "Innovation",
-                description: "We continuously explore new techniques and technologies to improve our products.",
-              },
-            ].map((value, index) => (
+            ].map((product, index) => (
               <motion.div
                 key={index}
                 className="bg-black p-8 border border-[#333] hover:border-[#D4AF37] transition-all duration-300"
@@ -209,11 +218,71 @@ export default function AboutPage() {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 whileHover={{ y: -10, boxShadow: "0 10px 30px rgba(212, 175, 55, 0.2)" }}
               >
-                <value.icon size={48} className="text-[#D4AF37] mb-4" />
-                <h3 className="text-xl font-bold mb-2">{value.title}</h3>
-                <p className="text-beige">{value.description}</p>
+                <div className="text-4xl mb-4">{product.icon}</div>
+                <h3 className="text-2xl font-bold mb-1 gold-text">{product.title}</h3>
+                <h4 className="text-lg mb-4 text-[#D4AF37]/70">{product.subtitle}</h4>
+                <p className="text-beige">{product.description}</p>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-black">
+        <div className="container mx-auto px-4">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Beyond the Product</h2>
+            <p className="text-beige max-w-2xl mx-auto">A Lasting Connection</p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+            >
+              <p className="text-beige text-lg mb-6">
+                At Greenfields, our mission extends far beyond delivering premium products. Our greatest priority is
+                building lasting relationships rooted in trust, integrity, and genuine connection.
+              </p>
+              <p className="text-beige text-lg mb-6">
+                We believe that cannabis is more than a product—it's an experience, a lifestyle, and a bridge that
+                connects us to our customers in meaningful ways. By offering personalized service, unparalleled quality,
+                and an unwavering dedication to customer satisfaction, we cultivate an experience that goes beyond a
+                single purchase.
+              </p>
+              <p className="text-beige text-lg">
+                From the moment our customers engage with us, they become part of the Greenfields family—a relationship
+                built on mutual respect, authenticity, and a shared passion for the finest cannabis offerings.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="relative"
+            >
+              <div className="bg-[#111] p-8 border border-[#D4AF37] gold-glow">
+                <h3 className="text-2xl font-bold mb-4 gold-text">Our Promise</h3>
+                <p className="text-beige text-lg mb-6">
+                  Greenfields is not just a brand, it's a promise. A promise of luxury, quality, and a new standard in
+                  cannabis, where every interaction reflects our commitment to excellence.
+                </p>
+                <p className="text-beige text-lg">
+                  We are here to set the bar higher, ensuring that every experience with Greenfields leaves a lasting
+                  impression of trust, care, and uncompromising quality.
+                </p>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -265,7 +334,7 @@ export default function AboutPage() {
       {/* CTA Section */}
       <section className="py-20 bg-[#111] relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <Image src="/placeholder.svg?height=600&width=1920" alt="Background Pattern" fill className="object-cover" />
+          <Image src="/experiencebg.jpeg" alt="Background Pattern" fill className="object-cover" />
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
@@ -279,7 +348,8 @@ export default function AboutPage() {
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4 gold-text">Experience Greenfields</h2>
               <p className="text-beige max-w-2xl mx-auto">
-                Discover our premium selection of cannabis products, crafted with care and expertise
+                Discover our premium selection of cannabis products, crafted with care and expertise for an unmatched
+                experience
               </p>
             </motion.div>
 

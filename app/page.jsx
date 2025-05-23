@@ -46,11 +46,11 @@ export default function Home() {
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-black/50" />
         </motion.div>
 
         <div className="container mx-auto px-4 z-10 text-center">
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
@@ -63,7 +63,7 @@ export default function Home() {
               height={300}
               className="mx-auto pl-14 leaf-animation"
             />
-          </motion.div>
+          </motion.div> */}
 
           <motion.h1
             className="text-5xl md:text-7xl font-bold mb-6 gold-text"
@@ -75,7 +75,7 @@ export default function Home() {
           </motion.h1>
 
           <motion.p
-            className="text-xl md:text-2xl pt-24 mb-8 text-beige max-w-2xl mx-auto"
+            className="text-xl md:text-2xl pt-[400px] mb-8 text-beige max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
@@ -83,13 +83,15 @@ export default function Home() {
             Premium Quality Cannabis Products for Connoisseurs
           </motion.p>
 
+          
+
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Button asChild className="bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none">
+            <Button asChild className="bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FF8C00]  hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none">
               <Link href="/products">
                 Shop Now <ChevronRight className="ml-2" />
               </Link>
@@ -283,11 +285,11 @@ export default function Home() {
       {/* Newsletter */}
       <section className="py-20 bg-[#111] relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <Image src="/placeholder.svg?height=600&width=1920" alt="Background Pattern" fill className="object-cover" />
+          <Image src="/community.jpg" alt="Background Pattern" fill className="object-cover" />
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto bg-black/80 p-10 border border-[#333]">
+          <div className="max-w-4xl mx-auto bg-black/50 p-10 border border-[#333]">
             <motion.div
               className="text-center mb-8"
               initial={{ opacity: 0, y: 30 }}

@@ -4,8 +4,8 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Lock, Mail } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const { login } = useAuth()
 
@@ -23,6 +24,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+
+  // Get redirect URL and referral code if present
+  const redirectTo = searchParams.get("redirect") || "/"
+  const referralCode = searchParams.get("ref")
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -41,7 +46,7 @@ export default function LoginPage() {
           title: "Login Successful",
           description: "Welcome back to Greenfields!",
         })
-        router.push("/")
+        router.push(redirectTo)
       } else {
         toast({
           title: "Login Failed",
@@ -230,7 +235,10 @@ export default function LoginPage() {
               <div className="text-center">
                 <p className="text-beige">
                   Don&apos;t have an account?{" "}
-                  <Link href="/register" className="text-[#D4AF37] hover:underline">
+                  <Link 
+                    href={`/register${referralCode ? `?ref=${referralCode}` : ""}${redirectTo !== "/" ? `${referralCode ? "&" : "?"}redirect=${redirectTo}` : ""}`} 
+                    className="text-[#D4AF37] hover:underline"
+                  >
                     Create Account
                   </Link>
                 </p>

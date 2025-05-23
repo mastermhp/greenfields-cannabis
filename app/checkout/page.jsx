@@ -1,24 +1,41 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "framer-motion"
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CreditCard, Check, ChevronRight, ChevronDown, MapPin, Truck, Calendar, Clock, ShieldCheck } from "lucide-react"
+import {
+  CreditCard,
+  Check,
+  ChevronRight,
+  ChevronDown,
+  ShieldCheck,
+  ArrowLeft,
+  Truck,
+  MapPin,
+  Info,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useCart } from "@/hooks/use-cart"
+import { useToast } from "@/hooks/use-toast"
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const { cartItems, cartTotal, clearCart } = useCart()
+  const { toast } = useToast()
 
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
 
+  // Form states
   const [shippingInfo, setShippingInfo] = useState({
     firstName: "",
     lastName: "",
@@ -32,154 +49,42 @@ export default function CheckoutPage() {
     country: "United States",
   })
 
-  const [paymentInfo, setPaymentInfo] = useState({
+  const [shippingMethod, setShippingMethod] = useState("standard")
+  const [deliveryInstructions, setDeliveryInstructions] = useState("")
+  const [deliveryTime, setDeliveryTime] = useState("anytime")
+  const [contactPreference, setContactPreference] = useState("text")
+  const [agreeToTerms, setAgreeToTerms] = useState(false)
+
+  const [paymentMethod, setPaymentMethod] = useState("credit-card")
+  const [cardInfo, setCardInfo] = useState({
     cardNumber: "",
     cardName: "",
-    expiryDate: "",
+    expiry: "",
     cvv: "",
     saveCard: false,
   })
 
-  const [deliveryMethod, setDeliveryMethod] = useState("standard")
-  const [specialInstructions, setSpecialInstructions] = useState("")
+  // Calculate order summary with cannabis-specific taxes
+  const subtotal = cartTotal
+  const shipping =
+    shippingMethod === "express" ? 19.99 : shippingMethod === "same-day" ? 29.99 : subtotal >= 100 ? 0 : 9.99
+  const salesTax = subtotal * 0.0925 // 9.25% sales tax
+  const exciseTax = subtotal * 0.15 // 15% excise tax
+  const cannabisTax = subtotal * 0.12 // 12% cannabis tax
+  const totalTax = salesTax + exciseTax + cannabisTax
+  const total = subtotal + shipping + totalTax
 
-  const shippingCost =
-    deliveryMethod === "standard" ? (cartTotal > 100 ? 0 : 9.99) : deliveryMethod === "express" ? 19.99 : 29.99
-
-  const taxRate = 0.08 // 8% tax rate
-  const taxAmount = cartTotal * taxRate
-  const orderTotal = cartTotal + shippingCost + taxAmount
-
-  const handleShippingChange = (e) => {
+  const handleShippingInfoChange = (e) => {
     const { name, value } = e.target
     setShippingInfo((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handlePaymentChange = (e) => {
+  const handleCardInfoChange = (e) => {
     const { name, value, type, checked } = e.target
-    setPaymentInfo((prev) => ({
+    setCardInfo((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }))
-  }
-
-  const handleNextStep = (e) => {
-    e.preventDefault()
-
-    if (step === 1) {
-      // Validate shipping info
-      const requiredFields = ["firstName", "lastName", "email", "phone", "address", "city", "state", "zipCode"]
-      const missingFields = requiredFields.filter((field) => !shippingInfo[field])
-
-      if (missingFields.length > 0) {
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all required fields.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Email validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(shippingInfo.email)) {
-        toast({
-          title: "Invalid Email",
-          description: "Please enter a valid email address.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Phone validation
-      const phoneRegex = /^\d{10}$/
-      if (!phoneRegex.test(shippingInfo.phone.replace(/\D/g, ""))) {
-        toast({
-          title: "Invalid Phone Number",
-          description: "Please enter a valid 10-digit phone number.",
-          variant: "destructive",
-        })
-        return
-      }
-    }
-
-    if (step === 2) {
-      // Validate payment info
-      const requiredFields = ["cardNumber", "cardName", "expiryDate", "cvv"]
-      const missingFields = requiredFields.filter((field) => !paymentInfo[field])
-
-      if (missingFields.length > 0) {
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all payment details.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Card number validation (simple check for 16 digits)
-      const cardNumberRegex = /^\d{16}$/
-      if (!cardNumberRegex.test(paymentInfo.cardNumber.replace(/\D/g, ""))) {
-        toast({
-          title: "Invalid Card Number",
-          description: "Please enter a valid 16-digit card number.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Expiry date validation (MM/YY format)
-      const expiryRegex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/
-      if (!expiryRegex.test(paymentInfo.expiryDate)) {
-        toast({
-          title: "Invalid Expiry Date",
-          description: "Please enter a valid expiry date in MM/YY format.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // CVV validation (3 or 4 digits)
-      const cvvRegex = /^\d{3,4}$/
-      if (!cvvRegex.test(paymentInfo.cvv)) {
-        toast({
-          title: "Invalid CVV",
-          description: "Please enter a valid 3 or 4 digit CVV code.",
-          variant: "destructive",
-        })
-        return
-      }
-    }
-
-    setStep(step + 1)
-    window.scrollTo(0, 0)
-  }
-
-  const handlePreviousStep = () => {
-    setStep(step - 1)
-    window.scrollTo(0, 0)
-  }
-
-  const handlePlaceOrder = async () => {
-    setLoading(true)
-
-    // Simulate order processing
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Clear cart after successful order
-      clearCart()
-
-      // Redirect to confirmation page
-      router.push("/order-confirmation")
-    } catch (error) {
-      toast({
-        title: "Order Failed",
-        description: "There was an error processing your order. Please try again.",
-        variant: "destructive",
-      })
-      setLoading(false)
-    }
   }
 
   const formatCardNumber = (value) => {
@@ -209,71 +114,229 @@ export default function CheckoutPage() {
     return v
   }
 
-  if (cartItems.length === 0) {
-    router.push("/cart")
+  const validateShippingInfo = () => {
+    const { firstName, lastName, email, phone, address, city, state, zipCode } = shippingInfo
+
+    if (!firstName || !lastName || !email || !phone || !address || !city || !state || !zipCode) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    // Phone validation - just check for minimum digits
+    const phoneDigits = phone.replace(/\D/g, "")
+    if (phoneDigits.length < 10) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid phone number",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    return true
+  }
+
+  const validateDeliveryInfo = () => {
+    if (!agreeToTerms) {
+      toast({
+        title: "Terms Agreement Required",
+        description: "Please agree to the age verification and terms of service",
+        variant: "destructive",
+      })
+      return false
+    }
+    return true
+  }
+
+  const validatePaymentInfo = () => {
+    if (paymentMethod === "credit-card") {
+      const { cardNumber, cardName, expiry, cvv } = cardInfo
+
+      if (!cardNumber || !cardName || !expiry || !cvv) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all card details",
+          variant: "destructive",
+        })
+        return false
+      }
+
+      // Card number validation (simple check for digits)
+      const cardDigits = cardNumber.replace(/\D/g, "")
+      if (cardDigits.length < 15) {
+        toast({
+          title: "Invalid Card Number",
+          description: "Please enter a valid card number",
+          variant: "destructive",
+        })
+        return false
+      }
+
+      // Expiry date validation (MM/YY format)
+      const expiryRegex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/
+      if (!expiryRegex.test(expiry)) {
+        toast({
+          title: "Invalid Expiry Date",
+          description: "Please enter a valid expiry date in MM/YY format",
+          variant: "destructive",
+        })
+        return false
+      }
+
+      // CVV validation (3 or 4 digits)
+      const cvvRegex = /^\d{3,4}$/
+      if (!cvvRegex.test(cvv)) {
+        toast({
+          title: "Invalid CVV",
+          description: "Please enter a valid 3 or 4 digit CVV code",
+          variant: "destructive",
+        })
+        return false
+      }
+    }
+
+    return true
+  }
+
+  const handleContinueToDelivery = (e) => {
+    e.preventDefault()
+    if (validateShippingInfo()) {
+      setStep(2)
+      window.scrollTo(0, 0)
+    }
+  }
+
+  const handleContinueToPayment = (e) => {
+    e.preventDefault()
+    if (validateDeliveryInfo()) {
+      setStep(3)
+      window.scrollTo(0, 0)
+    }
+  }
+
+  const handlePlaceOrder = () => {
+    if (validatePaymentInfo()) {
+      setLoading(true)
+
+      // Simulate order processing
+      setTimeout(() => {
+        clearCart()
+        toast({
+          title: "Order Placed Successfully!",
+          description: "Thank you for your purchase. Your order is being processed.",
+          variant: "success",
+        })
+        router.push("/order-confirmation")
+      }, 2000)
+    }
+  }
+
+  // Redirect to cart if cart is empty
+  useEffect(() => {
+    if (cartItems.length === 0 && !loading) {
+      router.push("/cart")
+    }
+  }, [cartItems, loading, router])
+
+  if (cartItems.length === 0 && !loading) {
     return null
   }
 
   return (
-    <div className="min-h-screen bg-black pt-24 pb-16">
+    <div className="bg-black min-h-screen pt-32 pb-16">
       <div className="container mx-auto px-4">
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Link href="/cart" className="flex items-center text-beige hover:text-[#D4AF37] transition-colors">
+            <ArrowLeft size={18} className="mr-2" />
+            Back to Cart
+          </Link>
+        </motion.div>
+
         <motion.h1
           className="text-3xl md:text-4xl font-bold mb-8 gold-text"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
         >
           Checkout
         </motion.h1>
 
         {/* Checkout Steps */}
-        <div className="mb-12">
+        <div className="mb-10">
           <div className="flex items-center justify-between max-w-3xl mx-auto">
             <div className="flex flex-col items-center">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${step >= 1 ? "bg-[#D4AF37] text-black" : "bg-[#333] text-white"}`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  step >= 1 ? "bg-[#D4AF37] text-black" : "bg-[#333] text-white"
+                }`}
               >
-                1
+                {step > 1 ? <Check size={20} /> : "1"}
               </div>
-              <span className="text-sm mt-2 text-beige">Shipping</span>
+              <span className="mt-2 text-sm text-beige">Shipping</span>
             </div>
 
-            <div className={`flex-1 h-0.5 mx-2 ${step >= 2 ? "bg-[#D4AF37]" : "bg-[#333]"}`}></div>
+            <div className={`flex-grow mx-2 h-0.5 ${step >= 2 ? "bg-[#D4AF37]" : "bg-[#333]"}`}></div>
 
             <div className="flex flex-col items-center">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${step >= 2 ? "bg-[#D4AF37] text-black" : "bg-[#333] text-white"}`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  step >= 2 ? "bg-[#D4AF37] text-black" : "bg-[#333] text-white"
+                }`}
               >
-                2
+                {step > 2 ? <Check size={20} /> : "2"}
               </div>
-              <span className="text-sm mt-2 text-beige">Payment</span>
+              <span className="mt-2 text-sm text-beige">Delivery</span>
             </div>
 
-            <div className={`flex-1 h-0.5 mx-2 ${step >= 3 ? "bg-[#D4AF37]" : "bg-[#333]"}`}></div>
+            <div className={`flex-grow mx-2 h-0.5 ${step >= 3 ? "bg-[#D4AF37]" : "bg-[#333]"}`}></div>
 
             <div className="flex flex-col items-center">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${step >= 3 ? "bg-[#D4AF37] text-black" : "bg-[#333] text-white"}`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  step >= 3 ? "bg-[#D4AF37] text-black" : "bg-[#333] text-white"
+                }`}
               >
-                3
+                {step > 3 ? <Check size={20} /> : "3"}
               </div>
-              <span className="text-sm mt-2 text-beige">Review</span>
+              <span className="mt-2 text-sm text-beige">Payment</span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Main Content */}
-          <motion.div
-            className="lg:w-2/3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <div className="bg-[#111] border border-[#333] mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Checkout Form */}
+          <div className="lg:col-span-2">
+            <AnimatePresence mode="wait">
               {/* Step 1: Shipping Information */}
               {step === 1 && (
-                <div>
+                <motion.div
+                  key="shipping"
+                  className="bg-[#111] border border-[#333]"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
                   <div className="p-6 border-b border-[#333]">
                     <h2 className="text-xl font-bold flex items-center">
                       <MapPin className="mr-2 text-[#D4AF37]" size={20} />
@@ -281,31 +344,30 @@ export default function CheckoutPage() {
                     </h2>
                   </div>
 
-                  <form onSubmit={handleNextStep} className="p-6">
+                  <form onSubmit={handleContinueToDelivery} className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div>
-                        <label htmlFor="firstName" className="block text-sm font-medium text-beige mb-2">
+                        <Label htmlFor="firstName" className="text-beige mb-2 block">
                           First Name *
-                        </label>
+                        </Label>
                         <Input
                           id="firstName"
                           name="firstName"
                           value={shippingInfo.firstName}
-                          onChange={handleShippingChange}
-                          required
+                          onChange={handleShippingInfoChange}
                           className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                         />
                       </div>
+
                       <div>
-                        <label htmlFor="lastName" className="block text-sm font-medium text-beige mb-2">
+                        <Label htmlFor="lastName" className="text-beige mb-2 block">
                           Last Name *
-                        </label>
+                        </Label>
                         <Input
                           id="lastName"
                           name="lastName"
                           value={shippingInfo.lastName}
-                          onChange={handleShippingChange}
-                          required
+                          onChange={handleShippingInfoChange}
                           className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                         />
                       </div>
@@ -313,499 +375,643 @@ export default function CheckoutPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-beige mb-2">
+                        <Label htmlFor="email" className="text-beige mb-2 block">
                           Email Address *
-                        </label>
+                        </Label>
                         <Input
                           id="email"
                           name="email"
                           type="email"
                           value={shippingInfo.email}
-                          onChange={handleShippingChange}
-                          required
+                          onChange={handleShippingInfoChange}
                           className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                         />
                       </div>
+
                       <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-beige mb-2">
+                        <Label htmlFor="phone" className="text-beige mb-2 block">
                           Phone Number *
-                        </label>
+                        </Label>
                         <Input
                           id="phone"
                           name="phone"
                           type="tel"
                           value={shippingInfo.phone}
-                          onChange={handleShippingChange}
-                          required
+                          onChange={handleShippingInfoChange}
                           className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                         />
                       </div>
                     </div>
 
                     <div className="mb-6">
-                      <label htmlFor="address" className="block text-sm font-medium text-beige mb-2">
+                      <Label htmlFor="address" className="text-beige mb-2 block">
                         Street Address *
-                      </label>
+                      </Label>
                       <Input
                         id="address"
                         name="address"
                         value={shippingInfo.address}
-                        onChange={handleShippingChange}
-                        required
+                        onChange={handleShippingInfoChange}
                         className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                       />
                     </div>
 
                     <div className="mb-6">
-                      <label htmlFor="apartment" className="block text-sm font-medium text-beige mb-2">
+                      <Label htmlFor="apartment" className="text-beige mb-2 block">
                         Apartment, Suite, etc. (optional)
-                      </label>
+                      </Label>
                       <Input
                         id="apartment"
                         name="apartment"
                         value={shippingInfo.apartment}
-                        onChange={handleShippingChange}
+                        onChange={handleShippingInfoChange}
                         className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                      <div>
-                        <label htmlFor="city" className="block text-sm font-medium text-beige mb-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
+                      <div className="col-span-2 md:col-span-1">
+                        <Label htmlFor="city" className="text-beige mb-2 block">
                           City *
-                        </label>
+                        </Label>
                         <Input
                           id="city"
                           name="city"
                           value={shippingInfo.city}
-                          onChange={handleShippingChange}
-                          required
+                          onChange={handleShippingInfoChange}
                           className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                         />
                       </div>
+
                       <div>
-                        <label htmlFor="state" className="block text-sm font-medium text-beige mb-2">
-                          State/Province *
-                        </label>
+                        <Label htmlFor="state" className="text-beige mb-2 block">
+                          State *
+                        </Label>
                         <Input
                           id="state"
                           name="state"
                           value={shippingInfo.state}
-                          onChange={handleShippingChange}
-                          required
+                          onChange={handleShippingInfoChange}
                           className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                         />
                       </div>
+
                       <div>
-                        <label htmlFor="zipCode" className="block text-sm font-medium text-beige mb-2">
-                          ZIP/Postal Code *
-                        </label>
+                        <Label htmlFor="zipCode" className="text-beige mb-2 block">
+                          ZIP Code *
+                        </Label>
                         <Input
                           id="zipCode"
                           name="zipCode"
                           value={shippingInfo.zipCode}
-                          onChange={handleShippingChange}
-                          required
+                          onChange={handleShippingInfoChange}
                           className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                         />
                       </div>
                     </div>
 
                     <div className="mb-6">
-                      <label htmlFor="country" className="block text-sm font-medium text-beige mb-2">
+                      <Label htmlFor="country" className="text-beige mb-2 block">
                         Country *
-                      </label>
-                      <select
-                        id="country"
-                        name="country"
-                        value={shippingInfo.country}
-                        onChange={handleShippingChange}
-                        required
-                        className="w-full bg-black border border-[#333] focus:border-[#D4AF37] rounded-none h-12 px-3"
-                      >
-                        <option value="United States">United States</option>
-                        <option value="Canada">Canada</option>
-                        <option value="Mexico">Mexico</option>
-                      </select>
-                    </div>
-
-                    <div className="mb-6">
-                      <h3 className="text-lg font-medium mb-4">Delivery Method</h3>
-
-                      <div className="space-y-4">
-                        <div
-                          className={`border ${deliveryMethod === "standard" ? "border-[#D4AF37]" : "border-[#333]"} p-4 cursor-pointer`}
-                          onClick={() => setDeliveryMethod("standard")}
+                      </Label>
+                      <div className="relative">
+                        <select
+                          id="country"
+                          name="country"
+                          value={shippingInfo.country}
+                          onChange={handleShippingInfoChange}
+                          className="w-full bg-black border border-[#333] text-white px-4 py-3 appearance-none focus:border-[#D4AF37] rounded-none"
                         >
-                          <div className="flex items-center">
-                            <div
-                              className={`w-5 h-5 rounded-full border ${deliveryMethod === "standard" ? "border-[#D4AF37]" : "border-[#333]"} flex items-center justify-center mr-3`}
-                            >
-                              {deliveryMethod === "standard" && (
-                                <div className="w-3 h-3 rounded-full bg-[#D4AF37]"></div>
-                              )}
-                            </div>
-                            <div className="flex-grow">
-                              <div className="flex justify-between">
-                                <span className="font-medium">Standard Shipping</span>
-                                <span>{cartTotal > 100 ? "Free" : "$9.99"}</span>
-                              </div>
-                              <p className="text-sm text-beige">Delivery in 3-5 business days</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          className={`border ${deliveryMethod === "express" ? "border-[#D4AF37]" : "border-[#333]"} p-4 cursor-pointer`}
-                          onClick={() => setDeliveryMethod("express")}
-                        >
-                          <div className="flex items-center">
-                            <div
-                              className={`w-5 h-5 rounded-full border ${deliveryMethod === "express" ? "border-[#D4AF37]" : "border-[#333]"} flex items-center justify-center mr-3`}
-                            >
-                              {deliveryMethod === "express" && (
-                                <div className="w-3 h-3 rounded-full bg-[#D4AF37]"></div>
-                              )}
-                            </div>
-                            <div className="flex-grow">
-                              <div className="flex justify-between">
-                                <span className="font-medium">Express Shipping</span>
-                                <span>$19.99</span>
-                              </div>
-                              <p className="text-sm text-beige">Delivery in 1-2 business days</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          className={`border ${deliveryMethod === "same-day" ? "border-[#D4AF37]" : "border-[#333]"} p-4 cursor-pointer`}
-                          onClick={() => setDeliveryMethod("same-day")}
-                        >
-                          <div className="flex items-center">
-                            <div
-                              className={`w-5 h-5 rounded-full border ${deliveryMethod === "same-day" ? "border-[#D4AF37]" : "border-[#333]"} flex items-center justify-center mr-3`}
-                            >
-                              {deliveryMethod === "same-day" && (
-                                <div className="w-3 h-3 rounded-full bg-[#D4AF37]"></div>
-                              )}
-                            </div>
-                            <div className="flex-grow">
-                              <div className="flex justify-between">
-                                <span className="font-medium">Same-Day Delivery</span>
-                                <span>$29.99</span>
-                              </div>
-                              <p className="text-sm text-beige">Available in select areas only</p>
-                            </div>
-                          </div>
-                        </div>
+                          <option value="United States">United States</option>
+                          <option value="Canada">Canada</option>
+                        </select>
+                        <ChevronDown
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
+                          size={18}
+                        />
                       </div>
-                    </div>
-
-                    <div className="mb-6">
-                      <label htmlFor="specialInstructions" className="block text-sm font-medium text-beige mb-2">
-                        Special Instructions (optional)
-                      </label>
-                      <Textarea
-                        id="specialInstructions"
-                        value={specialInstructions}
-                        onChange={(e) => setSpecialInstructions(e.target.value)}
-                        placeholder="Add any special delivery instructions"
-                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none resize-none"
-                        rows={3}
-                      />
                     </div>
 
                     <div className="flex justify-end">
-                      <Button
-                        type="submit"
-                        className="bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none"
-                      >
-                        Continue to Payment <ChevronRight className="ml-2" size={18} />
+                      <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                        Continue to Delivery <ChevronRight className="ml-2" size={16} />
                       </Button>
                     </div>
                   </form>
-                </div>
+                </motion.div>
               )}
 
-              {/* Step 2: Payment Information */}
+              {/* Step 2: Delivery Options */}
               {step === 2 && (
-                <div>
+                <motion.div
+                  key="delivery"
+                  className="bg-[#111] border border-[#333]"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
                   <div className="p-6 border-b border-[#333]">
                     <h2 className="text-xl font-bold flex items-center">
-                      <CreditCard className="mr-2 text-[#D4AF37]" size={20} />
-                      Payment Information
+                      <Truck className="mr-2 text-[#D4AF37]" size={20} />
+                      Delivery Options
                     </h2>
                   </div>
 
-                  <form onSubmit={handleNextStep} className="p-6">
-                    <div className="mb-6">
-                      <label htmlFor="cardNumber" className="block text-sm font-medium text-beige mb-2">
-                        Card Number *
-                      </label>
-                      <Input
-                        id="cardNumber"
-                        name="cardNumber"
-                        value={paymentInfo.cardNumber}
-                        onChange={(e) =>
-                          handlePaymentChange({
-                            target: {
-                              name: "cardNumber",
-                              value: formatCardNumber(e.target.value),
-                            },
-                          })
-                        }
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                        required
-                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                  <form onSubmit={handleContinueToPayment} className="p-6">
+                    <div className="mb-8">
+                      <h3 className="text-lg font-medium mb-4">Shipping Method</h3>
+                      <RadioGroup value={shippingMethod} onValueChange={setShippingMethod} className="space-y-4">
+                        <div
+                          className={`border ${
+                            shippingMethod === "standard" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-start">
+                            <RadioGroupItem
+                              value="standard"
+                              id="standard"
+                              className="mt-1 border-[#333] text-[#D4AF37]"
+                            />
+                            <Label htmlFor="standard" className="ml-3 cursor-pointer flex-grow">
+                              <div className="flex justify-between">
+                                <div>
+                                  <p className="font-medium">Standard Shipping</p>
+                                  <p className="text-sm text-beige">Delivery in 3-5 business days</p>
+                                </div>
+                                <div className="text-right">
+                                  {subtotal >= 100 ? <span className="text-green-500">Free</span> : <span>$9.99</span>}
+                                </div>
+                              </div>
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`border ${
+                            shippingMethod === "express" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-start">
+                            <RadioGroupItem
+                              value="express"
+                              id="express"
+                              className="mt-1 border-[#333] text-[#D4AF37]"
+                            />
+                            <Label htmlFor="express" className="ml-3 cursor-pointer flex-grow">
+                              <div className="flex justify-between">
+                                <div>
+                                  <p className="font-medium">Express Shipping</p>
+                                  <p className="text-sm text-beige">Delivery in 1-2 business days</p>
+                                </div>
+                                <div className="text-right">
+                                  <span>$19.99</span>
+                                </div>
+                              </div>
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`border ${
+                            shippingMethod === "same-day" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-start">
+                            <RadioGroupItem
+                              value="same-day"
+                              id="same-day"
+                              className="mt-1 border-[#333] text-[#D4AF37]"
+                            />
+                            <Label htmlFor="same-day" className="ml-3 cursor-pointer flex-grow">
+                              <div className="flex justify-between">
+                                <div>
+                                  <p className="font-medium">Same-Day Delivery</p>
+                                  <p className="text-sm text-beige">Delivery within 3-4 hours (select areas only)</p>
+                                </div>
+                                <div className="text-right">
+                                  <span>$29.99</span>
+                                </div>
+                              </div>
+                            </Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="mb-8">
+                      <h3 className="text-lg font-medium mb-4">Preferred Delivery Time</h3>
+                      <RadioGroup value={deliveryTime} onValueChange={setDeliveryTime} className="space-y-4">
+                        <div
+                          className={`border ${
+                            deliveryTime === "anytime" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-center">
+                            <RadioGroupItem value="anytime" id="anytime" className="border-[#333] text-[#D4AF37]" />
+                            <Label htmlFor="anytime" className="ml-3 cursor-pointer">
+                              <span className="font-medium">Anytime (9am - 9pm)</span>
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`border ${
+                            deliveryTime === "morning" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-center">
+                            <RadioGroupItem value="morning" id="morning" className="border-[#333] text-[#D4AF37]" />
+                            <Label htmlFor="morning" className="ml-3 cursor-pointer">
+                              <span className="font-medium">Morning (9am - 12pm)</span>
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`border ${
+                            deliveryTime === "afternoon" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-center">
+                            <RadioGroupItem value="afternoon" id="afternoon" className="border-[#333] text-[#D4AF37]" />
+                            <Label htmlFor="afternoon" className="ml-3 cursor-pointer">
+                              <span className="font-medium">Afternoon (12pm - 5pm)</span>
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`border ${
+                            deliveryTime === "evening" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-center">
+                            <RadioGroupItem value="evening" id="evening" className="border-[#333] text-[#D4AF37]" />
+                            <Label htmlFor="evening" className="ml-3 cursor-pointer">
+                              <span className="font-medium">Evening (5pm - 9pm)</span>
+                            </Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="mb-8">
+                      <h3 className="text-lg font-medium mb-4">Contact Preference</h3>
+                      <RadioGroup value={contactPreference} onValueChange={setContactPreference} className="space-y-4">
+                        <div
+                          className={`border ${
+                            contactPreference === "text" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-center">
+                            <RadioGroupItem value="text" id="text" className="border-[#333] text-[#D4AF37]" />
+                            <Label htmlFor="text" className="ml-3 cursor-pointer">
+                              <span className="font-medium">Text me when my order is out for delivery</span>
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`border ${
+                            contactPreference === "call" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-center">
+                            <RadioGroupItem value="call" id="call" className="border-[#333] text-[#D4AF37]" />
+                            <Label htmlFor="call" className="ml-3 cursor-pointer">
+                              <span className="font-medium">Call me when my order is out for delivery</span>
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`border ${
+                            contactPreference === "none" ? "border-[#D4AF37]" : "border-[#333]"
+                          } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        >
+                          <div className="flex items-center">
+                            <RadioGroupItem value="none" id="none" className="border-[#333] text-[#D4AF37]" />
+                            <Label htmlFor="none" className="ml-3 cursor-pointer">
+                              <span className="font-medium">No notification needed</span>
+                            </Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="mb-8">
+                      <Label htmlFor="deliveryInstructions" className="text-beige mb-2 block">
+                        Delivery Instructions (optional)
+                      </Label>
+                      <Textarea
+                        id="deliveryInstructions"
+                        value={deliveryInstructions}
+                        onChange={(e) => setDeliveryInstructions(e.target.value)}
+                        placeholder="Add any special delivery instructions or gate codes"
+                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none min-h-[100px]"
                       />
                     </div>
 
-                    <div className="mb-6">
-                      <label htmlFor="cardName" className="block text-sm font-medium text-beige mb-2">
-                        Name on Card *
-                      </label>
-                      <Input
-                        id="cardName"
-                        name="cardName"
-                        value={paymentInfo.cardName}
-                        onChange={handlePaymentChange}
-                        required
-                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      <div>
-                        <label htmlFor="expiryDate" className="block text-sm font-medium text-beige mb-2">
-                          Expiry Date (MM/YY) *
-                        </label>
-                        <Input
-                          id="expiryDate"
-                          name="expiryDate"
-                          value={paymentInfo.expiryDate}
-                          onChange={(e) =>
-                            handlePaymentChange({
-                              target: {
-                                name: "expiryDate",
-                                value: formatExpiryDate(e.target.value),
-                              },
-                            })
-                          }
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          required
-                          className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                        />
+                    <div className="mb-8 p-4 border border-[#D4AF37] bg-[#D4AF37]/10">
+                      <div className="flex items-start mb-4">
+                        <AlertCircle className="text-[#D4AF37] mr-3 mt-0.5 flex-shrink-0" size={20} />
+                        <p className="text-sm text-beige">
+                          <span className="font-medium text-[#D4AF37] block mb-1">Age Verification Required</span>
+                          All deliveries require age verification (21+) with a valid government-issued ID at the time of
+                          delivery. The person accepting the delivery must be the same person who placed the order.
+                        </p>
                       </div>
-                      <div>
-                        <label htmlFor="cvv" className="block text-sm font-medium text-beige mb-2">
-                          CVV *
-                        </label>
-                        <Input
-                          id="cvv"
-                          name="cvv"
-                          value={paymentInfo.cvv}
-                          onChange={handlePaymentChange}
-                          placeholder="123"
-                          maxLength={4}
-                          required
-                          className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                        />
-                      </div>
-                    </div>
 
-                    <div className="mb-6">
                       <div className="flex items-center">
-                        <input
-                          id="saveCard"
-                          name="saveCard"
-                          type="checkbox"
-                          checked={paymentInfo.saveCard}
-                          onChange={handlePaymentChange}
-                          className="h-4 w-4 bg-black border-[#333] focus:ring-[#D4AF37] text-[#D4AF37]"
+                        <Checkbox
+                          id="terms"
+                          checked={agreeToTerms}
+                          onCheckedChange={setAgreeToTerms}
+                          className="border-[#D4AF37] text-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
                         />
-                        <label htmlFor="saveCard" className="ml-2 block text-sm text-beige">
-                          Save this card for future purchases
+                        <label htmlFor="terms" className="ml-3 text-sm text-beige cursor-pointer">
+                          I confirm I am 21+ years of age and agree to the{" "}
+                          <Link href="/terms-conditions" className="text-[#D4AF37] underline">
+                            Terms of Service
+                          </Link>
                         </label>
                       </div>
-                    </div>
-
-                    <div className="bg-[#D4AF37]/10 border border-[#D4AF37] p-4 mb-6 flex items-start">
-                      <ShieldCheck className="text-[#D4AF37] mr-3 mt-1 flex-shrink-0" size={20} />
-                      <p className="text-sm text-beige">
-                        Your payment information is secure. We use industry-standard encryption to protect your data.
-                      </p>
                     </div>
 
                     <div className="flex justify-between">
                       <Button
                         type="button"
-                        onClick={handlePreviousStep}
+                        onClick={() => setStep(1)}
                         variant="outline"
                         className="border-[#333] text-white hover:bg-[#222] hover:text-white"
                       >
+                        <ArrowLeft className="mr-2" size={16} />
                         Back to Shipping
                       </Button>
-                      <Button
-                        type="submit"
-                        className="bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none"
-                      >
-                        Review Order <ChevronRight className="ml-2" size={18} />
+
+                      <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                        Continue to Payment <ChevronRight className="ml-2" size={16} />
                       </Button>
                     </div>
                   </form>
-                </div>
+                </motion.div>
               )}
 
-              {/* Step 3: Review Order */}
+              {/* Step 3: Payment */}
               {step === 3 && (
-                <div>
+                <motion.div
+                  key="payment"
+                  className="bg-[#111] border border-[#333]"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
                   <div className="p-6 border-b border-[#333]">
                     <h2 className="text-xl font-bold flex items-center">
-                      <Check className="mr-2 text-[#D4AF37]" size={20} />
-                      Review Your Order
+                      <CreditCard className="mr-2 text-[#D4AF37]" size={20} />
+                      Payment Method
                     </h2>
                   </div>
 
                   <div className="p-6">
-                    <div className="mb-8">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium">Shipping Information</h3>
-                        <button onClick={() => setStep(1)} className="text-[#D4AF37] text-sm hover:underline">
-                          Edit
-                        </button>
-                      </div>
-
-                      <div className="bg-black border border-[#333] p-4">
-                        <p className="mb-1">
-                          <span className="font-medium">
-                            {shippingInfo.firstName} {shippingInfo.lastName}
-                          </span>
-                        </p>
-                        <p className="text-beige mb-1">{shippingInfo.address}</p>
-                        {shippingInfo.apartment && <p className="text-beige mb-1">{shippingInfo.apartment}</p>}
-                        <p className="text-beige mb-1">
-                          {shippingInfo.city}, {shippingInfo.state} {shippingInfo.zipCode}
-                        </p>
-                        <p className="text-beige mb-1">{shippingInfo.country}</p>
-                        <p className="text-beige mb-1">
-                          <span className="font-medium">Email:</span> {shippingInfo.email}
-                        </p>
-                        <p className="text-beige">
-                          <span className="font-medium">Phone:</span> {shippingInfo.phone}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mb-8">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium">Payment Method</h3>
-                        <button onClick={() => setStep(2)} className="text-[#D4AF37] text-sm hover:underline">
-                          Edit
-                        </button>
-                      </div>
-
-                      <div className="bg-black border border-[#333] p-4">
+                    <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-4 mb-8">
+                      <div
+                        className={`border ${
+                          paymentMethod === "credit-card" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
                         <div className="flex items-center">
-                          <CreditCard className="text-[#D4AF37] mr-3" size={20} />
-                          <div>
-                            <p className="font-medium">Credit Card</p>
-                            <p className="text-beige">**** **** **** {paymentInfo.cardNumber.slice(-4)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mb-8">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium">Delivery Method</h3>
-                        <button onClick={() => setStep(1)} className="text-[#D4AF37] text-sm hover:underline">
-                          Edit
-                        </button>
-                      </div>
-
-                      <div className="bg-black border border-[#333] p-4">
-                        <div className="flex items-center">
-                          {deliveryMethod === "standard" ? (
-                            <Truck className="text-[#D4AF37] mr-3" size={20} />
-                          ) : deliveryMethod === "express" ? (
-                            <Calendar className="text-[#D4AF37] mr-3" size={20} />
-                          ) : (
-                            <Clock className="text-[#D4AF37] mr-3" size={20} />
-                          )}
-
-                          <div>
-                            <p className="font-medium">
-                              {deliveryMethod === "standard"
-                                ? "Standard Shipping"
-                                : deliveryMethod === "express"
-                                  ? "Express Shipping"
-                                  : "Same-Day Delivery"}
-                            </p>
-                            <p className="text-beige">
-                              {deliveryMethod === "standard"
-                                ? "Delivery in 3-5 business days"
-                                : deliveryMethod === "express"
-                                  ? "Delivery in 1-2 business days"
-                                  : "Delivery today"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mb-8">
-                      <h3 className="text-lg font-medium mb-4">Order Items</h3>
-
-                      <div className="bg-black border border-[#333] divide-y divide-[#333]">
-                        {cartItems.map((item) => (
-                          <div key={item.id} className="p-4 flex items-center">
-                            <div className="w-16 h-16 bg-[#222] relative mr-4">
-                              <Image
-                                src={
-                                  item.images[0] ||
-                                  "https://images.unsplash.com/photo-1603909223429-69bb7101f420?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                                }
-                                alt={item.name}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-
-                            <div className="flex-grow">
-                              <div className="flex justify-between">
-                                <div>
-                                  <h4 className="font-medium">{item.name}</h4>
-                                  <p className="text-sm text-beige capitalize">{item.category}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-medium">${item.price.toFixed(2)}</p>
-                                  <p className="text-sm text-beige">Qty: {item.quantity}</p>
-                                </div>
+                          <RadioGroupItem
+                            value="credit-card"
+                            id="credit-card"
+                            className="border-[#333] text-[#D4AF37]"
+                          />
+                          <Label htmlFor="credit-card" className="ml-3 cursor-pointer flex-grow">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">Credit / Debit Card</span>
+                              <div className="flex space-x-2">
+                                <Image src="https://i.imgur.com/5xgHYn4.png" alt="Visa" width={40} height={25} />
+                                <Image src="https://i.imgur.com/fPwGYMN.png" alt="Mastercard" width={40} height={25} />
+                                <Image src="https://i.imgur.com/0V9z1SL.png" alt="Amex" width={40} height={25} />
                               </div>
                             </div>
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`border ${
+                          paymentMethod === "paypal" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="paypal" id="paypal" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="paypal" className="ml-3 cursor-pointer flex-grow">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">PayPal</span>
+                              <Image src="https://i.imgur.com/W9lVbRH.png" alt="PayPal" width={80} height={30} />
+                            </div>
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`border ${
+                          paymentMethod === "cash" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="cash" id="cash" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="cash" className="ml-3 cursor-pointer">
+                            <span className="font-medium">Cash on Delivery</span>
+                          </Label>
+                        </div>
+                      </div>
+                    </RadioGroup>
+
+                    {paymentMethod === "credit-card" && (
+                      <motion.div
+                        className="space-y-6 mb-8 border border-[#333] p-6 bg-black"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="relative">
+                          <Label htmlFor="cardNumber" className="text-beige mb-2 block">
+                            Card Number
+                          </Label>
+                          <div className="relative">
+                            <CreditCard
+                              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                              size={18}
+                            />
+                            <Input
+                              id="cardNumber"
+                              name="cardNumber"
+                              value={cardInfo.cardNumber}
+                              onChange={(e) =>
+                                handleCardInfoChange({
+                                  target: {
+                                    name: "cardNumber",
+                                    value: formatCardNumber(e.target.value),
+                                  },
+                                })
+                              }
+                              placeholder="1234 5678 9012 3456"
+                              maxLength={19}
+                              className="pl-10 bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                            />
                           </div>
-                        ))}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="cardName" className="text-beige mb-2 block">
+                            Name on Card
+                          </Label>
+                          <Input
+                            id="cardName"
+                            name="cardName"
+                            value={cardInfo.cardName}
+                            onChange={handleCardInfoChange}
+                            placeholder="John Doe"
+                            className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                          <div>
+                            <Label htmlFor="expiry" className="text-beige mb-2 block">
+                              Expiry Date (MM/YY)
+                            </Label>
+                            <Input
+                              id="expiry"
+                              name="expiry"
+                              value={cardInfo.expiry}
+                              onChange={(e) =>
+                                handleCardInfoChange({
+                                  target: {
+                                    name: "expiry",
+                                    value: formatExpiryDate(e.target.value),
+                                  },
+                                })
+                              }
+                              placeholder="MM/YY"
+                              maxLength={5}
+                              className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="cvv" className="text-beige mb-2 block">
+                              CVV
+                            </Label>
+                            <Input
+                              id="cvv"
+                              name="cvv"
+                              value={cardInfo.cvv}
+                              onChange={handleCardInfoChange}
+                              placeholder="123"
+                              maxLength={4}
+                              className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center">
+                          <Checkbox
+                            id="saveCard"
+                            checked={cardInfo.saveCard}
+                            onCheckedChange={(checked) =>
+                              handleCardInfoChange({
+                                target: {
+                                  name: "saveCard",
+                                  type: "checkbox",
+                                  checked,
+                                },
+                              })
+                            }
+                            className="border-[#333] text-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                          />
+                          <label htmlFor="saveCard" className="ml-3 text-sm text-beige cursor-pointer">
+                            Save this card for future purchases
+                          </label>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {paymentMethod === "paypal" && (
+                      <motion.div
+                        className="mb-8 p-6 border border-[#333] bg-black text-center"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <p className="text-beige mb-4">
+                          You will be redirected to PayPal to complete your payment after reviewing your order.
+                        </p>
+                        <Image
+                          src="https://i.imgur.com/W9lVbRH.png"
+                          alt="PayPal"
+                          width={120}
+                          height={45}
+                          className="mx-auto"
+                        />
+                      </motion.div>
+                    )}
+
+                    {paymentMethod === "cash" && (
+                      <motion.div
+                        className="mb-8 p-6 border border-[#333] bg-black"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="flex items-start">
+                          <Info className="text-[#D4AF37] mr-3 mt-0.5 flex-shrink-0" size={20} />
+                          <div>
+                            <p className="font-medium text-white mb-2">Cash on Delivery Information</p>
+                            <p className="text-sm text-beige mb-2">
+                              Please have the exact amount ready at the time of delivery. Our delivery personnel cannot
+                              provide change.
+                            </p>
+                            <p className="text-sm text-beige">
+                              Payment must be made before the package is handed over.
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <div className="flex items-center mb-8 p-4 border border-[#D4AF37] bg-[#D4AF37]/10">
+                      <ShieldCheck size={20} className="text-[#D4AF37] mr-3 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-[#D4AF37] mb-1">Secure Payment</p>
+                        <p className="text-sm text-beige">
+                          Your payment information is encrypted and secure. We use industry-standard security measures
+                          to protect your data.
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex justify-between">
                       <Button
-                        type="button"
-                        onClick={handlePreviousStep}
+                        onClick={() => setStep(2)}
                         variant="outline"
                         className="border-[#333] text-white hover:bg-[#222] hover:text-white"
                       >
-                        Back to Payment
+                        <ArrowLeft className="mr-2" size={16} />
+                        Back to Delivery
                       </Button>
+
                       <Button
                         onClick={handlePlaceOrder}
                         disabled={loading}
-                        className="bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none"
+                        className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
                       >
                         {loading ? (
-                          <span className="flex items-center justify-center">
+                          <span className="flex items-center">
                             <svg
                               className="animate-spin -ml-1 mr-3 h-5 w-5 text-black"
                               xmlns="http://www.w3.org/2000/svg"
@@ -829,19 +1035,18 @@ export default function CheckoutPage() {
                             Processing...
                           </span>
                         ) : (
-                          "Place Order"
+                          <>Place Order</>
                         )}
                       </Button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
-            </div>
-          </motion.div>
+            </AnimatePresence>
+          </div>
 
           {/* Order Summary */}
           <motion.div
-            className="lg:w-1/3"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -849,64 +1054,82 @@ export default function CheckoutPage() {
             <div className="bg-[#111] border border-[#333] p-6 sticky top-24">
               <h2 className="text-xl font-bold mb-6">Order Summary</h2>
 
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-beige">Items ({cartItems.length})</span>
-                  <button
-                    className="text-[#D4AF37] text-sm hover:underline flex items-center"
-                    onClick={() => {
-                      const summaryEl = document.getElementById("order-summary-items")
-                      if (summaryEl) {
-                        summaryEl.classList.toggle("hidden")
-                      }
-                    }}
+              <div className="max-h-60 overflow-y-auto mb-6 custom-scrollbar">
+                {cartItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center mb-4 pb-4 border-b border-[#222] last:border-0 last:pb-0 last:mb-0"
                   >
-                    <span>Details</span>
-                    <ChevronDown size={16} className="ml-1" />
-                  </button>
-                </div>
-
-                <div
-                  id="order-summary-items"
-                  className="hidden bg-black border border-[#333] divide-y divide-[#333] mb-4"
-                >
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="p-3 flex justify-between">
-                      <div className="flex items-center">
-                        <span className="text-sm text-beige mr-2">{item.quantity}x</span>
-                        <span className="text-sm">{item.name}</span>
-                      </div>
-                      <span className="text-sm">${(item.price * item.quantity).toFixed(2)}</span>
+                    <div className="w-16 h-16 bg-[#222] mr-4 flex-shrink-0 relative">
+                      <Image
+                        src={item.images[0] || "https://i.imgur.com/8NXiuFN.png"}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
-                  ))}
-                </div>
+
+                    <div className="flex-grow">
+                      <p className="font-medium truncate">{item.name}</p>
+                      <p className="text-sm text-beige">Qty: {item.quantity}</p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-4 mb-6">
+              <div className="space-y-3 mb-6">
                 <div className="flex justify-between">
                   <span className="text-beige">Subtotal</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                  <span>${subtotal.toFixed(2)}</span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-beige">Shipping</span>
-                  <span>{shippingCost === 0 ? "Free" : `$${shippingCost.toFixed(2)}`}</span>
+                  <span>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-beige">Tax (8%)</span>
-                  <span>${taxAmount.toFixed(2)}</span>
+                  <span className="text-beige">Sales Tax (9.25%)</span>
+                  <span>${salesTax.toFixed(2)}</span>
                 </div>
 
-                <div className="border-t border-[#333] pt-4 flex justify-between font-bold">
+                <div className="flex justify-between">
+                  <span className="text-beige">Excise Tax (15%)</span>
+                  <span>${exciseTax.toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-beige">Cannabis Tax (12%)</span>
+                  <span>${cannabisTax.toFixed(2)}</span>
+                </div>
+
+                <div className="border-t border-[#333] pt-3 flex justify-between font-bold">
                   <span>Total</span>
-                  <span className="text-[#D4AF37]">${orderTotal.toFixed(2)}</span>
+                  <span className="text-[#D4AF37]">${total.toFixed(2)}</span>
                 </div>
               </div>
 
+              {step === 3 && (
+                <div className="bg-[#D4AF37]/10 border border-[#D4AF37] p-4 text-sm">
+                  <p className="font-medium text-[#D4AF37] mb-1">Order Confirmation</p>
+                  <p className="text-beige">
+                    By clicking "Place Order", you agree to our Terms & Conditions and confirm that you are 21+ years of
+                    age.
+                  </p>
+                </div>
+              )}
+
               {/* Trust Badges */}
-              <div className="border-t border-[#333] pt-6">
+              <div className="mt-6 pt-6 border-t border-[#333]">
                 <div className="flex flex-col space-y-4">
+                  <div className="flex items-center">
+                    <CheckCircle2 className="text-[#D4AF37] mr-3" size={20} />
+                    <span className="text-sm text-beige">Premium quality products</span>
+                  </div>
                   <div className="flex items-center">
                     <ShieldCheck className="text-[#D4AF37] mr-3" size={20} />
                     <span className="text-sm text-beige">Secure checkout</span>
@@ -914,10 +1137,6 @@ export default function CheckoutPage() {
                   <div className="flex items-center">
                     <Truck className="text-[#D4AF37] mr-3" size={20} />
                     <span className="text-sm text-beige">Free shipping over $100</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Calendar className="text-[#D4AF37] mr-3" size={20} />
-                    <span className="text-sm text-beige">21+ age verification at delivery</span>
                   </div>
                 </div>
               </div>
