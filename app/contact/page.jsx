@@ -287,7 +287,7 @@ export default function ContactPage() {
       <section className="py-20 bg-[#111]">
         <div className="container mx-auto px-4">
           <div className="relative h-[500px] w-full">
-            <Image src="/map.png" alt="Map" fill className="object-cover" />
+            {/* <Image src="/map.png" alt="Map" fill className="object-cover" /> */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 p-6 border border-[#D4AF37]">
               <h3 className="text-xl font-bold mb-2 gold-text">Greenfields Headquarters</h3>
               <p className="text-beige">

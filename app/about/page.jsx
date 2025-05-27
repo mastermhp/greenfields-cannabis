@@ -8,6 +8,8 @@ import { ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import TeamMember from "@/components/about/team-member"
 import Timeline from "@/components/about/timeline"
+import { FaNetworkWired, FaBalanceScale } from "react-icons/fa";
+
 
 export default function AboutPage() {
   const ref = useRef(null)
@@ -192,14 +194,14 @@ export default function AboutPage() {
                 subtitle: "Sativa Strain",
                 description:
                   "Inspired by the French name meaning 'hardworking' or 'industrious,' Amelie reflects the dedication and meticulous care behind our products. This sativa strain is perfect for daytime use, offering energizing and uplifting effects that fuel creativity and productivity.",
-                icon: "🌱",
+                icon: <FaNetworkWired className="text-[#D4AF37] text-4xl" />,
               },
               {
                 title: "Baylie",
                 subtitle: "Hybrid Strain",
                 description:
                   "Baylie represents trust, balance, and transparency. Its name, derived from the idea of 'making something true,' symbolizes harmony in every form. This hybrid strain strikes the perfect balance between the energizing effects of sativa and the calming effects of indica, making it a versatile choice for any time of day.",
-                icon: "⚖️",
+                icon: <FaBalanceScale className="text-[#D4AF37] text-4xl" />,
               },
               {
                 title: "Chloe",
@@ -209,6 +211,7 @@ export default function AboutPage() {
                 icon: "🌙",
               },
             ].map((product, index) => (
+              
               <motion.div
                 key={index}
                 className="bg-black p-8 border border-[#333] hover:border-[#D4AF37] transition-all duration-300"
@@ -218,7 +221,9 @@ export default function AboutPage() {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 whileHover={{ y: -10, boxShadow: "0 10px 30px rgba(212, 175, 55, 0.2)" }}
               >
-                <div className="text-4xl mb-4">{product.icon}</div>
+                <div className="text-4xl mb-4">
+                  {product.icon}
+                </div>
                 <h3 className="text-2xl font-bold mb-1 gold-text">{product.title}</h3>
                 <h4 className="text-lg mb-4 text-[#D4AF37]/70">{product.subtitle}</h4>
                 <p className="text-beige">{product.description}</p>

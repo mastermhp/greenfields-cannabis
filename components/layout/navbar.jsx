@@ -181,6 +181,8 @@ const Navbar = () => {
         { name: "Edibles", href: "/products?category=edibles" },
         { name: "Concentrates", href: "/products?category=concentrates" },
         { name: "Accessories", href: "/products?category=accessories" },
+        { name: "Cansdales", href: "/products?category=cansdales" },
+        { name: "Apparel", href: "/products?category=apparel" },
       ],
     },
     { name: "About", href: "/about", icon: Info },
