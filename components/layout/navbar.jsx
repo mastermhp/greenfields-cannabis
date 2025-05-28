@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Gift,
   LogOut,
+  Settings,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -199,6 +200,12 @@ const Navbar = () => {
       ],
     },
   ]
+
+  // Determine account link based on user role
+  const getAccountLink = () => {
+    if (!isAuthenticated) return "/login"
+    return user?.role === "admin" ? "/admin" : "/account"
+  }
 
   // Scroll effect
   useEffect(() => {
@@ -453,7 +460,7 @@ const Navbar = () => {
                 )}
               </motion.button>
 
-              {/* User Account */}
+              {/* User Account - Updated to redirect based on role */}
               <motion.div
                 variants={actionButtonVariants}
                 initial="initial"
@@ -461,10 +468,14 @@ const Navbar = () => {
                 whileTap="tap"
                 className="relative hidden sm:block"
               >
-                <Link href={isAuthenticated ? "/account" : "/login"} className="relative p-2" aria-label="Account">
+                <Link href={getAccountLink()} className="relative p-2" aria-label="Account">
                   <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
-                  <User size={20} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
-                  {(pathname === "/account" || pathname === "/login") && (
+                  {user?.role === "admin" ? (
+                    <Settings size={20} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
+                  ) : (
+                    <User size={20} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
+                  )}
+                  {(pathname === "/account" || pathname === "/admin" || pathname === "/login") && (
                     <motion.div
                       className="absolute -bottom-1 left-1/2 w-1 h-1 bg-[#D4AF37] rounded-full"
                       layoutId="navIndicator"
@@ -689,11 +700,16 @@ const Navbar = () => {
                 >
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 rounded-full bg-[#D4AF37]/20 flex items-center justify-center">
-                      <User size={24} className="text-[#D4AF37]" />
+                      {user?.role === "admin" ? (
+                        <Settings size={24} className="text-[#D4AF37]" />
+                      ) : (
+                        <User size={24} className="text-[#D4AF37]" />
+                      )}
                     </div>
                     <div>
                       <p className="text-white font-medium">{user?.name || "User"}</p>
                       <p className="text-gray-400 text-sm">{user?.email || "user@example.com"}</p>
+                      {user?.role === "admin" && <p className="text-[#D4AF37] text-xs font-medium">Administrator</p>}
                     </div>
                   </div>
                 </motion.div>
@@ -826,15 +842,19 @@ const Navbar = () => {
                   </Link>
 
                   <Link
-                    href="/account"
+                    href={getAccountLink()}
                     className="flex flex-col items-center justify-center p-4 bg-[#111] border border-[#333] rounded-lg hover:border-[#D4AF37]/50 transition-colors duration-200"
                     onClick={(e) => {
                       e.stopPropagation()
                       closeMenu()
                     }}
                   >
-                    <User size={24} className="text-[#D4AF37] mb-2" />
-                    <span className="text-white text-sm">Account</span>
+                    {user?.role === "admin" ? (
+                      <Settings size={24} className="text-[#D4AF37] mb-2" />
+                    ) : (
+                      <User size={24} className="text-[#D4AF37] mb-2" />
+                    )}
+                    <span className="text-white text-sm">{user?.role === "admin" ? "Admin Panel" : "Account"}</span>
                   </Link>
 
                   <Link

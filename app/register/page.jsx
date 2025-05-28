@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Eye, EyeOff, Lock, Mail, User, Calendar, Check, Award } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, User, Calendar, Check, Award, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
@@ -38,6 +38,18 @@ export default function RegisterPage() {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
+
+  // Password validation
+  const passwordValidation = {
+    length: formData.password.length >= 8,
+    uppercase: /[A-Z]/.test(formData.password),
+    lowercase: /[a-z]/.test(formData.password),
+    number: /\d/.test(formData.password),
+    special: /[@$!%*?&]/.test(formData.password),
+  }
+
+  const isPasswordValid = Object.values(passwordValidation).every(Boolean)
+  const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== ""
 
   const validateAge = () => {
     if (!formData.birthdate) return false
@@ -72,7 +84,16 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (formData.password !== formData.confirmPassword) {
+    if (!isPasswordValid) {
+      toast({
+        title: "Password Requirements",
+        description: "Please ensure your password meets all requirements.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!passwordsMatch) {
       toast({
         title: "Password Mismatch",
         description: "Passwords do not match. Please try again.",
@@ -93,36 +114,19 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      const result = await register(`${formData.firstName} ${formData.lastName}`, formData.email, formData.password)
+      const fullName = `${formData.firstName} ${formData.lastName}`
+      const result = await register(fullName, formData.email, formData.password, formData.confirmPassword)
 
       if (result.success) {
+        // Registration successful, redirect to login page
         toast({
-          title: "Registration Successful",
-          description: "Welcome to Greenfields! Your account has been created.",
+          title: "Account Created!",
+          description: "Your account has been created successfully. Please log in.",
         })
-        
-        // If there was a referral, we would handle that here in a real app
-        if (referralCode) {
-          toast({
-            title: "Referral Applied",
-            description: "You've received 250 welcome points!",
-          })
-        }
-        
-        router.push("/")
-      } else {
-        toast({
-          title: "Registration Failed",
-          description: result.error || "There was an error creating your account. Please try again.",
-          variant: "destructive",
-        })
+        router.push("/login")
       }
     } catch (error) {
-      toast({
-        title: "Registration Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      })
+      console.error("Registration error:", error)
     } finally {
       setLoading(false)
     }
@@ -135,7 +139,7 @@ export default function RegisterPage() {
         {/* Image Section */}
         <div className="hidden md:block md:w-1/2 relative">
           <Image
-            src="/register.jpg"
+            src="/placeholder.svg?height=800&width=600"
             alt="Cannabis Registration"
             fill
             className="object-cover"
@@ -199,7 +203,7 @@ export default function RegisterPage() {
             <div className="text-center mb-8">
               <Link href="/" className="inline-block">
                 <Image
-                  src="/Logo.png"
+                  src="/placeholder.svg?height=80&width=80"
                   alt="Greenfields Logo"
                   width={80}
                   height={80}
@@ -276,6 +280,7 @@ export default function RegisterPage() {
                       required
                       max={new Date().toISOString().split("T")[0]}
                       className="pl-10 bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -283,6 +288,7 @@ export default function RegisterPage() {
                 <Button
                   type="submit"
                   className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 rounded-none"
+                  disabled={loading}
                 >
                   Continue
                 </Button>
@@ -304,6 +310,7 @@ export default function RegisterPage() {
                         required
                         placeholder="First Name"
                         className="pl-10 bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -320,6 +327,7 @@ export default function RegisterPage() {
                       required
                       placeholder="Last Name"
                       className="bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -339,6 +347,7 @@ export default function RegisterPage() {
                       required
                       placeholder="Enter your email"
                       className="pl-10 bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -358,16 +367,74 @@ export default function RegisterPage() {
                       required
                       placeholder="Create a password"
                       className="pl-10 pr-10 bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      disabled={loading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                       tabIndex="-1"
+                      disabled={loading}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+
+                  {/* Password Validation Indicators */}
+                  {formData.password && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center space-x-2">
+                        {passwordValidation.length ? (
+                          <Check className="h-4 w-4 text-[#D4AF37]" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-xs ${passwordValidation.length ? "text-[#D4AF37]" : "text-red-500"}`}>
+                          At least 8 characters
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {passwordValidation.uppercase ? (
+                          <Check className="h-4 w-4 text-[#D4AF37]" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-xs ${passwordValidation.uppercase ? "text-[#D4AF37]" : "text-red-500"}`}>
+                          One uppercase letter
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {passwordValidation.lowercase ? (
+                          <Check className="h-4 w-4 text-[#D4AF37]" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-xs ${passwordValidation.lowercase ? "text-[#D4AF37]" : "text-red-500"}`}>
+                          One lowercase letter
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {passwordValidation.number ? (
+                          <Check className="h-4 w-4 text-[#D4AF37]" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-xs ${passwordValidation.number ? "text-[#D4AF37]" : "text-red-500"}`}>
+                          One number
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {passwordValidation.special ? (
+                          <Check className="h-4 w-4 text-[#D4AF37]" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-xs ${passwordValidation.special ? "text-[#D4AF37]" : "text-red-500"}`}>
+                          One special character (@$!%*?&)
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -385,16 +452,31 @@ export default function RegisterPage() {
                       required
                       placeholder="Confirm your password"
                       className="pl-10 pr-10 bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      disabled={loading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                       tabIndex="-1"
+                      disabled={loading}
                     >
                       {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+
+                  {formData.confirmPassword && (
+                    <div className="flex items-center space-x-2 mt-2">
+                      {passwordsMatch ? (
+                        <Check className="h-4 w-4 text-[#D4AF37]" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className={`text-xs ${passwordsMatch ? "text-[#D4AF37]" : "text-red-500"}`}>
+                        Passwords match
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-start">
@@ -406,6 +488,7 @@ export default function RegisterPage() {
                       checked={agreeTerms}
                       onChange={() => setAgreeTerms(!agreeTerms)}
                       className="h-4 w-4 bg-[#111] border-[#333] focus:ring-[#D4AF37] text-[#D4AF37]"
+                      disabled={loading}
                     />
                   </div>
                   <div className="ml-3 text-sm">
@@ -424,7 +507,7 @@ export default function RegisterPage() {
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !isPasswordValid || !passwordsMatch || !agreeTerms}
                   className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 rounded-none"
                 >
                   {loading ? (

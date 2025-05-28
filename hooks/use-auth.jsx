@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 const AuthContext = createContext()
 
@@ -8,79 +10,196 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [accessToken, setAccessToken] = useState(null)
+  const { toast } = useToast()
+  const router = useRouter()
 
-  // Check if user is logged in on initial render
+  // Check authentication status on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser)
-        setUser(parsedUser)
-        setIsAuthenticated(true)
-      } catch (error) {
-        console.error("Error parsing user from localStorage:", error)
-        setUser(null)
-        setIsAuthenticated(false)
-      }
-    }
-    setLoading(false)
+    checkAuthStatus()
   }, [])
 
-  // Login function
-  const login = async (email, password) => {
-    // In a real app, this would make an API call to authenticate
-    // For demo purposes, we'll simulate a successful login
+  const checkAuthStatus = async () => {
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Check for access token in localStorage or cookies
+      const storedToken = localStorage.getItem("accessToken") || getCookie("accessToken")
 
-      // Mock user data
-      const userData = {
-        id: "user123",
-        name: "John Doe",
-        email,
-        avatar: "/placeholder.svg?height=100&width=100",
+      if (!storedToken) {
+        setLoading(false)
+        return
       }
 
-      setUser(userData)
-      setIsAuthenticated(true)
-      localStorage.setItem("user", JSON.stringify(userData))
-      return { success: true }
+      setAccessToken(storedToken)
+
+      const response = await fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${storedToken}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setUser(data.user)
+        setIsAuthenticated(true)
+      } else {
+        // Token invalid, clear it
+        localStorage.removeItem("accessToken")
+        setAccessToken(null)
+      }
     } catch (error) {
-      return { success: false, error: "Invalid credentials" }
+      console.error("Auth check error:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  // Register function
-  const register = async (name, email, password) => {
-    // In a real app, this would make an API call to register
-    // For demo purposes, we'll simulate a successful registration
+  const getCookie = (name) => {
+    if (typeof document === "undefined") return null
+    const value = `; ${document.cookie}`
+    const parts = value.split(`; ${name}=`)
+    if (parts.length === 2) return parts.pop().split(";").shift()
+    return null
+  }
+
+  const login = async (email, password, rememberMe = false) => {
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ email, password, rememberMe }),
+      })
 
-      // Mock user data
-      const userData = {
-        id: "user" + Math.floor(Math.random() * 1000),
-        name,
-        email,
-        avatar: "/placeholder.svg?height=100&width=100",
+      const data = await response.json()
+
+      if (data.success) {
+        setUser(data.user)
+        setIsAuthenticated(true)
+        setAccessToken(data.accessToken)
+        localStorage.setItem("accessToken", data.accessToken)
+
+        toast({
+          title: "Welcome back!",
+          description: data.message,
+          variant: "default",
+        })
+
+        // Redirect based on user role
+        if (data.user.isAdmin || data.user.role === "admin") {
+          router.push("/admin")
+        } else {
+          router.push("/")
+        }
+
+        return {
+          success: true,
+          user: data.user,
+          message: data.message,
+        }
+      } else {
+        toast({
+          title: "Login Failed",
+          description: data.error,
+          variant: "destructive",
+        })
+
+        return {
+          success: false,
+          error: data.error,
+        }
       }
-
-      setUser(userData)
-      setIsAuthenticated(true)
-      localStorage.setItem("user", JSON.stringify(userData))
-      return { success: true }
     } catch (error) {
-      return { success: false, error: "Registration failed" }
+      console.error("Login error:", error)
+      toast({
+        title: "Connection Error",
+        description: "Unable to connect to server. Please try again.",
+        variant: "destructive",
+      })
+
+      return {
+        success: false,
+        error: "Network error. Please try again.",
+      }
     }
   }
 
-  // Logout function
-  const logout = () => {
-    setUser(null)
-    setIsAuthenticated(false)
-    localStorage.removeItem("user")
+  const register = async (name, email, password, confirmPassword) => {
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password, confirmPassword }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Account Created!",
+          description: data.message,
+          variant: "default",
+        })
+
+        return {
+          success: true,
+          message: data.message,
+        }
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: data.error,
+          variant: "destructive",
+        })
+
+        return {
+          success: false,
+          error: data.error,
+        }
+      }
+    } catch (error) {
+      console.error("Registration error:", error)
+      toast({
+        title: "Connection Error",
+        description: "Unable to connect to server. Please try again.",
+        variant: "destructive",
+      })
+
+      return {
+        success: false,
+        error: "Network error. Please try again.",
+      }
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      })
+
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+        variant: "default",
+      })
+    } catch (error) {
+      console.error("Logout error:", error)
+    } finally {
+      setUser(null)
+      setIsAuthenticated(false)
+      setAccessToken(null)
+      localStorage.removeItem("accessToken")
+      router.push("/")
+    }
+  }
+
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser)
   }
 
   return (
@@ -89,9 +208,11 @@ export const AuthProvider = ({ children }) => {
         user,
         isAuthenticated,
         loading,
+        accessToken,
         login,
         register,
         logout,
+        updateUser,
       }}
     >
       {children}

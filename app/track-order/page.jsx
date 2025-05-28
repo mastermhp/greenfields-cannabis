@@ -1,87 +1,157 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
-import { Search, Package, Truck, CheckCircle, AlertCircle, ChevronRight } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { Search, Package, Truck, CheckCircle, AlertCircle, ChevronRight, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 
 export default function TrackOrderPage() {
   const { toast } = useToast()
-  const [orderNumber, setOrderNumber] = useState("")
-  const [email, setEmail] = useState("")
+  const searchParams = useSearchParams()
+  const [orderNumber, setOrderNumber] = useState(searchParams.get("order") || "")
+  const [email, setEmail] = useState(searchParams.get("email") || "")
   const [loading, setLoading] = useState(false)
   const [orderStatus, setOrderStatus] = useState(null)
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  useEffect(() => {
+    // Auto-track if URL params are provided
+    if (orderNumber && email) {
+      handleSubmit(null, true)
+    }
+  }, [])
+
+  const handleSubmit = async (e, autoTrack = false) => {
+    if (e) e.preventDefault()
+
+    if (!orderNumber || !email) {
+      toast({
+        title: "Error",
+        description: "Please enter both order number and email address.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      const response = await fetch("/api/orders/track", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderNumber: orderNumber.trim(),
+          email: email.trim(),
+        }),
+      })
 
-      if (orderNumber && email) {
-        // Mock order data
-        setOrderStatus({
-          number: orderNumber,
-          date: "May 15, 2023",
-          status: "In Transit",
-          items: [
-            {
-              id: 1,
-              name: "Premium Indica Blend",
-              quantity: 2,
-              price: 59.99,
-              image: "/placeholder.svg?height=100&width=100",
-            },
-            { id: 2, name: "CBD Tincture", quantity: 1, price: 45.99, image: "/placeholder.svg?height=100&width=100" },
-          ],
-          shipping: {
-            address: "123 Main St, Los Angeles, CA 90001",
-            method: "Express Shipping",
-            tracking: "GF1234567890",
-            estimatedDelivery: "May 20, 2023",
-          },
-          timeline: [
-            { status: "Order Placed", date: "May 15, 2023", completed: true },
-            { status: "Processing", date: "May 16, 2023", completed: true },
-            { status: "Shipped", date: "May 17, 2023", completed: true },
-            { status: "In Transit", date: "May 18, 2023", completed: true },
-            { status: "Out for Delivery", date: "May 20, 2023", completed: false },
-            { status: "Delivered", date: "May 20, 2023", completed: false },
-          ],
-        })
+      const data = await response.json()
+
+      if (data.success) {
+        setOrderStatus(data.data)
+        if (!autoTrack) {
+          toast({
+            title: "Order Found",
+            description: "Your order details have been loaded.",
+          })
+        }
       } else {
+        setOrderStatus(null)
         toast({
-          title: "Error",
-          description: "Please enter a valid order number and email address.",
+          title: "Order Not Found",
+          description: data.error || "Please check your order number and email address.",
           variant: "destructive",
         })
       }
-    }, 1500)
+    } catch (error) {
+      console.error("Error tracking order:", error)
+      setOrderStatus(null)
+      toast({
+        title: "Error",
+        description: "Failed to track order. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const refreshOrder = () => {
+    if (orderNumber && email) {
+      handleSubmit(null, true)
+    }
   }
 
   const getStatusIcon = (status) => {
-    switch (status) {
-      case "Order Placed":
+    switch (status?.toLowerCase()) {
+      case "pending":
         return <Package className="text-[#D4AF37]" size={24} />
-      case "Processing":
+      case "processing":
         return <Package className="text-[#D4AF37]" size={24} />
-      case "Shipped":
+      case "shipped":
         return <Truck className="text-[#D4AF37]" size={24} />
-      case "In Transit":
+      case "out_for_delivery":
         return <Truck className="text-[#D4AF37]" size={24} />
-      case "Out for Delivery":
-        return <Truck className="text-[#D4AF37]" size={24} />
-      case "Delivered":
+      case "delivered":
         return <CheckCircle className="text-[#D4AF37]" size={24} />
+      case "cancelled":
+        return <AlertCircle className="text-red-500" size={24} />
       default:
-        return <AlertCircle className="text-[#D4AF37]" size={24} />
+        return <Package className="text-[#D4AF37]" size={24} />
     }
+  }
+
+  const getStatusColor = (status, isCompleted) => {
+    if (!isCompleted) return "text-gray-400"
+
+    switch (status?.toLowerCase()) {
+      case "delivered":
+        return "text-green-400"
+      case "cancelled":
+        return "text-red-400"
+      default:
+        return "text-[#D4AF37]"
+    }
+  }
+
+  const formatStatus = (status) => {
+    return status?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "Unknown"
+  }
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const getOrderTimeline = (order) => {
+    const timeline = [
+      { status: "pending", label: "Order Placed", completed: false },
+      { status: "processing", label: "Processing", completed: false },
+      { status: "shipped", label: "Shipped", completed: false },
+      { status: "out_for_delivery", label: "Out for Delivery", completed: false },
+      { status: "delivered", label: "Delivered", completed: false },
+    ]
+
+    const currentStatus = order.status?.toLowerCase()
+    const statusOrder = ["pending", "processing", "shipped", "out_for_delivery", "delivered"]
+    const currentIndex = statusOrder.indexOf(currentStatus)
+
+    return timeline.map((item, index) => ({
+      ...item,
+      completed: index <= currentIndex,
+      date: index <= currentIndex ? formatDate(order.updatedAt) : null,
+    }))
   }
 
   return (
@@ -89,13 +159,7 @@ export default function TrackOrderPage() {
       {/* Hero Section */}
       <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <Image
-            src="/track1.jpeg"
-            alt="Track Order"
-            fill
-            className="object-cover"
-            priority
-          />
+          <Image src="/track1.jpeg" alt="Track Order" fill className="object-cover" priority />
           <div className="absolute inset-0 bg-black/80" />
         </div>
 
@@ -169,26 +233,7 @@ export default function TrackOrderPage() {
                 >
                   {loading ? (
                     <span className="flex items-center justify-center">
-                      <svg
-                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-black"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
+                      <RefreshCw className="animate-spin mr-3 h-5 w-5" />
                       Tracking...
                     </span>
                   ) : (
@@ -212,28 +257,48 @@ export default function TrackOrderPage() {
                 <div className="p-8 border-b border-[#333]">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold gold-text">Order #{orderStatus.number}</h2>
-                      <p className="text-beige">Placed on {orderStatus.date}</p>
+                      <h2 className="text-2xl font-bold gold-text">Order #{orderStatus.id}</h2>
+                      <p className="text-beige">Placed on {formatDate(orderStatus.createdAt)}</p>
                     </div>
-                    <div className="mt-4 md:mt-0">
-                      <span className="bg-[#D4AF37]/20 text-[#D4AF37] px-4 py-2 font-medium">{orderStatus.status}</span>
+                    <div className="mt-4 md:mt-0 flex items-center space-x-3">
+                      <span
+                        className={`px-4 py-2 font-medium rounded-full ${
+                          orderStatus.status === "delivered"
+                            ? "bg-green-500/20 text-green-400"
+                            : orderStatus.status === "cancelled"
+                              ? "bg-red-500/20 text-red-400"
+                              : "bg-[#D4AF37]/20 text-[#D4AF37]"
+                        }`}
+                      >
+                        {formatStatus(orderStatus.status)}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshOrder}
+                        disabled={loading}
+                        className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                      >
+                        <RefreshCw size={16} className={`${loading ? "animate-spin" : ""}`} />
+                      </Button>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                       <h3 className="text-lg font-semibold mb-3">Shipping Information</h3>
-                      <p className="text-beige mb-2">{orderStatus.shipping.address}</p>
-                      <p className="text-beige mb-2">Method: {orderStatus.shipping.method}</p>
-                      <p className="text-beige">Estimated Delivery: {orderStatus.shipping.estimatedDelivery}</p>
+                      <p className="text-beige mb-2">{orderStatus.shipping?.address}</p>
+                      <p className="text-beige mb-2">Method: {orderStatus.shipping?.method || "Standard Delivery"}</p>
+                      <p className="text-beige">Payment: {orderStatus.paymentMethod || "Card"}</p>
                     </div>
 
                     <div>
-                      <h3 className="text-lg font-semibold mb-3">Tracking Details</h3>
-                      <p className="text-beige mb-2">Tracking Number: {orderStatus.shipping.tracking}</p>
-                      <Button variant="outline" className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 mt-2">
-                        View Carrier Details
-                      </Button>
+                      <h3 className="text-lg font-semibold mb-3">Order Details</h3>
+                      <p className="text-beige mb-2">Total: ${orderStatus.total?.toFixed(2)}</p>
+                      <p className="text-beige mb-2">Items: {orderStatus.items?.length || 0}</p>
+                      {orderStatus.trackingNumber && (
+                        <p className="text-beige">Tracking: {orderStatus.trackingNumber}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -248,21 +313,20 @@ export default function TrackOrderPage() {
 
                     {/* Timeline Items */}
                     <div className="space-y-8">
-                      {orderStatus.timeline.map((item, index) => (
+                      {getOrderTimeline(orderStatus).map((item, index) => (
                         <div key={index} className="relative flex items-start">
                           <div
-                            className={`absolute left-6 top-3 w-0.5 h-full ${index === orderStatus.timeline.length - 1 ? "bg-transparent" : "bg-[#333]"}`}
-                          ></div>
-                          <div
-                            className={`z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 ${item.completed ? "bg-[#D4AF37]/20 border-[#D4AF37]" : "bg-black border-[#333]"}`}
+                            className={`z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 ${
+                              item.completed ? "bg-[#D4AF37]/20 border-[#D4AF37]" : "bg-black border-[#333]"
+                            }`}
                           >
                             {getStatusIcon(item.status)}
                           </div>
                           <div className="ml-6">
-                            <h4 className={`text-lg font-semibold ${item.completed ? "text-white" : "text-gray-400"}`}>
-                              {item.status}
+                            <h4 className={`text-lg font-semibold ${getStatusColor(item.status, item.completed)}`}>
+                              {item.label}
                             </h4>
-                            <p className={`${item.completed ? "text-beige" : "text-gray-500"}`}>{item.date}</p>
+                            {item.date && <p className="text-beige">{item.date}</p>}
                           </div>
                         </div>
                       ))}
@@ -275,8 +339,8 @@ export default function TrackOrderPage() {
                   <h3 className="text-xl font-bold mb-6">Order Items</h3>
 
                   <div className="space-y-6">
-                    {orderStatus.items.map((item) => (
-                      <div key={item.id} className="flex items-center">
+                    {orderStatus.items?.map((item, index) => (
+                      <div key={index} className="flex items-center">
                         <div className="w-20 h-20 bg-[#222] mr-4 flex-shrink-0">
                           <Image
                             src={item.image || "/placeholder.svg"}
@@ -291,10 +355,17 @@ export default function TrackOrderPage() {
                           <p className="text-beige">Quantity: {item.quantity}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[#D4AF37] font-medium">${item.price.toFixed(2)}</p>
+                          <p className="text-[#D4AF37] font-medium">${(item.price * item.quantity).toFixed(2)}</p>
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-[#333]">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-lg font-semibold">Total</span>
+                      <span className="text-xl font-bold text-[#D4AF37]">${orderStatus.total?.toFixed(2)}</span>
+                    </div>
                   </div>
 
                   <div className="mt-8 text-center">

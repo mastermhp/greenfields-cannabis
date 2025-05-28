@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { loadStripe } from "@stripe/stripe-js"
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js"
 import {
   CreditCard,
   Check,
@@ -25,15 +27,116 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useCart } from "@/hooks/use-cart"
+import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+
+// Card element styling
+const cardElementOptions = {
+  style: {
+    base: {
+      fontSize: "16px",
+      color: "#ffffff",
+      backgroundColor: "#000000",
+      "::placeholder": {
+        color: "#9ca3af",
+      },
+    },
+    invalid: {
+      color: "#ef4444",
+    },
+  },
+}
+
+// Payment form component
+const PaymentForm = ({ clientSecret, orderData, onSuccess, onError, loading, setLoading }) => {
+  const stripe = useStripe()
+  const elements = useElements()
+  const { toast } = useToast()
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+
+    if (!stripe || !elements) {
+      return
+    }
+
+    setLoading(true)
+
+    const cardElement = elements.getElement(CardElement)
+
+    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: cardElement,
+        billing_details: {
+          name: `${orderData.shippingInfo.firstName} ${orderData.shippingInfo.lastName}`,
+          email: orderData.shippingInfo.email,
+          address: {
+            line1: orderData.shippingInfo.address,
+            line2: orderData.shippingInfo.apartment,
+            city: orderData.shippingInfo.city,
+            state: orderData.shippingInfo.state,
+            postal_code: orderData.shippingInfo.zipCode,
+            country: orderData.shippingInfo.country === "United States" ? "US" : "CA",
+          },
+        },
+      },
+    })
+
+    if (error) {
+      console.error("Payment failed:", error)
+      onError(error.message)
+      setLoading(false)
+    } else {
+      console.log("Payment succeeded:", paymentIntent)
+      onSuccess(paymentIntent)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="p-4 border border-[#333] rounded-lg bg-black">
+        <Label className="text-beige mb-3 block">Card Information</Label>
+        <CardElement options={cardElementOptions} />
+      </div>
+
+      <Button type="submit" disabled={!stripe || loading} className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+        {loading ? (
+          <span className="flex items-center">
+            <svg
+              className="animate-spin -ml-1 mr-3 h-5 w-5 text-black"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            Processing Payment...
+          </span>
+        ) : (
+          "Complete Order"
+        )}
+      </Button>
+    </form>
+  )
+}
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { cartItems, cartTotal, clearCart } = useCart()
+  const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
 
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [clientSecret, setClientSecret] = useState("")
 
   // Form states
   const [shippingInfo, setShippingInfo] = useState({
@@ -56,13 +159,6 @@ export default function CheckoutPage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false)
 
   const [paymentMethod, setPaymentMethod] = useState("credit-card")
-  const [cardInfo, setCardInfo] = useState({
-    cardNumber: "",
-    cardName: "",
-    expiry: "",
-    cvv: "",
-    saveCard: false,
-  })
 
   // Calculate order summary with cannabis-specific taxes
   const subtotal = cartTotal
@@ -77,41 +173,6 @@ export default function CheckoutPage() {
   const handleShippingInfoChange = (e) => {
     const { name, value } = e.target
     setShippingInfo((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleCardInfoChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setCardInfo((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }))
-  }
-
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
-    const matches = v.match(/\d{4,16}/g)
-    const match = (matches && matches[0]) || ""
-    const parts = []
-
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4))
-    }
-
-    if (parts.length) {
-      return parts.join(" ")
-    } else {
-      return value
-    }
-  }
-
-  const formatExpiryDate = (value) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
-
-    if (v.length >= 2) {
-      return `${v.substring(0, 2)}/${v.substring(2, 4)}`
-    }
-
-    return v
   }
 
   const validateShippingInfo = () => {
@@ -163,56 +224,6 @@ export default function CheckoutPage() {
     return true
   }
 
-  const validatePaymentInfo = () => {
-    if (paymentMethod === "credit-card") {
-      const { cardNumber, cardName, expiry, cvv } = cardInfo
-
-      if (!cardNumber || !cardName || !expiry || !cvv) {
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all card details",
-          variant: "destructive",
-        })
-        return false
-      }
-
-      // Card number validation (simple check for digits)
-      const cardDigits = cardNumber.replace(/\D/g, "")
-      if (cardDigits.length < 15) {
-        toast({
-          title: "Invalid Card Number",
-          description: "Please enter a valid card number",
-          variant: "destructive",
-        })
-        return false
-      }
-
-      // Expiry date validation (MM/YY format)
-      const expiryRegex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/
-      if (!expiryRegex.test(expiry)) {
-        toast({
-          title: "Invalid Expiry Date",
-          description: "Please enter a valid expiry date in MM/YY format",
-          variant: "destructive",
-        })
-        return false
-      }
-
-      // CVV validation (3 or 4 digits)
-      const cvvRegex = /^\d{3,4}$/
-      if (!cvvRegex.test(cvv)) {
-        toast({
-          title: "Invalid CVV",
-          description: "Please enter a valid 3 or 4 digit CVV code",
-          variant: "destructive",
-        })
-        return false
-      }
-    }
-
-    return true
-  }
-
   const handleContinueToDelivery = (e) => {
     e.preventDefault()
     if (validateShippingInfo()) {
@@ -221,29 +232,199 @@ export default function CheckoutPage() {
     }
   }
 
-  const handleContinueToPayment = (e) => {
+  const handleContinueToPayment = async (e) => {
     e.preventDefault()
     if (validateDeliveryInfo()) {
       setStep(3)
       window.scrollTo(0, 0)
+
+      // Create payment intent when moving to payment step
+      if (paymentMethod === "credit-card") {
+        try {
+          const response = await fetch("/api/stripe/create-payment-intent", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              amount: total,
+              currency: "usd",
+              metadata: {
+                customerEmail: shippingInfo.email,
+                customerName: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+              },
+            }),
+          })
+
+          const data = await response.json()
+
+          if (data.success) {
+            setClientSecret(data.clientSecret)
+          } else {
+            toast({
+              title: "Payment Error",
+              description: "Failed to initialize payment. Please try again.",
+              variant: "destructive",
+            })
+          }
+        } catch (error) {
+          console.error("Error creating payment intent:", error)
+          toast({
+            title: "Payment Error",
+            description: "Failed to initialize payment. Please try again.",
+            variant: "destructive",
+          })
+        }
+      }
     }
   }
 
-  const handlePlaceOrder = () => {
-    if (validatePaymentInfo()) {
-      setLoading(true)
+  const handlePaymentSuccess = async (paymentIntent) => {
+    try {
+      // Create order in database
+      const orderData = {
+        customer: {
+          id: user?.id,
+          name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          email: shippingInfo.email,
+          phone: shippingInfo.phone,
+        },
+        items: cartItems.map((item) => ({
+          productId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        total,
+        subtotal,
+        shipping,
+        tax: totalTax,
+        shippingAddress: `${shippingInfo.address}${shippingInfo.apartment ? `, ${shippingInfo.apartment}` : ""}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
+        shippingMethod,
+        deliveryInstructions,
+        deliveryTime,
+        contactPreference,
+        paymentIntentId: paymentIntent.id,
+        paymentStatus: "paid",
+      }
 
-      // Simulate order processing
-      setTimeout(() => {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
         clearCart()
         toast({
           title: "Order Placed Successfully!",
           description: "Thank you for your purchase. Your order is being processed.",
-          variant: "success",
         })
-        router.push("/order-confirmation")
-      }, 2000)
+        router.push(`/order-confirmation?orderId=${result.data.id}`)
+      } else {
+        toast({
+          title: "Order Error",
+          description: "Payment successful but failed to create order. Please contact support.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error creating order:", error)
+      toast({
+        title: "Order Error",
+        description: "Payment successful but failed to create order. Please contact support.",
+        variant: "destructive",
+      })
     }
+  }
+
+  const handlePaymentError = (error) => {
+    toast({
+      title: "Payment Failed",
+      description: error,
+      variant: "destructive",
+    })
+  }
+
+  const handleCashOnDelivery = async () => {
+    setLoading(true)
+
+    try {
+      // Create order with cash payment
+      const orderData = {
+        customer: {
+          id: user?.id,
+          name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+          email: shippingInfo.email,
+          phone: shippingInfo.phone,
+        },
+        items: cartItems.map((item) => ({
+          productId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        total,
+        subtotal,
+        shipping,
+        tax: totalTax,
+        shippingAddress: `${shippingInfo.address}${shippingInfo.apartment ? `, ${shippingInfo.apartment}` : ""}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
+        shippingMethod,
+        deliveryInstructions,
+        deliveryTime,
+        contactPreference,
+        paymentMethod: "cash",
+        paymentStatus: "pending",
+      }
+
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        clearCart()
+        toast({
+          title: "Order Placed Successfully!",
+          description: "Your order has been placed. Please have exact change ready for delivery.",
+        })
+        router.push(`/order-confirmation?orderId=${result.data.id}`)
+      } else {
+        toast({
+          title: "Order Error",
+          description: "Failed to place order. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error creating order:", error)
+      toast({
+        title: "Order Error",
+        description: "Failed to place order. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   }
 
   // Redirect to cart if cart is empty
@@ -254,7 +435,7 @@ export default function CheckoutPage() {
   }, [cartItems, loading, router])
 
   if (cartItems.length === 0 && !loading) {
-    return null
+    return null // Will redirect in useEffect
   }
 
   return (
@@ -792,26 +973,16 @@ export default function CheckoutPage() {
                             <div className="flex justify-between items-center">
                               <span className="font-medium">Credit / Debit Card</span>
                               <div className="flex space-x-2">
-                                <Image src="https://i.imgur.com/5xgHYn4.png" alt="Visa" width={40} height={25} />
-                                <Image src="https://i.imgur.com/fPwGYMN.png" alt="Mastercard" width={40} height={25} />
-                                <Image src="https://i.imgur.com/0V9z1SL.png" alt="Amex" width={40} height={25} />
+                                <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">
+                                  VISA
+                                </div>
+                                <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center">
+                                  MC
+                                </div>
+                                <div className="w-8 h-5 bg-blue-800 rounded text-white text-xs flex items-center justify-center">
+                                  AMEX
+                                </div>
                               </div>
-                            </div>
-                          </Label>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`border ${
-                          paymentMethod === "paypal" ? "border-[#D4AF37]" : "border-[#333]"
-                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                      >
-                        <div className="flex items-center">
-                          <RadioGroupItem value="paypal" id="paypal" className="border-[#333] text-[#D4AF37]" />
-                          <Label htmlFor="paypal" className="ml-3 cursor-pointer flex-grow">
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium">PayPal</span>
-                              <Image src="https://i.imgur.com/W9lVbRH.png" alt="PayPal" width={80} height={30} />
                             </div>
                           </Label>
                         </div>
@@ -831,155 +1002,83 @@ export default function CheckoutPage() {
                       </div>
                     </RadioGroup>
 
-                    {paymentMethod === "credit-card" && (
+                    {paymentMethod === "credit-card" && clientSecret && (
                       <motion.div
-                        className="space-y-6 mb-8 border border-[#333] p-6 bg-black"
+                        className="space-y-6 mb-8"
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <div className="relative">
-                          <Label htmlFor="cardNumber" className="text-beige mb-2 block">
-                            Card Number
-                          </Label>
-                          <div className="relative">
-                            <CreditCard
-                              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                              size={18}
-                            />
-                            <Input
-                              id="cardNumber"
-                              name="cardNumber"
-                              value={cardInfo.cardNumber}
-                              onChange={(e) =>
-                                handleCardInfoChange({
-                                  target: {
-                                    name: "cardNumber",
-                                    value: formatCardNumber(e.target.value),
-                                  },
-                                })
-                              }
-                              placeholder="1234 5678 9012 3456"
-                              maxLength={19}
-                              className="pl-10 bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="cardName" className="text-beige mb-2 block">
-                            Name on Card
-                          </Label>
-                          <Input
-                            id="cardName"
-                            name="cardName"
-                            value={cardInfo.cardName}
-                            onChange={handleCardInfoChange}
-                            placeholder="John Doe"
-                            className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                        <Elements stripe={stripePromise}>
+                          <PaymentForm
+                            clientSecret={clientSecret}
+                            orderData={{ shippingInfo }}
+                            onSuccess={handlePaymentSuccess}
+                            onError={handlePaymentError}
+                            loading={loading}
+                            setLoading={setLoading}
                           />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                          <div>
-                            <Label htmlFor="expiry" className="text-beige mb-2 block">
-                              Expiry Date (MM/YY)
-                            </Label>
-                            <Input
-                              id="expiry"
-                              name="expiry"
-                              value={cardInfo.expiry}
-                              onChange={(e) =>
-                                handleCardInfoChange({
-                                  target: {
-                                    name: "expiry",
-                                    value: formatExpiryDate(e.target.value),
-                                  },
-                                })
-                              }
-                              placeholder="MM/YY"
-                              maxLength={5}
-                              className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="cvv" className="text-beige mb-2 block">
-                              CVV
-                            </Label>
-                            <Input
-                              id="cvv"
-                              name="cvv"
-                              value={cardInfo.cvv}
-                              onChange={handleCardInfoChange}
-                              placeholder="123"
-                              maxLength={4}
-                              className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center">
-                          <Checkbox
-                            id="saveCard"
-                            checked={cardInfo.saveCard}
-                            onCheckedChange={(checked) =>
-                              handleCardInfoChange({
-                                target: {
-                                  name: "saveCard",
-                                  type: "checkbox",
-                                  checked,
-                                },
-                              })
-                            }
-                            className="border-[#333] text-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
-                          />
-                          <label htmlFor="saveCard" className="ml-3 text-sm text-beige cursor-pointer">
-                            Save this card for future purchases
-                          </label>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {paymentMethod === "paypal" && (
-                      <motion.div
-                        className="mb-8 p-6 border border-[#333] bg-black text-center"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <p className="text-beige mb-4">
-                          You will be redirected to PayPal to complete your payment after reviewing your order.
-                        </p>
-                        <Image
-                          src="https://i.imgur.com/W9lVbRH.png"
-                          alt="PayPal"
-                          width={120}
-                          height={45}
-                          className="mx-auto"
-                        />
+                        </Elements>
                       </motion.div>
                     )}
 
                     {paymentMethod === "cash" && (
                       <motion.div
-                        className="mb-8 p-6 border border-[#333] bg-black"
+                        className="mb-8"
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <div className="flex items-start">
-                          <Info className="text-[#D4AF37] mr-3 mt-0.5 flex-shrink-0" size={20} />
-                          <div>
-                            <p className="font-medium text-white mb-2">Cash on Delivery Information</p>
-                            <p className="text-sm text-beige mb-2">
-                              Please have the exact amount ready at the time of delivery. Our delivery personnel cannot
-                              provide change.
-                            </p>
-                            <p className="text-sm text-beige">
-                              Payment must be made before the package is handed over.
-                            </p>
+                        <div className="p-6 border border-[#333] bg-black">
+                          <div className="flex items-start">
+                            <Info className="text-[#D4AF37] mr-3 mt-0.5 flex-shrink-0" size={20} />
+                            <div>
+                              <p className="font-medium text-white mb-2">Cash on Delivery Information</p>
+                              <p className="text-sm text-beige mb-2">
+                                Please have the exact amount ready at the time of delivery. Our delivery personnel
+                                cannot provide change.
+                              </p>
+                              <p className="text-sm text-beige">
+                                Payment must be made before the package is handed over.
+                              </p>
+                            </div>
                           </div>
+                        </div>
+
+                        <div className="mt-6">
+                          <Button
+                            onClick={handleCashOnDelivery}
+                            disabled={loading}
+                            className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                          >
+                            {loading ? (
+                              <span className="flex items-center">
+                                <svg
+                                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-black"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  ></circle>
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  ></path>
+                                </svg>
+                                Placing Order...
+                              </span>
+                            ) : (
+                              "Place Order"
+                            )}
+                          </Button>
                         </div>
                       </motion.div>
                     )}
@@ -1003,40 +1102,6 @@ export default function CheckoutPage() {
                       >
                         <ArrowLeft className="mr-2" size={16} />
                         Back to Delivery
-                      </Button>
-
-                      <Button
-                        onClick={handlePlaceOrder}
-                        disabled={loading}
-                        className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
-                      >
-                        {loading ? (
-                          <span className="flex items-center">
-                            <svg
-                              className="animate-spin -ml-1 mr-3 h-5 w-5 text-black"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Processing...
-                          </span>
-                        ) : (
-                          <>Place Order</>
-                        )}
                       </Button>
                     </div>
                   </div>
@@ -1117,7 +1182,7 @@ export default function CheckoutPage() {
                 <div className="bg-[#D4AF37]/10 border border-[#D4AF37] p-4 text-sm">
                   <p className="font-medium text-[#D4AF37] mb-1">Order Confirmation</p>
                   <p className="text-beige">
-                    By clicking "Place Order", you agree to our Terms & Conditions and confirm that you are 21+ years of
+                    By completing your order, you agree to our Terms & Conditions and confirm that you are 21+ years of
                     age.
                   </p>
                 </div>

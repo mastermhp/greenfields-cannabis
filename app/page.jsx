@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef } from "react"
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -10,7 +10,8 @@ import TestimonialSlider from "@/components/sliders/testimonial-slider"
 import CategorySlider from "@/components/sliders/category-slider"
 import NewsletterForm from "@/components/forms/newsletter-form"
 import { Button } from "@/components/ui/button"
-import { featuredProducts, categories } from "@/lib/data"
+import { useProducts } from "@/hooks/use-products"
+import { categories } from "@/lib/data"
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("all")
@@ -23,48 +24,25 @@ export default function Home() {
   const y = useTransform(scrollYProgress, [0, 1], [0, 300])
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
 
-  const [filteredProducts, setFilteredProducts] = useState(featuredProducts)
+  // Get featured products, fallback to recent products if no featured ones exist
+  const { products: featuredProducts, loading } = useProducts({
+    category: activeCategory === "all" ? undefined : activeCategory,
+    limit: 8,
+  })
 
-  useEffect(() => {
-    if (activeCategory === "all") {
-      setFilteredProducts(featuredProducts)
-    } else {
-      setFilteredProducts(featuredProducts.filter((product) => product.category === activeCategory))
-    }
-  }, [activeCategory])
+  // If no products from the hook, we'll show a fallback
+  const displayProducts = featuredProducts?.length > 0 ? featuredProducts : []
 
   return (
     <>
       {/* Hero Section */}
       <section ref={heroRef} className="relative h-screen flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" style={{ y, opacity }}>
-          <Image
-            src="/greenfieldsbg.jpeg"
-            // src="https://img.freepik.com/photos-premium/marijuana-plein-air-dans-culture-plein-air-au-soleil_705804-3784.jpg?w=360"
-            alt="Premium Cannabis"
-            fill
-            className="object-cover"
-            priority
-          />
+          <Image src="/greenfieldsbg.jpeg" alt="Premium Cannabis" fill className="object-cover" priority />
           <div className="absolute inset-0 bg-black/50" />
         </motion.div>
 
         <div className="container mx-auto px-4 z-10 text-center">
-          {/* <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="mb-6"
-          >
-            <Image
-              src="/logo.png"
-              alt="Greenfields Logo"
-              width={300}
-              height={300}
-              className="mx-auto pl-14 leaf-animation"
-            />
-          </motion.div> */}
-
           <motion.h1
             className="text-5xl md:text-7xl font-bold mb-6 gold-text"
             initial={{ opacity: 0, y: 30 }}
@@ -83,15 +61,16 @@ export default function Home() {
             Premium Quality Cannabis Products for Connoisseurs
           </motion.p>
 
-          
-
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Button asChild className="bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FF8C00]  hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none">
+            <Button
+              asChild
+              className="bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FF8C00] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none"
+            >
               <Link href="/products">
                 Shop Now <ChevronRight className="ml-2" />
               </Link>
@@ -175,27 +154,46 @@ export default function Home() {
             ))}
           </div>
 
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ staggerChildren: 0.1 }}
-          >
-            <AnimatePresence>
-              {filteredProducts.map((product) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <ProductCard product={product} />
-                </motion.div>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-[#111] border border-[#333] rounded-lg p-6 animate-pulse">
+                  <div className="aspect-square bg-[#333] rounded mb-4"></div>
+                  <div className="h-4 bg-[#333] rounded mb-2"></div>
+                  <div className="h-4 bg-[#333] rounded w-3/4"></div>
+                </div>
               ))}
-            </AnimatePresence>
-          </motion.div>
+            </div>
+          ) : displayProducts.length > 0 ? (
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ staggerChildren: 0.1 }}
+            >
+              <AnimatePresence>
+                {displayProducts.map((product) => (
+                  <motion.div
+                    key={product._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <ProductCard product={product} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-beige text-lg mb-4">No products available in this category</p>
+              <Button asChild className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                <Link href="/products">View All Products</Link>
+              </Button>
+            </div>
+          )}
 
           <div className="text-center mt-16">
             <Button asChild className="bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none">

@@ -18,6 +18,7 @@ import {
   Gift,
   Clock,
   ShoppingBag,
+  RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -30,25 +31,11 @@ export default function AccountPage() {
   const { toast } = useToast()
   const { user, isAuthenticated, logout } = useAuth()
   const [activeTab, setActiveTab] = useState("overview")
+  const [orders, setOrders] = useState([])
+  const [loadingOrders, setLoadingOrders] = useState(false)
 
-  // Mock user data - in a real app, this would come from an API
+  // Mock user data for other sections - in a real app, this would come from an API
   const [userData, setUserData] = useState({
-    orders: [
-      {
-        id: "ORD-12345",
-        date: "2023-12-15",
-        status: "Delivered",
-        total: 124.99,
-        items: 3,
-      },
-      {
-        id: "ORD-12346",
-        date: "2023-11-28",
-        status: "Processing",
-        total: 89.5,
-        items: 2,
-      },
-    ],
     wishlist: [
       {
         id: "prod-001",
@@ -100,6 +87,69 @@ export default function AccountPage() {
     }
   }, [isAuthenticated, router])
 
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      fetchUserOrders()
+    }
+  }, [isAuthenticated, user])
+
+  // Auto-refresh orders every 30 seconds when on orders tab
+  useEffect(() => {
+    let interval
+    if (activeTab === "orders" && user?.id) {
+      interval = setInterval(() => {
+        fetchUserOrders(true) // Silent refresh
+      }, 30000) // 30 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [activeTab, user?.id])
+
+  const fetchUserOrders = async (silent = false) => {
+    if (!user?.id) return
+
+    if (!silent) setLoadingOrders(true)
+    try {
+      console.log(`Fetching orders for user: ${user.id}`)
+      const response = await fetch(`/api/orders/user/${user.id}`, {
+        cache: "no-store", // Ensure fresh data
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
+      const data = await response.json()
+
+      console.log("User orders response:", data)
+
+      if (data.success) {
+        setOrders(data.data)
+        if (!silent) {
+          console.log(`Loaded ${data.data.length} orders for user`)
+        }
+      } else {
+        if (!silent) {
+          toast({
+            title: "Error",
+            description: "Failed to fetch orders",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error)
+      if (!silent) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch orders",
+          variant: "destructive",
+        })
+      }
+    } finally {
+      if (!silent) setLoadingOrders(false)
+    }
+  }
+
   const handleLogout = () => {
     logout()
     toast({
@@ -107,6 +157,36 @@ export default function AccountPage() {
       description: "You have been successfully logged out.",
     })
     router.push("/")
+  }
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "delivered":
+        return "bg-green-500/20 text-green-400"
+      case "shipped":
+      case "out_for_delivery":
+        return "bg-blue-500/20 text-blue-400"
+      case "processing":
+        return "bg-yellow-500/20 text-yellow-400"
+      case "pending":
+        return "bg-orange-500/20 text-orange-400"
+      case "cancelled":
+        return "bg-red-500/20 text-red-400"
+      default:
+        return "bg-gray-500/20 text-gray-400"
+    }
+  }
+
+  const formatStatus = (status) => {
+    return status?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "Unknown"
+  }
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
   }
 
   if (!isAuthenticated) {
@@ -167,6 +247,11 @@ export default function AccountPage() {
                 >
                   <Package size={18} className="mr-2" />
                   Orders
+                  {orders.length > 0 && (
+                    <span className="ml-auto bg-[#D4AF37] text-black text-xs px-2 py-1 rounded-full">
+                      {orders.length}
+                    </span>
+                  )}
                 </Button>
                 <Button
                   variant="ghost"
@@ -256,25 +341,42 @@ export default function AccountPage() {
               <TabsContent value="overview" className="mt-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="bg-[#111] border border-[#333] p-6">
-                    <h2 className="text-xl font-bold mb-4 flex items-center">
-                      <Package className="mr-2 text-[#D4AF37]" size={20} />
-                      Recent Orders
-                    </h2>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold flex items-center">
+                        <Package className="mr-2 text-[#D4AF37]" size={20} />
+                        Recent Orders
+                      </h2>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => fetchUserOrders()}
+                        disabled={loadingOrders}
+                        className="text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                      >
+                        <RefreshCw size={16} className={`${loadingOrders ? "animate-spin" : ""}`} />
+                      </Button>
+                    </div>
 
-                    {userData.orders.length > 0 ? (
+                    {loadingOrders ? (
+                      <div className="flex items-center justify-center py-8">
+                        <RefreshCw className="animate-spin text-[#D4AF37]" size={24} />
+                      </div>
+                    ) : orders.length > 0 ? (
                       <div className="space-y-4">
-                        {userData.orders.slice(0, 2).map((order) => (
+                        {orders.slice(0, 2).map((order) => (
                           <div
                             key={order.id}
                             className="flex justify-between items-center p-3 bg-[#222] border border-[#333]"
                           >
                             <div>
                               <p className="font-medium">{order.id}</p>
-                              <p className="text-sm text-beige">{order.date}</p>
+                              <p className="text-sm text-beige">{formatDate(order.createdAt)}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-medium">${order.total.toFixed(2)}</p>
-                              <p className="text-sm text-beige">{order.status}</p>
+                              <p className="font-medium">${order.total?.toFixed(2)}</p>
+                              <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(order.status)}`}>
+                                {formatStatus(order.status)}
+                              </span>
                             </div>
                           </div>
                         ))}
@@ -402,45 +504,76 @@ export default function AccountPage() {
               {/* Orders Tab */}
               <TabsContent value="orders" className="mt-0">
                 <div className="bg-[#111] border border-[#333] p-6">
-                  <h2 className="text-xl font-bold mb-6 flex items-center">
-                    <Package className="mr-2 text-[#D4AF37]" size={20} />
-                    My Orders
-                  </h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold flex items-center">
+                      <Package className="mr-2 text-[#D4AF37]" size={20} />
+                      My Orders
+                      <span className="ml-2 text-sm text-beige">(Auto-refreshing)</span>
+                    </h2>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchUserOrders()}
+                      disabled={loadingOrders}
+                      className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                    >
+                      <RefreshCw size={16} className={`mr-2 ${loadingOrders ? "animate-spin" : ""}`} />
+                      Refresh
+                    </Button>
+                  </div>
 
-                  {userData.orders.length > 0 ? (
+                  {loadingOrders ? (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw className="animate-spin text-[#D4AF37] mr-2" size={24} />
+                      <span className="text-beige">Loading orders...</span>
+                    </div>
+                  ) : orders.length > 0 ? (
                     <div className="space-y-6">
-                      {userData.orders.map((order) => (
+                      {orders.map((order) => (
                         <div key={order.id} className="bg-[#222] border border-[#333] p-4">
                           <div className="flex flex-wrap justify-between items-center mb-4">
                             <div>
                               <p className="font-medium">{order.id}</p>
-                              <p className="text-sm text-beige">Placed on {order.date}</p>
+                              <p className="text-sm text-beige">Placed on {formatDate(order.createdAt)}</p>
+                              <p className="text-xs text-gray-400">Last updated: {formatDate(order.updatedAt)}</p>
                             </div>
                             <div className="flex items-center">
-                              <span
-                                className={`px-2 py-1 text-xs rounded-full ${
-                                  order.status === "Delivered"
-                                    ? "bg-green-500/20 text-green-400"
-                                    : order.status === "Processing"
-                                      ? "bg-blue-500/20 text-blue-400"
-                                      : order.status === "Shipped"
-                                        ? "bg-purple-500/20 text-purple-400"
-                                        : "bg-yellow-500/20 text-yellow-400"
-                                } mr-3`}
-                              >
-                                {order.status}
+                              <span className={`px-3 py-1 text-sm rounded-full mr-3 ${getStatusColor(order.status)}`}>
+                                {formatStatus(order.status)}
                               </span>
-                              <span className="font-medium">${order.total.toFixed(2)}</span>
+                              <span className="font-medium">${order.total?.toFixed(2)}</span>
                             </div>
                           </div>
 
-                          <div className="flex justify-between">
-                            <span className="text-beige">
-                              {order.items} {order.items === 1 ? "item" : "items"}
-                            </span>
+                          <div className="mb-4">
+                            <h4 className="font-medium mb-2">Items:</h4>
+                            <div className="space-y-2">
+                              {order.items?.map((item, index) => (
+                                <div key={index} className="flex justify-between text-sm">
+                                  <span className="text-beige">
+                                    {item.name} x {item.quantity}
+                                  </span>
+                                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <div className="text-sm text-beige">
+                              {order.items?.length || 0} {order.items?.length === 1 ? "item" : "items"}
+                              {order.trackingNumber && <span className="ml-4">Tracking: {order.trackingNumber}</span>}
+                            </div>
                             <div className="space-x-3">
-                              <Button variant="outline" size="sm" className="border-[#333] text-white hover:bg-[#333]">
-                                Track Order
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-[#333] text-white hover:bg-[#333]"
+                                asChild
+                              >
+                                <Link href={`/track-order?order=${order.id}&email=${order.customer?.email}`}>
+                                  Track Order
+                                </Link>
                               </Button>
                               <Button
                                 variant="outline"
@@ -467,7 +600,7 @@ export default function AccountPage() {
                 </div>
               </TabsContent>
 
-              {/* Wishlist Tab */}
+              {/* Other tabs remain the same */}
               <TabsContent value="wishlist" className="mt-0">
                 <div className="bg-[#111] border border-[#333] p-6">
                   <h2 className="text-xl font-bold mb-6 flex items-center">
