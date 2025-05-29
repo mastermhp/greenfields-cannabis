@@ -29,8 +29,16 @@ import { useCart } from "@/hooks/use-cart"
 import { useAuth } from "@/hooks/use-auth"
 import { useMobile } from "@/hooks/use-mobile"
 
-// Particle animation component
+// Particle animation component - client-side only
 const ParticleEffect = () => {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {[...Array(20)].map((_, i) => (
@@ -38,13 +46,13 @@ const ParticleEffect = () => {
           key={i}
           className="absolute w-1 h-1 rounded-full bg-[#D4AF37]/40"
           initial={{
-            x: Math.random() * 100 - 50 + "%",
-            y: Math.random() * 100 - 50 + "%",
+            x: `${Math.random() * 100 - 50}%`,
+            y: `${Math.random() * 100 - 50}%`,
             opacity: 0.1 + Math.random() * 0.3,
           }}
           animate={{
-            x: [Math.random() * 100 - 50 + "%", Math.random() * 100 - 50 + "%", Math.random() * 100 - 50 + "%"],
-            y: [Math.random() * 100 - 50 + "%", Math.random() * 100 - 50 + "%", Math.random() * 100 - 50 + "%"],
+            x: [`${Math.random() * 100 - 50}%`, `${Math.random() * 100 - 50}%`, `${Math.random() * 100 - 50}%`],
+            y: [`${Math.random() * 100 - 50}%`, `${Math.random() * 100 - 50}%`, `${Math.random() * 100 - 50}%`],
             opacity: [0.1 + Math.random() * 0.3, 0.5, 0.1 + Math.random() * 0.3],
           }}
           transition={{

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,6 @@ const ProductFilters = ({ onFilterChange }) => {
   const [selectedEffects, setSelectedEffects] = useState([])
   const [selectedPotency, setSelectedPotency] = useState([])
   const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [isSliderDragging, setIsSliderDragging] = useState(false)
 
   const effects = [
     { id: "relaxation", name: "Relaxation" },
@@ -33,8 +32,8 @@ const ProductFilters = ({ onFilterChange }) => {
     { id: "high", name: "High (25%+)", range: [25, 100] },
   ]
 
-  // Memoize the filter change handler to prevent unnecessary re-renders
-  const applyFilters = useCallback(() => {
+  // Apply filters when any filter changes
+  useEffect(() => {
     const filters = {
       category: selectedCategory === "all" ? "" : selectedCategory,
       search: searchTerm,
@@ -45,20 +44,6 @@ const ProductFilters = ({ onFilterChange }) => {
     }
     onFilterChange(filters)
   }, [selectedCategory, searchTerm, localPriceRange, selectedEffects, selectedPotency, onFilterChange])
-
-  // Apply filters when any filter changes, but not during slider drag
-  useEffect(() => {
-    if (!isSliderDragging) {
-      applyFilters()
-    }
-  }, [selectedCategory, searchTerm, selectedEffects, selectedPotency, applyFilters, isSliderDragging])
-
-  // Apply price filter only when slider interaction ends
-  useEffect(() => {
-    if (!isSliderDragging) {
-      applyFilters()
-    }
-  }, [localPriceRange, isSliderDragging, applyFilters])
 
   const handleEffectChange = (effectId, checked) => {
     if (checked) {
@@ -74,10 +59,6 @@ const ProductFilters = ({ onFilterChange }) => {
     } else {
       setSelectedPotency((prev) => prev.filter((id) => id !== potencyId))
     }
-  }
-
-  const handlePriceChange = (value) => {
-    setLocalPriceRange(value)
   }
 
   const clearAllFilters = () => {
@@ -190,7 +171,6 @@ const ProductFilters = ({ onFilterChange }) => {
         <div className="space-y-4">
           <Label className="text-white font-medium">Price Range</Label>
           <div className="px-2">
-            {/* Use a custom price range display instead of the slider for now */}
             <div className="flex items-center justify-between mb-4">
               <div className="w-[45%]">
                 <Label htmlFor="min-price" className="text-xs text-gray-400 mb-1 block">

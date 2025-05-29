@@ -5,7 +5,7 @@ import { connectToDatabase } from "@/lib/mongodb"
 
 export async function POST(request) {
   try {
-    const { email, password, rememberMe } = await request.json()
+    const { email, password } = await request.json()
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
@@ -18,9 +18,9 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    // Block admin accounts from regular login
-    if (user.role === "admin") {
-      return NextResponse.json({ error: "Admin accounts cannot login through the regular login page" }, { status: 403 })
+    // Check if user is admin
+    if (user.role !== "admin") {
+      return NextResponse.json({ error: "Access denied. Admin privileges required." }, { status: 403 })
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password)
@@ -29,20 +29,15 @@ export async function POST(request) {
     }
 
     // Generate tokens
-    const accessTokenExpiry = rememberMe ? "7d" : "1h"
-    const refreshTokenExpiry = rememberMe ? "30d" : "7d"
-
     const accessToken = jwt.sign({ userId: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: accessTokenExpiry,
+      expiresIn: "1h",
     })
 
-    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: refreshTokenExpiry,
-    })
+    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" })
 
     // Set refresh token as HTTP-only cookie
     const response = NextResponse.json({
-      message: "Login successful",
+      message: "Admin login successful",
       accessToken,
       user: {
         id: user._id,
@@ -52,18 +47,16 @@ export async function POST(request) {
       },
     })
 
-    const cookieMaxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60 // 30 days or 7 days
-
     response.cookies.set("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: cookieMaxAge,
+      maxAge: 7 * 24 * 60 * 60, // 7 days
     })
 
     return response
   } catch (error) {
-    console.error("Login error:", error)
+    console.error("Admin login error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -2,58 +2,72 @@
 
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
-import { AnimatePresence } from "framer-motion"
-import Navbar from "@/components/layout/navbar"
-import Footer from "@/components/layout/footer"
-import AgeVerification from "@/components/modals/age-verification"
-import Loader from "@/components/ui/loader"
-import { useToast } from "@/hooks/use-toast"
+import Navbar from "./navbar"
+import Footer from "./footer"
+import AgeVerification from "../modals/age-verification"
+import AdminLoginModal from "../modals/admin-login-modal"
+import { AuthProvider } from "@/hooks/use-auth"
+import { useMobile } from "@/hooks/use-mobile"
+import CartProvider from "../providers/cart-provider"
 
 export default function ClientLayout({ children }) {
   const pathname = usePathname()
-  const [loading, setLoading] = useState(true)
-  const [verified, setVerified] = useState(false)
-  const { toast } = useToast()
+  const { isMobile } = useMobile()
+  const [showAgeVerification, setShowAgeVerification] = useState(false)
+  const [showAdminLogin, setShowAdminLogin] = useState(false)
 
+  // Check if user has verified age
   useEffect(() => {
-    // Check if user has already verified age
-    const isVerified = localStorage.getItem("age-verified")
-    if (isVerified) {
-      setVerified(true)
+    const ageVerified = localStorage.getItem("ageVerified")
+    if (!ageVerified) {
+      setShowAgeVerification(true)
     }
-
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 2000)
-
-    return () => clearTimeout(timer)
   }, [])
 
-  const handleVerify = () => {
-    setVerified(true)
-    localStorage.setItem("age-verified", "true")
-    toast({
-      title: "Age Verified",
-      description: "Welcome to Greenfields",
-    })
+  // Secret admin login shortcut (desktop only)
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Only work on desktop
+      if (isMobile) return
+
+      // Ctrl+Shift+A for admin login
+      if (event.ctrlKey && event.shiftKey && event.key === "A") {
+        event.preventDefault()
+        setShowAdminLogin(true)
+      }
+
+      // Escape to close admin login
+      if (event.key === "Escape" && showAdminLogin) {
+        setShowAdminLogin(false)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isMobile, showAdminLogin])
+
+  const handleAgeVerified = () => {
+    localStorage.setItem("ageVerified", "true")
+    setShowAgeVerification(false)
   }
 
-  if (loading) {
-    return <Loader />
-  }
-
-  if (!verified) {
-    return <AgeVerification onVerify={handleVerify} />
-  }
+  const isAdminRoute = pathname?.startsWith("/admin")
 
   return (
-    <>
-      <Navbar />
-      <AnimatePresence mode="wait">
-        <main key={pathname}>{children}</main>
-      </AnimatePresence>
-      <Footer />
-    </>
+    <AuthProvider>
+      <CartProvider>
+        <div className="min-h-screen bg-black text-white">
+          {!isAdminRoute && <Navbar />}
+          <main className={!isAdminRoute ? "pt-0" : ""}>{children}</main>
+          {!isAdminRoute && <Footer />}
+        </div>
+
+        {/* Age Verification Modal */}
+        <AgeVerification isOpen={showAgeVerification} onVerified={handleAgeVerified} />
+
+        {/* Secret Admin Login Modal */}
+        <AdminLoginModal isOpen={showAdminLogin} onClose={() => setShowAdminLogin(false)} />
+      </CartProvider>
+    </AuthProvider>
   )
 }

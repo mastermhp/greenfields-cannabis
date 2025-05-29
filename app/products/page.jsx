@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import ProductCard from "@/components/products/product-card"
 import ProductFilters from "@/components/products/product-filters"
@@ -26,16 +26,17 @@ export default function ProductsPage() {
     sort: sortBy,
   })
 
-  const handleFilterChange = (newFilters) => {
+  // Memoize the filter change handler to prevent infinite loops
+  const handleFilterChange = useCallback((newFilters) => {
     setFilters(newFilters)
-  }
+  }, [])
 
   if (loading) {
     return (
       <div className="bg-black min-h-screen">
         <div className="container mx-auto px-4 py-12">
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-bold mb-4 gold-text">Our Products</h1>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 gold-text mt-20">Our Products</h1>
             <p className="text-beige max-w-2xl mx-auto">
               Discover our premium selection of cannabis products, carefully curated for quality and potency
             </p>
@@ -69,7 +70,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="bg-black min-h-screen mt-20">
+    <div className="bg-black min-h-screen">
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <motion.div
@@ -78,7 +79,7 @@ export default function ProductsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 gold-text">Our Products</h1>
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 gold-text mt-20">Our Products</h1>
           <p className="text-beige max-w-2xl mx-auto">
             Discover our premium selection of cannabis products, carefully curated for quality and potency
           </p>
