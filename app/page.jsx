@@ -52,16 +52,16 @@ export default function Home() {
             {/* GREENFIELDS */}
           </motion.h1>
 
-          <motion.p
+          {/* <motion.p
             className="text-xl md:text-2xl pt-[400px] mb-8 text-beige max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
             Premium Quality Cannabis Products for Connoisseurs
-          </motion.p>
+          </motion.p> */}
 
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
@@ -83,7 +83,7 @@ export default function Home() {
             >
               <Link href="/about">Learn More</Link>
             </Button>
-          </motion.div>
+          </motion.div> */}
         </div>
 
         <motion.div

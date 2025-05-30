@@ -14,7 +14,7 @@ export default function LoginPage() {
         {/* Image Section */}
         <div className="hidden md:block md:w-1/2 relative">
           <Image
-            src="/placeholder.svg?height=800&width=600"
+            src="/login2.jpeg"
             alt="Cannabis Login"
             fill
             className="object-cover"

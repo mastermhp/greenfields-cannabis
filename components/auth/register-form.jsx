@@ -146,7 +146,7 @@ export default function RegisterForm() {
         {/* Image Section */}
         <div className="hidden md:block md:w-1/2 relative">
           <Image
-            src="/placeholder.svg?height=800&width=600"
+            src="/register.jpg"
             alt="Cannabis Registration"
             fill
             className="object-cover"
@@ -210,7 +210,7 @@ export default function RegisterForm() {
             <div className="text-center mb-8">
               <Link href="/" className="inline-block">
                 <Image
-                  src="/placeholder.svg?height=80&width=80"
+                  src="/logo.png"
                   alt="Greenfields Logo"
                   width={80}
                   height={80}

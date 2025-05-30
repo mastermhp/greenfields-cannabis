@@ -68,7 +68,7 @@ export default function LoginForm() {
       <div className="text-center mb-8">
         <Link href="/" className="inline-block">
           <Image
-            src="/placeholder.svg?height=80&width=80"
+            src="/logo.png"
             alt="Greenfields Logo"
             width={80}
             height={80}
@@ -80,7 +80,7 @@ export default function LoginForm() {
       </div>
 
       {/* Demo Credentials Banner */}
-      <div className="mb-6 bg-[#D4AF37]/10 border border-[#D4AF37] p-4 rounded-md">
+      {/* <div className="mb-6 bg-[#D4AF37]/10 border border-[#D4AF37] p-4 rounded-md">
         <p className="text-sm font-medium mb-2 text-[#D4AF37]">Demo Credentials:</p>
         <div className="text-xs space-y-1 text-beige">
           <p>
@@ -90,7 +90,7 @@ export default function LoginForm() {
             <strong>Customer:</strong> Register a new account
           </p>
         </div>
-      </div>
+      </div> */}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-1">
