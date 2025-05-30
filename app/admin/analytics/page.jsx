@@ -1,326 +1,239 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Calendar, Filter, Download } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { Loader2, DollarSign, ShoppingBag, Users, Package } from "lucide-react"
 
-const AnalyticsPage = () => {
+export default function AnalyticsPage() {
+  const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState("30days")
-  const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalUsers: 0,
+    totalProducts: 0,
+  })
+  const [salesData, setSalesData] = useState([])
+  const [topProducts, setTopProducts] = useState([])
+  const [categoryStats, setCategoryStats] = useState([])
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true)
 
-    return () => clearTimeout(timer)
-  }, [])
+        // Fetch dashboard stats
+        const statsRes = await fetch("/api/analytics?type=dashboard")
+        if (statsRes.ok) {
+          const data = await statsRes.json()
+          if (data.success) {
+            setStats(data.data)
+          }
+        }
+
+        // Fetch sales data based on time range
+        const salesRes = await fetch(`/api/analytics?type=sales&timeRange=${timeRange}`)
+        if (salesRes.ok) {
+          const data = await salesRes.json()
+          if (data.success) {
+            // Format data for chart
+            const formattedData = data.data.map((item) => ({
+              date: `${item._id.month}/${item._id.day}`,
+              revenue: item.revenue,
+              orders: item.orders,
+            }))
+            setSalesData(formattedData)
+          }
+        }
+
+        // Fetch top products
+        const productsRes = await fetch("/api/analytics?type=topProducts")
+        if (productsRes.ok) {
+          const data = await productsRes.json()
+          if (data.success) {
+            setTopProducts(data.data)
+          }
+        }
+
+        // Fetch category stats
+        const categoryRes = await fetch("/api/analytics?type=categories")
+        if (categoryRes.ok) {
+          const data = await categoryRes.json()
+          if (data.success) {
+            setCategoryStats(data.data)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching analytics:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAnalytics()
+  }, [timeRange])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Loading analytics...</span>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold gold-text">Analytics</h1>
-          <p className="text-beige mt-2">Track your store's performance and growth</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex items-center bg-[#111] border border-[#333] rounded-lg overflow-hidden">
-            <button
-              onClick={() => setTimeRange("7days")}
-              className={`px-3 py-2 text-sm ${timeRange === "7days" ? "bg-[#D4AF37] text-black" : "text-beige"}`}
-            >
-              7 Days
-            </button>
-            <button
-              onClick={() => setTimeRange("30days")}
-              className={`px-3 py-2 text-sm ${timeRange === "30days" ? "bg-[#D4AF37] text-black" : "text-beige"}`}
-            >
-              30 Days
-            </button>
-            <button
-              onClick={() => setTimeRange("90days")}
-              className={`px-3 py-2 text-sm ${timeRange === "90days" ? "bg-[#D4AF37] text-black" : "text-beige"}`}
-            >
-              90 Days
-            </button>
-            <button
-              onClick={() => setTimeRange("year")}
-              className={`px-3 py-2 text-sm ${timeRange === "year" ? "bg-[#D4AF37] text-black" : "text-beige"}`}
-            >
-              Year
-            </button>
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-6">Analytics Dashboard</h1>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">Lifetime revenue</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalOrders}</div>
+            <p className="text-xs text-muted-foreground">All time orders</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">Registered users</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+            <p className="text-xs text-muted-foreground">Active products</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sales Chart */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Sales Overview</CardTitle>
+          <CardDescription>
+            <div className="flex items-center space-x-4">
+              <span>Time Range:</span>
+              <Tabs value={timeRange} onValueChange={setTimeRange}>
+                <TabsList>
+                  <TabsTrigger value="7days">7 Days</TabsTrigger>
+                  <TabsTrigger value="30days">30 Days</TabsTrigger>
+                  <TabsTrigger value="90days">90 Days</TabsTrigger>
+                  <TabsTrigger value="year">Year</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            {salesData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={salesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                  <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                  <Tooltip />
+                  <Bar yAxisId="left" dataKey="revenue" name="Revenue ($)" fill="#8884d8" />
+                  <Bar yAxisId="right" dataKey="orders" name="Orders" fill="#82ca9d" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground">No sales data available for this period</p>
+              </div>
+            )}
           </div>
-          <Button variant="outline" className="border-[#333] text-beige">
-            <Calendar size={16} className="mr-2" />
-            Custom Range
-          </Button>
-          <Button variant="outline" className="border-[#333] text-beige">
-            <Filter size={16} className="mr-2" />
-            Filter
-          </Button>
-          <Button variant="outline" className="border-[#333] text-beige">
-            <Download size={16} className="mr-2" />
-            Export
-          </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Sales Overview */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Card className="bg-[#111] border-[#333]">
+      {/* Top Products & Categories */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Top Products */}
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white">Sales Overview</CardTitle>
+            <CardTitle>Top Products</CardTitle>
+            <CardDescription>Best selling products by sales volume</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="h-[300px] flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : (
-              <div className="h-[300px] relative">
-                {/* This would be a chart in a real implementation */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-full h-full bg-[#222] rounded-lg p-4">
-                    <div className="h-full flex items-end justify-between px-4">
-                      {Array.from({ length: 12 }).map((_, i) => {
-                        const height = Math.random() * 80 + 20
-                        return (
-                          <div key={i} className="flex flex-col items-center">
-                            <div className="w-6 bg-[#D4AF37] rounded-t-sm" style={{ height: `${height}%` }}></div>
-                            <span className="text-xs text-beige mt-2">
-                              {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i]}
-                            </span>
-                          </div>
-                        )
-                      })}
+            {topProducts.length > 0 ? (
+              <div className="space-y-4">
+                {topProducts.slice(0, 5).map((product, index) => (
+                  <div key={product.id || product._id} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="w-6 text-muted-foreground">{index + 1}.</span>
+                      <span className="font-medium">{product.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
+                      <span className="text-sm font-medium">{product.sales} sold</span>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
+            ) : (
+              <p className="text-muted-foreground">No product data available</p>
             )}
           </CardContent>
         </Card>
-      </motion.div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { title: "Conversion Rate", value: "3.2%", change: "+0.8%", positive: true },
-          { title: "Average Order Value", value: "$78.50", change: "+$4.20", positive: true },
-          { title: "Cart Abandonment", value: "24.8%", change: "-2.1%", positive: true },
-          { title: "Return Rate", value: "5.7%", change: "+0.3%", positive: false },
-        ].map((metric, index) => (
-          <motion.div
-            key={metric.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Card className="bg-[#111] border-[#333]">
-              <CardContent className="p-6">
-                <div className="space-y-2">
-                  <p className="text-beige text-sm">{metric.title}</p>
-                  <div className="flex items-end justify-between">
-                    <p className="text-2xl font-bold text-white">{metric.value}</p>
-                    <div className={`text-sm ${metric.positive ? "text-green-400" : "text-red-400"}`}>
-                      {metric.change}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Traffic Sources & Product Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <Card className="bg-[#111] border-[#333]">
-            <CardHeader>
-              <CardTitle className="text-white">Traffic Sources</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="h-[200px] flex items-center justify-center">
-                  <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {[
-                    { source: "Direct", percentage: 35, value: 4256 },
-                    { source: "Organic Search", percentage: 28, value: 3412 },
-                    { source: "Social Media", percentage: 22, value: 2678 },
-                    { source: "Referral", percentage: 10, value: 1215 },
-                    { source: "Email", percentage: 5, value: 609 },
-                  ].map((source) => (
-                    <div key={source.source} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-beige">{source.source}</span>
-                        <span className="text-white">{source.percentage}%</span>
-                      </div>
-                      <div className="h-2 bg-[#222] rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D4AF37]" style={{ width: `${source.percentage}%` }}></div>
-                      </div>
-                      <div className="text-xs text-beige">{source.value.toLocaleString()} visits</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <Card className="bg-[#111] border-[#333]">
-            <CardHeader>
-              <CardTitle className="text-white">Product Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="h-[200px] flex items-center justify-center">
-                  <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {[
-                    { category: "Indica", percentage: 40, revenue: 36450 },
-                    { category: "Sativa", percentage: 30, revenue: 27340 },
-                    { category: "Hybrid", percentage: 20, revenue: 18220 },
-                    { category: "CBD", percentage: 10, revenue: 9110 },
-                  ].map((category) => (
-                    <div key={category.category} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-beige">{category.category}</span>
-                        <span className="text-white">${category.revenue.toLocaleString()}</span>
-                      </div>
-                      <div className="h-2 bg-[#222] rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D4AF37]" style={{ width: `${category.percentage}%` }}></div>
-                      </div>
-                      <div className="text-xs text-beige">{category.percentage}% of total revenue</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Customer Demographics */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.6 }}
-      >
-        <Card className="bg-[#111] border-[#333]">
+        {/* Category Stats */}
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white">Customer Demographics</CardTitle>
+            <CardTitle>Category Performance</CardTitle>
+            <CardDescription>Sales by product category</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="h-[200px] flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+            {categoryStats.length > 0 ? (
+              <div className="space-y-4">
+                {categoryStats.map((category) => (
+                  <div key={category._id} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium capitalize">{category._id}</span>
+                      <span className="text-sm font-medium">${category.totalRevenue.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{category.totalProducts} products</span>
+                      <span>Avg. ${category.averagePrice.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Age Distribution */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white">Age Distribution</h3>
-                  <div className="space-y-3">
-                    {[
-                      { age: "21-25", percentage: 15 },
-                      { age: "26-35", percentage: 40 },
-                      { age: "36-45", percentage: 25 },
-                      { age: "46-55", percentage: 12 },
-                      { age: "56+", percentage: 8 },
-                    ].map((age) => (
-                      <div key={age.age} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-beige">{age.age}</span>
-                          <span className="text-white">{age.percentage}%</span>
-                        </div>
-                        <div className="h-2 bg-[#222] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#D4AF37]" style={{ width: `${age.percentage}%` }}></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Gender Distribution */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white">Gender Distribution</h3>
-                  <div className="h-[150px] relative">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-32 h-32 rounded-full border-8 border-[#D4AF37] relative">
-                        <div
-                          className="absolute top-0 left-0 w-32 h-32 rounded-full border-8 border-[#555]"
-                          style={{
-                            clipPath: "polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 50% 100%)",
-                          }}
-                        ></div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-white text-sm">58% / 42%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-center space-x-6">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-[#D4AF37] rounded-full mr-2"></div>
-                      <span className="text-beige text-sm">Male (58%)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-[#555] rounded-full mr-2"></div>
-                      <span className="text-beige text-sm">Female (42%)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white">Top Locations</h3>
-                  <div className="space-y-3">
-                    {[
-                      { location: "California", percentage: 32 },
-                      { location: "Colorado", percentage: 18 },
-                      { location: "Washington", percentage: 14 },
-                      { location: "Oregon", percentage: 12 },
-                      { location: "Nevada", percentage: 8 },
-                      { location: "Other", percentage: 16 },
-                    ].map((location) => (
-                      <div key={location.location} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-beige">{location.location}</span>
-                          <span className="text-white">{location.percentage}%</span>
-                        </div>
-                        <div className="h-2 bg-[#222] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#D4AF37]" style={{ width: `${location.percentage}%` }}></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <p className="text-muted-foreground">No category data available</p>
             )}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     </div>
   )
 }
-
-export default AnalyticsPage

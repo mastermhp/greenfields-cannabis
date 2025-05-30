@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 const AuthContext = createContext()
 
@@ -17,7 +18,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [accessToken, setAccessToken] = useState(null)
   const router = useRouter()
+  const { toast } = useToast()
 
   // Check authentication status on mount
   useEffect(() => {
@@ -31,6 +34,8 @@ export const AuthProvider = ({ children }) => {
         setLoading(false)
         return
       }
+
+      setAccessToken(token)
 
       const response = await fetch("/api/auth/me", {
         headers: {
@@ -48,10 +53,12 @@ export const AuthProvider = ({ children }) => {
       } else {
         // Clear invalid token
         localStorage.removeItem("accessToken")
+        setAccessToken(null)
       }
     } catch (error) {
       console.error("Auth check failed:", error)
       localStorage.removeItem("accessToken")
+      setAccessToken(null)
     } finally {
       setLoading(false)
     }
@@ -67,6 +74,7 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json()
         localStorage.setItem("accessToken", data.accessToken)
+        setAccessToken(data.accessToken)
         setUser(data.user)
         setIsAuthenticated(true)
         return true
@@ -82,9 +90,11 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const login = async (email, password, rememberMe = false) => {
+  const login = async (email, password, rememberMe = false, isAdminLogin = false) => {
     try {
-      const response = await fetch("/api/auth/login", {
+      const endpoint = isAdminLogin ? "/api/admin-login" : "/api/auth/login"
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -97,64 +107,86 @@ export const AuthProvider = ({ children }) => {
 
       if (response.ok) {
         localStorage.setItem("accessToken", data.accessToken)
+        setAccessToken(data.accessToken)
         setUser(data.user)
         setIsAuthenticated(true)
+
+        // Show success toast
+        toast({
+          title: isAdminLogin ? "Admin Login Successful" : "Login Successful",
+          description: `Welcome back${data.user?.name ? ", " + data.user.name : ""}!`,
+        })
+
+        // Redirect based on role
+        if (isAdminLogin && (data.user?.role === "admin" || data.user?.isAdmin)) {
+          router.push("/admin")
+        } else {
+          const redirectPath = localStorage.getItem("redirectAfterLogin") || "/"
+          localStorage.removeItem("redirectAfterLogin")
+          router.push(redirectPath)
+        }
+
         return { success: true, user: data.user }
       } else {
+        // Show error toast
+        toast({
+          title: "Login Failed",
+          description: data.error || "Invalid credentials. Please try again.",
+          variant: "destructive",
+        })
+
         return { success: false, error: data.error }
       }
     } catch (error) {
       console.error("Login failed:", error)
+
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+
       return { success: false, error: "Login failed. Please try again." }
     }
   }
 
-  const adminLogin = async (email, password) => {
-    try {
-      const response = await fetch("/api/auth/admin-login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        localStorage.setItem("accessToken", data.accessToken)
-        setUser(data.user)
-        setIsAuthenticated(true)
-        return { success: true, user: data.user }
-      } else {
-        return { success: false, error: data.error }
-      }
-    } catch (error) {
-      console.error("Admin login failed:", error)
-      return { success: false, error: "Admin login failed. Please try again." }
-    }
-  }
-
-  const register = async (userData) => {
+  const register = async (name, email, password, confirmPassword) => {
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify({ name, email, password, confirmPassword }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
+        toast({
+          title: "Registration Successful",
+          description: "Your account has been created. You can now log in.",
+        })
+
         return { success: true, message: data.message }
       } else {
+        toast({
+          title: "Registration Failed",
+          description: data.error || "Could not create account. Please try again.",
+          variant: "destructive",
+        })
+
         return { success: false, error: data.error }
       }
     } catch (error) {
       console.error("Registration failed:", error)
+
+      toast({
+        title: "Registration Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+
       return { success: false, error: "Registration failed. Please try again." }
     }
   }
@@ -169,6 +201,7 @@ export const AuthProvider = ({ children }) => {
       console.error("Logout error:", error)
     } finally {
       localStorage.removeItem("accessToken")
+      setAccessToken(null)
       setUser(null)
       setIsAuthenticated(false)
       router.push("/")
@@ -179,12 +212,14 @@ export const AuthProvider = ({ children }) => {
     user,
     isAuthenticated,
     loading,
+    accessToken,
     login,
-    adminLogin,
     register,
     logout,
     refreshToken,
     checkAuth,
+    setUser,
+    setIsAuthenticated,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { X, Lock, User, Eye, EyeOff, ShieldAlert } from "lucide-react"
@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth"
 export default function AdminLoginModal({ isOpen, onClose }) {
   const router = useRouter()
   const { toast } = useToast()
-  const { login } = useAuth()
+  const { setUser, setIsAuthenticated } = useAuth()
 
   const [formData, setFormData] = useState({
     email: "",
@@ -61,68 +61,140 @@ export default function AdminLoginModal({ isOpen, onClose }) {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Use useCallback to prevent recreation on each render
+  const handleFailedAttempt = useCallback(
+    (errorMessage) => {
+      setAttempts((prev) => {
+        const newAttempts = prev + 1
+        if (newAttempts >= 3) {
+          setLocked(true)
+          setLockTimer(60) // 60 second lockout
+
+          // Move toast outside of render cycle
+          setTimeout(() => {
+            toast({
+              title: "Too Many Failed Attempts",
+              description: "Admin login temporarily locked for 60 seconds.",
+              variant: "destructive",
+            })
+          }, 0)
+        } else {
+          // Move toast outside of render cycle
+          setTimeout(() => {
+            toast({
+              title: "Login Failed",
+              description: errorMessage,
+              variant: "destructive",
+            })
+          }, 0)
+        }
+        return newAttempts
+      })
+    },
+    [toast],
+  )
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (locked) {
-      toast({
-        title: "Account Temporarily Locked",
-        description: `Too many failed attempts. Please wait ${lockTimer} seconds.`,
-        variant: "destructive",
-      })
+      // Move toast outside of render cycle
+      setTimeout(() => {
+        toast({
+          title: "Account Temporarily Locked",
+          description: `Too many failed attempts. Please wait ${lockTimer} seconds.`,
+          variant: "destructive",
+        })
+      }, 0)
       return
     }
 
     setLoading(true)
 
     try {
-      const result = await login(formData.email, formData.password, true, true) // isAdminLogin = true
+      console.log("Attempting admin login...")
 
-      if (result.success) {
-        if (result.user?.role === "admin" || result.user?.isAdmin) {
+      // Use the admin login API directly
+      const response = await fetch("/api/admin-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      console.log("Response status:", response.status)
+
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server returned non-JSON response")
+      }
+
+      const data = await response.json()
+      console.log("Response data:", data)
+
+      if (response.ok) {
+        // Store the access token
+        localStorage.setItem("accessToken", data.accessToken)
+
+        // Manually update the auth context
+        if (setUser && setIsAuthenticated) {
+          setUser(data.user)
+          setIsAuthenticated(true)
+        }
+
+        // Move toast outside of render cycle
+        setTimeout(() => {
           toast({
             title: "Admin Access Granted",
             description: "Welcome to the admin panel.",
           })
+        }, 0)
+
+        // Close modal first, then navigate
+        onClose()
+
+        // Small delay to ensure modal closes before navigation
+        setTimeout(() => {
           router.push("/admin")
-          onClose()
-          setAttempts(0)
-        } else {
-          // This shouldn't happen due to server-side check, but just in case
-          handleFailedAttempt("Access denied. Administrator privileges required.")
-        }
+        }, 100)
+
+        setAttempts(0)
       } else {
-        handleFailedAttempt(result.error)
+        handleFailedAttempt(data.error || "Invalid admin credentials")
       }
     } catch (error) {
       console.error("Admin login error:", error)
-      handleFailedAttempt("An unexpected error occurred. Please try again.")
+
+      if (error.message.includes("non-JSON response")) {
+        handleFailedAttempt("Server configuration error. Please contact support.")
+      } else {
+        handleFailedAttempt("An unexpected error occurred. Please try again.")
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const handleFailedAttempt = (errorMessage) => {
-    setAttempts((prev) => {
-      const newAttempts = prev + 1
-      if (newAttempts >= 3) {
-        setLocked(true)
-        setLockTimer(60) // 60 second lockout
-        toast({
-          title: "Too Many Failed Attempts",
-          description: "Admin login temporarily locked for 60 seconds.",
-          variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Login Failed",
-          description: errorMessage,
-          variant: "destructive",
-        })
-      }
-      return newAttempts
-    })
+  // Initialize database on first load
+  const initializeDB = async () => {
+    try {
+      await fetch("/api/init-db", { method: "POST" })
+    } catch (error) {
+      console.error("Failed to initialize database:", error)
+    }
   }
+
+  useEffect(() => {
+    if (isOpen) {
+      initializeDB()
+    }
+  }, [isOpen])
 
   return (
     <AnimatePresence>
@@ -156,10 +228,8 @@ export default function AdminLoginModal({ isOpen, onClose }) {
             {/* Content */}
             <div className="p-6">
               <div className="mb-6 bg-[#D4AF37]/10 border border-[#D4AF37] p-4 rounded-md">
-                <p className="text-sm text-[#D4AF37]">
-                  🔒 Restricted access point for administrators only. Use{" "}
-                  <kbd className="bg-black px-1 rounded">Ctrl+Shift+A</kbd> to access.
-                </p>
+                <p className="text-sm text-[#D4AF37]">🔒 Restricted access point for administrators only.</p>
+                <p className="text-xs text-beige mt-2">Demo: admin@greenfields.com / admin123</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">

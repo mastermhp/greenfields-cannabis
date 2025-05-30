@@ -39,10 +39,20 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // Store redirect path if present
+      if (redirectTo && redirectTo !== "/") {
+        localStorage.setItem("redirectAfterLogin", redirectTo)
+      }
+
       await login(formData.email, formData.password, rememberMe)
-      // The useAuth hook now handles the redirection and toast notifications
+      // The login function now handles redirection and toast notifications
     } catch (error) {
       console.error("Login error:", error)
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }

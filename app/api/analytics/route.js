@@ -4,11 +4,10 @@ import { AnalyticsOperations } from "@/lib/database-operations"
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get("type")
+    const type = searchParams.get("type") || "dashboard"
     const timeRange = searchParams.get("timeRange") || "30days"
 
     let data
-
     switch (type) {
       case "dashboard":
         data = await AnalyticsOperations.getDashboardStats()
@@ -16,8 +15,8 @@ export async function GET(request) {
       case "sales":
         data = await AnalyticsOperations.getSalesData(timeRange)
         break
-      case "products":
-        data = await AnalyticsOperations.getTopProducts()
+      case "topProducts":
+        data = await AnalyticsOperations.getTopProducts(10)
         break
       case "categories":
         data = await AnalyticsOperations.getCategoryStats()
@@ -35,7 +34,7 @@ export async function GET(request) {
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch analytics",
+        error: "Failed to fetch analytics data",
         message: error.message,
       },
       { status: 500 },

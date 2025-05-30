@@ -19,7 +19,7 @@ export async function POST(request) {
     }
 
     // Check if user is admin
-    if (user.role !== "admin") {
+    if (user.role !== "admin" && !user.isAdmin) {
       return NextResponse.json({ error: "Access denied. Admin privileges required." }, { status: 403 })
     }
 
@@ -29,9 +29,18 @@ export async function POST(request) {
     }
 
     // Generate tokens
-    const accessToken = jwt.sign({ userId: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    })
+    const accessToken = jwt.sign(
+      {
+        userId: user._id,
+        email: user.email,
+        role: user.role,
+        isAdmin: user.isAdmin || user.role === "admin",
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h",
+      },
+    )
 
     const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" })
 
@@ -44,6 +53,7 @@ export async function POST(request) {
         name: user.name,
         email: user.email,
         role: user.role,
+        isAdmin: user.isAdmin || user.role === "admin",
       },
     })
 

@@ -15,71 +15,111 @@ import {
   MapPin,
   Award,
   ChevronRight,
-  Gift,
-  Clock,
   ShoppingBag,
   RefreshCw,
+  Plus,
+  Trash,
+  Edit,
+  AlertCircle,
+  Gift,
+  Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
+import { useCart } from "@/hooks/use-cart"
 import LoyaltyCard from "@/components/loyalty/loyalty-card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function AccountPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, logout, accessToken } = useAuth()
+  const { addToCart } = useCart()
   const [activeTab, setActiveTab] = useState("overview")
-  const [orders, setOrders] = useState([])
-  const [loadingOrders, setLoadingOrders] = useState(false)
 
-  // Mock user data for other sections - in a real app, this would come from an API
-  const [userData, setUserData] = useState({
-    wishlist: [
-      {
-        id: "prod-001",
-        name: "Golden Sunset",
-        category: "flower",
-        price: 59.99,
-        image: "/placeholder.svg?height=600&width=600",
-      },
-      {
-        id: "prod-003",
-        name: "Cosmic Haze",
-        category: "pre-rolls",
-        price: 14.99,
-        image: "/placeholder.svg?height=600&width=600",
-      },
-    ],
-    addresses: [
-      {
-        id: 1,
-        default: true,
-        name: "Home",
-        street: "123 Main Street",
-        city: "Los Angeles",
-        state: "CA",
-        zip: "90001",
-        country: "United States",
-      },
-    ],
-    paymentMethods: [
-      {
-        id: 1,
-        default: true,
-        type: "visa",
-        last4: "4242",
-        expiry: "05/25",
-      },
-    ],
-    loyaltyInfo: {
-      tier: "silver",
-      points: 750,
-      nextTier: "gold",
-      pointsToNextTier: 250,
-    },
+  // Data states
+  const [orders, setOrders] = useState([])
+  const [wishlist, setWishlist] = useState([])
+  const [addresses, setAddresses] = useState([])
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [loyaltyInfo, setLoyaltyInfo] = useState({
+    tier: "bronze",
+    points: 0,
+    nextTier: "silver",
+    pointsToNextTier: 500,
   })
+  const [userProfile, setUserProfile] = useState(null)
+
+  // Loading states
+  const [loadingOrders, setLoadingOrders] = useState(false)
+  const [loadingWishlist, setLoadingWishlist] = useState(false)
+  const [loadingAddresses, setLoadingAddresses] = useState(false)
+  const [loadingPayments, setLoadingPayments] = useState(false)
+  const [loadingLoyalty, setLoadingLoyalty] = useState(false)
+  const [loadingProfile, setLoadingProfile] = useState(false)
+
+  // Dialog states
+  const [addressDialog, setAddressDialog] = useState(false)
+  const [paymentDialog, setPaymentDialog] = useState(false)
+  const [profileDialog, setProfileDialog] = useState(false)
+  const [passwordDialog, setPasswordDialog] = useState(false)
+  const [deleteAccountDialog, setDeleteAccountDialog] = useState(false)
+
+  // Form states
+  const [addressForm, setAddressForm] = useState({
+    id: null,
+    name: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "United States",
+    default: false,
+  })
+
+  const [paymentForm, setPaymentForm] = useState({
+    id: null,
+    type: "visa",
+    cardNumber: "",
+    nameOnCard: "",
+    expMonth: "",
+    expYear: "",
+    cvv: "",
+    default: false,
+  })
+
+  const [profileForm, setProfileForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+  })
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+
+  const [communicationPrefs, setCommunicationPrefs] = useState({
+    orderUpdates: true,
+    promotions: true,
+    news: true,
+  })
+
+  // Error states
+  const [addressError, setAddressError] = useState("")
+  const [paymentError, setPaymentError] = useState("")
+  const [profileError, setProfileError] = useState("")
+  const [passwordError, setPasswordError] = useState("")
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -90,6 +130,11 @@ export default function AccountPage() {
   useEffect(() => {
     if (isAuthenticated && user?.id) {
       fetchUserOrders()
+      fetchWishlist()
+      fetchAddresses()
+      fetchPaymentMethods()
+      fetchLoyaltyInfo()
+      fetchUserProfile()
     }
   }, [isAuthenticated, user])
 
@@ -113,9 +158,10 @@ export default function AccountPage() {
     try {
       console.log(`Fetching orders for user: ${user.id}`)
       const response = await fetch(`/api/orders/user/${user.id}`, {
-        cache: "no-store", // Ensure fresh data
+        cache: "no-store",
         headers: {
           "Cache-Control": "no-cache",
+          Authorization: `Bearer ${accessToken}`,
         },
       })
       const data = await response.json()
@@ -147,6 +193,752 @@ export default function AccountPage() {
       }
     } finally {
       if (!silent) setLoadingOrders(false)
+    }
+  }
+
+  const fetchWishlist = async () => {
+    if (!user?.id) return
+
+    setLoadingWishlist(true)
+    try {
+      const response = await fetch(`/api/user/wishlist`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch wishlist")
+      }
+
+      const data = await response.json()
+      console.log("Wishlist data:", data)
+
+      if (data.success) {
+        setWishlist(data.data || [])
+      } else {
+        console.error("Wishlist fetch error:", data.message)
+        toast({
+          title: "Error",
+          description: data.message || "Failed to fetch wishlist",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching wishlist:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch wishlist",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingWishlist(false)
+    }
+  }
+
+  const fetchAddresses = async () => {
+    if (!user?.id) return
+
+    setLoadingAddresses(true)
+    try {
+      const response = await fetch(`/api/user/addresses`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch addresses")
+      }
+
+      const data = await response.json()
+      console.log("Addresses data:", data)
+
+      if (data.success) {
+        setAddresses(data.data || [])
+      } else {
+        console.error("Addresses fetch error:", data.message)
+        toast({
+          title: "Error",
+          description: data.message || "Failed to fetch addresses",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching addresses:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch addresses",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingAddresses(false)
+    }
+  }
+
+  const fetchPaymentMethods = async () => {
+    if (!user?.id) return
+
+    setLoadingPayments(true)
+    try {
+      const response = await fetch(`/api/user/payment-methods`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch payment methods")
+      }
+
+      const data = await response.json()
+      console.log("Payment methods data:", data)
+
+      if (data.success) {
+        setPaymentMethods(data.data || [])
+      } else {
+        console.error("Payment methods fetch error:", data.message)
+        toast({
+          title: "Error",
+          description: data.message || "Failed to fetch payment methods",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching payment methods:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch payment methods",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingPayments(false)
+    }
+  }
+
+  const fetchLoyaltyInfo = async () => {
+    if (!user?.id) return
+
+    setLoadingLoyalty(true)
+    try {
+      const response = await fetch(`/api/user/loyalty`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch loyalty info")
+      }
+
+      const data = await response.json()
+      console.log("Loyalty info data:", data)
+
+      if (data.success) {
+        setLoyaltyInfo(
+          data.data || {
+            tier: "bronze",
+            points: 0,
+            nextTier: "silver",
+            pointsToNextTier: 500,
+          },
+        )
+      } else {
+        console.error("Loyalty info fetch error:", data.message)
+      }
+    } catch (error) {
+      console.error("Error fetching loyalty info:", error)
+    } finally {
+      setLoadingLoyalty(false)
+    }
+  }
+
+  const fetchUserProfile = async () => {
+    if (!user?.id) return
+
+    setLoadingProfile(true)
+    try {
+      const response = await fetch(`/api/user/profile`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user profile")
+      }
+
+      const data = await response.json()
+      console.log("User profile data:", data)
+
+      if (data.success) {
+        setUserProfile(data.data || null)
+
+        // Initialize profile form
+        if (data.data) {
+          const nameParts = data.data.name ? data.data.name.split(" ") : ["", ""]
+          setProfileForm({
+            firstName: nameParts[0] || "",
+            lastName: nameParts.slice(1).join(" ") || "",
+            email: data.data.email || "",
+            phone: data.data.phone || "",
+          })
+
+          setCommunicationPrefs({
+            orderUpdates: data.data.preferences?.orderUpdates ?? true,
+            promotions: data.data.preferences?.promotions ?? true,
+            news: data.data.preferences?.news ?? true,
+          })
+        }
+      } else {
+        console.error("User profile fetch error:", data.message)
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error)
+    } finally {
+      setLoadingProfile(false)
+    }
+  }
+
+  // Wishlist operations
+  const addToWishlist = async (productId) => {
+    try {
+      const response = await fetch(`/api/user/wishlist`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ productId }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchWishlist() // Refresh wishlist
+        toast({
+          title: "Added to Wishlist",
+          description: "Product added to your wishlist",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to add to wishlist",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error adding to wishlist:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add to wishlist",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const removeFromWishlist = async (productId) => {
+    try {
+      const response = await fetch(`/api/user/wishlist/${productId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchWishlist() // Refresh wishlist
+        toast({
+          title: "Removed from Wishlist",
+          description: "Product removed from your wishlist",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to remove from wishlist",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error removing from wishlist:", error)
+      toast({
+        title: "Error",
+        description: "Failed to remove from wishlist",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Address operations
+  const openAddressDialog = (address = null) => {
+    if (address) {
+      setAddressForm({
+        id: address.id,
+        name: address.name,
+        street: address.street,
+        city: address.city,
+        state: address.state,
+        zip: address.zip,
+        country: address.country,
+        default: address.default,
+      })
+    } else {
+      setAddressForm({
+        id: null,
+        name: "",
+        street: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "United States",
+        default: addresses.length === 0, // First address is default
+      })
+    }
+    setAddressError("")
+    setAddressDialog(true)
+  }
+
+  const saveAddress = async () => {
+    // Validate form
+    if (!addressForm.name || !addressForm.street || !addressForm.city || !addressForm.state || !addressForm.zip) {
+      setAddressError("Please fill in all required fields")
+      return
+    }
+
+    try {
+      const method = addressForm.id ? "PUT" : "POST"
+      const url = addressForm.id ? `/api/user/addresses/${addressForm.id}` : `/api/user/addresses`
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(addressForm),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchAddresses() // Refresh addresses
+        setAddressDialog(false)
+        toast({
+          title: addressForm.id ? "Address Updated" : "Address Added",
+          description: addressForm.id ? "Your address has been updated" : "New address has been added",
+        })
+      } else {
+        setAddressError(data.message || "Failed to save address")
+      }
+    } catch (error) {
+      console.error("Error saving address:", error)
+      setAddressError("An error occurred while saving your address")
+    }
+  }
+
+  const deleteAddress = async (addressId) => {
+    try {
+      const response = await fetch(`/api/user/addresses/${addressId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchAddresses() // Refresh addresses
+        toast({
+          title: "Address Deleted",
+          description: "Your address has been deleted",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to delete address",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting address:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete address",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const setDefaultAddress = async (addressId) => {
+    try {
+      const response = await fetch(`/api/user/addresses/${addressId}/default`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchAddresses() // Refresh addresses
+        toast({
+          title: "Default Address Updated",
+          description: "Your default address has been updated",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update default address",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error setting default address:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update default address",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Payment method operations
+  const openPaymentDialog = (payment = null) => {
+    if (payment) {
+      setPaymentForm({
+        id: payment.id,
+        type: payment.type,
+        cardNumber: `**** **** **** ${payment.last4}`,
+        nameOnCard: payment.nameOnCard || "",
+        expMonth: payment.expMonth || "",
+        expYear: payment.expYear || "",
+        cvv: "",
+        default: payment.default,
+      })
+    } else {
+      setPaymentForm({
+        id: null,
+        type: "visa",
+        cardNumber: "",
+        nameOnCard: "",
+        expMonth: "",
+        expYear: "",
+        cvv: "",
+        default: paymentMethods.length === 0, // First payment is default
+      })
+    }
+    setPaymentError("")
+    setPaymentDialog(true)
+  }
+
+  const savePaymentMethod = async () => {
+    // Validate form
+    if (
+      !paymentForm.cardNumber ||
+      !paymentForm.nameOnCard ||
+      !paymentForm.expMonth ||
+      !paymentForm.expYear ||
+      (!paymentForm.id && !paymentForm.cvv)
+    ) {
+      setPaymentError("Please fill in all required fields")
+      return
+    }
+
+    try {
+      const method = paymentForm.id ? "PUT" : "POST"
+      const url = paymentForm.id ? `/api/user/payment-methods/${paymentForm.id}` : `/api/user/payment-methods`
+
+      // Don't send full card number if it starts with asterisks (editing existing card)
+      const formData = { ...paymentForm }
+      if (formData.cardNumber.startsWith("*")) {
+        delete formData.cardNumber
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchPaymentMethods() // Refresh payment methods
+        setPaymentDialog(false)
+        toast({
+          title: paymentForm.id ? "Payment Method Updated" : "Payment Method Added",
+          description: paymentForm.id ? "Your payment method has been updated" : "New payment method has been added",
+        })
+      } else {
+        setPaymentError(data.message || "Failed to save payment method")
+      }
+    } catch (error) {
+      console.error("Error saving payment method:", error)
+      setPaymentError("An error occurred while saving your payment method")
+    }
+  }
+
+  const deletePaymentMethod = async (paymentId) => {
+    try {
+      const response = await fetch(`/api/user/payment-methods/${paymentId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchPaymentMethods() // Refresh payment methods
+        toast({
+          title: "Payment Method Deleted",
+          description: "Your payment method has been deleted",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to delete payment method",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting payment method:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete payment method",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const setDefaultPaymentMethod = async (paymentId) => {
+    try {
+      const response = await fetch(`/api/user/payment-methods/${paymentId}/default`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchPaymentMethods() // Refresh payment methods
+        toast({
+          title: "Default Payment Method Updated",
+          description: "Your default payment method has been updated",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update default payment method",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error setting default payment method:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update default payment method",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Profile operations
+  const openProfileDialog = () => {
+    const nameParts = user?.name ? user.name.split(" ") : ["", ""]
+    setProfileForm({
+      firstName: nameParts[0] || "",
+      lastName: nameParts.slice(1).join(" ") || "",
+      email: user?.email || "",
+      phone: userProfile?.phone || "",
+    })
+    setProfileError("")
+    setProfileDialog(true)
+  }
+
+  const saveProfile = async () => {
+    // Validate form
+    if (!profileForm.firstName || !profileForm.email) {
+      setProfileError("Please fill in all required fields")
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/user/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          name: `${profileForm.firstName} ${profileForm.lastName}`.trim(),
+          email: profileForm.email,
+          phone: profileForm.phone,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchUserProfile() // Refresh profile
+        setProfileDialog(false)
+        toast({
+          title: "Profile Updated",
+          description: "Your profile has been updated",
+        })
+      } else {
+        setProfileError(data.message || "Failed to update profile")
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      setProfileError("An error occurred while updating your profile")
+    }
+  }
+
+  // Password operations
+  const openPasswordDialog = () => {
+    setPasswordForm({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    })
+    setPasswordError("")
+    setPasswordDialog(true)
+  }
+
+  const changePassword = async () => {
+    // Validate form
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError("Please fill in all fields")
+      return
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New passwords do not match")
+      return
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters")
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/user/change-password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setPasswordDialog(false)
+        toast({
+          title: "Password Changed",
+          description: "Your password has been updated successfully",
+        })
+      } else {
+        setPasswordError(data.message || "Failed to change password")
+      }
+    } catch (error) {
+      console.error("Error changing password:", error)
+      setPasswordError("An error occurred while changing your password")
+    }
+  }
+
+  // Communication preferences
+  const saveCommunicationPreferences = async () => {
+    try {
+      const response = await fetch(`/api/user/preferences`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(communicationPrefs),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        fetchUserProfile() // Refresh profile
+        toast({
+          title: "Preferences Saved",
+          description: "Your communication preferences have been updated",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update preferences",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error updating preferences:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update preferences",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Account deletion
+  const confirmDeleteAccount = () => {
+    setDeleteAccountDialog(true)
+  }
+
+  const deleteAccount = async () => {
+    try {
+      const response = await fetch(`/api/user/delete-account`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        logout()
+        router.push("/")
+        toast({
+          title: "Account Deleted",
+          description: "Your account has been permanently deleted",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to delete account",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting account:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete account",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleteAccountDialog(false)
     }
   }
 
@@ -186,6 +978,21 @@ export default function AccountPage() {
       year: "numeric",
       month: "long",
       day: "numeric",
+    })
+  }
+
+  const handleAddToCart = (product) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1,
+    })
+
+    toast({
+      title: "Added to Cart",
+      description: `${product.name} has been added to your cart`,
     })
   }
 
@@ -260,6 +1067,11 @@ export default function AccountPage() {
                 >
                   <Heart size={18} className="mr-2" />
                   Wishlist
+                  {wishlist.length > 0 && (
+                    <span className="ml-auto bg-[#D4AF37] text-black text-xs px-2 py-1 rounded-full">
+                      {wishlist.length}
+                    </span>
+                  )}
                 </Button>
                 <Button
                   variant="ghost"
@@ -313,11 +1125,11 @@ export default function AccountPage() {
               <div className="mb-4">
                 <div className="flex justify-between mb-1">
                   <span className="text-beige">Current Tier</span>
-                  <span className="font-medium capitalize">{userData.loyaltyInfo.tier}</span>
+                  <span className="font-medium capitalize">{loyaltyInfo.tier}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-beige">Available Points</span>
-                  <span className="font-medium">{userData.loyaltyInfo.points}</span>
+                  <span className="font-medium">{loyaltyInfo.points}</span>
                 </div>
               </div>
 
@@ -404,8 +1216,8 @@ export default function AccountPage() {
 
                     <div className="mb-4">
                       <LoyaltyCard
-                        tier={userData.loyaltyInfo.tier}
-                        points={userData.loyaltyInfo.points}
+                        tier={loyaltyInfo.tier}
+                        points={loyaltyInfo.points}
                         name={user?.name || "Member"}
                         since="2023"
                         memberID={user?.id || "000000"}
@@ -425,14 +1237,32 @@ export default function AccountPage() {
                       Default Address
                     </h2>
 
-                    {userData.addresses.length > 0 ? (
+                    {loadingAddresses ? (
+                      <div className="flex items-center justify-center py-4">
+                        <RefreshCw className="animate-spin text-[#D4AF37]" size={20} />
+                      </div>
+                    ) : addresses.length > 0 ? (
                       <div>
-                        <p className="font-medium">{userData.addresses[0].name}</p>
-                        <p className="text-beige">{userData.addresses[0].street}</p>
-                        <p className="text-beige">
-                          {userData.addresses[0].city}, {userData.addresses[0].state} {userData.addresses[0].zip}
-                        </p>
-                        <p className="text-beige">{userData.addresses[0].country}</p>
+                        {addresses.find((a) => a.default) ? (
+                          <>
+                            <p className="font-medium">{addresses.find((a) => a.default).name}</p>
+                            <p className="text-beige">{addresses.find((a) => a.default).street}</p>
+                            <p className="text-beige">
+                              {addresses.find((a) => a.default).city}, {addresses.find((a) => a.default).state}{" "}
+                              {addresses.find((a) => a.default).zip}
+                            </p>
+                            <p className="text-beige">{addresses.find((a) => a.default).country}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-medium">{addresses[0].name}</p>
+                            <p className="text-beige">{addresses[0].street}</p>
+                            <p className="text-beige">
+                              {addresses[0].city}, {addresses[0].state} {addresses[0].zip}
+                            </p>
+                            <p className="text-beige">{addresses[0].country}</p>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <p className="text-beige">No addresses saved.</p>
@@ -455,11 +1285,30 @@ export default function AccountPage() {
                       Payment Method
                     </h2>
 
-                    {userData.paymentMethods.length > 0 ? (
+                    {loadingPayments ? (
+                      <div className="flex items-center justify-center py-4">
+                        <RefreshCw className="animate-spin text-[#D4AF37]" size={20} />
+                      </div>
+                    ) : paymentMethods.length > 0 ? (
                       <div>
-                        <p className="font-medium capitalize">{userData.paymentMethods[0].type}</p>
-                        <p className="text-beige">**** **** **** {userData.paymentMethods[0].last4}</p>
-                        <p className="text-beige">Expires: {userData.paymentMethods[0].expiry}</p>
+                        {paymentMethods.find((p) => p.default) ? (
+                          <>
+                            <p className="font-medium capitalize">{paymentMethods.find((p) => p.default).type}</p>
+                            <p className="text-beige">**** **** **** {paymentMethods.find((p) => p.default).last4}</p>
+                            <p className="text-beige">
+                              Expires: {paymentMethods.find((p) => p.default).expMonth}/
+                              {paymentMethods.find((p) => p.default).expYear}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-medium capitalize">{paymentMethods[0].type}</p>
+                            <p className="text-beige">**** **** **** {paymentMethods[0].last4}</p>
+                            <p className="text-beige">
+                              Expires: {paymentMethods[0].expMonth}/{paymentMethods[0].expYear}
+                            </p>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <p className="text-beige">No payment methods saved.</p>
@@ -482,8 +1331,12 @@ export default function AccountPage() {
                       Wishlist
                     </h2>
 
-                    {userData.wishlist.length > 0 ? (
-                      <p className="text-beige">{userData.wishlist.length} items in your wishlist</p>
+                    {loadingWishlist ? (
+                      <div className="flex items-center justify-center py-4">
+                        <RefreshCw className="animate-spin text-[#D4AF37]" size={20} />
+                      </div>
+                    ) : wishlist.length > 0 ? (
+                      <p className="text-beige">{wishlist.length} items in your wishlist</p>
                     ) : (
                       <p className="text-beige">Your wishlist is empty.</p>
                     )}
@@ -600,7 +1453,7 @@ export default function AccountPage() {
                 </div>
               </TabsContent>
 
-              {/* Other tabs remain the same */}
+              {/* Wishlist Tab */}
               <TabsContent value="wishlist" className="mt-0">
                 <div className="bg-[#111] border border-[#333] p-6">
                   <h2 className="text-xl font-bold mb-6 flex items-center">
@@ -608,13 +1461,18 @@ export default function AccountPage() {
                     My Wishlist
                   </h2>
 
-                  {userData.wishlist.length > 0 ? (
+                  {loadingWishlist ? (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw className="animate-spin text-[#D4AF37] mr-2" size={24} />
+                      <span className="text-beige">Loading wishlist...</span>
+                    </div>
+                  ) : wishlist.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {userData.wishlist.map((item) => (
+                      {wishlist.map((item) => (
                         <div key={item.id} className="bg-[#222] border border-[#333] p-4 flex">
                           <div className="w-20 h-20 bg-[#333] relative mr-4">
                             <Image
-                              src={item.image || "/placeholder.svg"}
+                              src={item.image || "/placeholder.svg?height=100&width=100"}
                               alt={item.name}
                               fill
                               className="object-cover"
@@ -628,15 +1486,20 @@ export default function AccountPage() {
                             </div>
 
                             <div className="flex justify-between items-center">
-                              <span className="font-medium">${item.price.toFixed(2)}</span>
+                              <span className="font-medium">${item.price?.toFixed(2)}</span>
                               <div className="space-x-2">
-                                <Button size="sm" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                                <Button
+                                  size="sm"
+                                  className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                                  onClick={() => handleAddToCart(item)}
+                                >
                                   Add to Cart
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="border-[#333] text-white hover:bg-[#333]"
+                                  onClick={() => removeFromWishlist(item.id)}
                                 >
                                   Remove
                                 </Button>
@@ -662,14 +1525,25 @@ export default function AccountPage() {
               {/* Addresses Tab */}
               <TabsContent value="addresses" className="mt-0">
                 <div className="bg-[#111] border border-[#333] p-6">
-                  <h2 className="text-xl font-bold mb-6 flex items-center">
-                    <MapPin className="mr-2 text-[#D4AF37]" size={20} />
-                    My Addresses
-                  </h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold flex items-center">
+                      <MapPin className="mr-2 text-[#D4AF37]" size={20} />
+                      My Addresses
+                    </h2>
+                    <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black" onClick={() => openAddressDialog()}>
+                      <Plus size={16} className="mr-2" />
+                      Add Address
+                    </Button>
+                  </div>
 
-                  {userData.addresses.length > 0 ? (
+                  {loadingAddresses ? (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw className="animate-spin text-[#D4AF37] mr-2" size={24} />
+                      <span className="text-beige">Loading addresses...</span>
+                    </div>
+                  ) : addresses.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {userData.addresses.map((address) => (
+                      {addresses.map((address) => (
                         <div key={address.id} className="bg-[#222] border border-[#333] p-4 relative">
                           {address.default && (
                             <div className="absolute top-2 right-2 bg-[#D4AF37] text-black text-xs px-2 py-1 rounded-sm">
@@ -689,33 +1563,45 @@ export default function AccountPage() {
                               variant="outline"
                               size="sm"
                               className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                              onClick={() => openAddressDialog(address)}
                             >
+                              <Edit size={14} className="mr-1" />
                               Edit
                             </Button>
-                            <Button variant="outline" size="sm" className="border-[#333] text-white hover:bg-[#333]">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-[#333] text-white hover:bg-[#333]"
+                              onClick={() => deleteAddress(address.id)}
+                            >
+                              <Trash size={14} className="mr-1" />
                               Remove
                             </Button>
                             {!address.default && (
-                              <Button variant="outline" size="sm" className="border-[#333] text-white hover:bg-[#333]">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-[#333] text-white hover:bg-[#333]"
+                                onClick={() => setDefaultAddress(address.id)}
+                              >
                                 Set as Default
                               </Button>
                             )}
                           </div>
                         </div>
                       ))}
-
-                      <div className="bg-[#222] border border-dashed border-[#333] p-4 flex items-center justify-center">
-                        <Button className="bg-transparent hover:bg-[#333] border border-[#333] text-white">
-                          + Add New Address
-                        </Button>
-                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-8">
                       <MapPin className="mx-auto text-[#333] mb-4" size={48} />
                       <h3 className="text-lg font-medium mb-2">No Addresses Saved</h3>
                       <p className="text-beige mb-4">Add a shipping address to speed up checkout.</p>
-                      <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">Add New Address</Button>
+                      <Button
+                        className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                        onClick={() => openAddressDialog()}
+                      >
+                        Add New Address
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -724,14 +1610,25 @@ export default function AccountPage() {
               {/* Payment Methods Tab */}
               <TabsContent value="payment" className="mt-0">
                 <div className="bg-[#111] border border-[#333] p-6">
-                  <h2 className="text-xl font-bold mb-6 flex items-center">
-                    <CreditCard className="mr-2 text-[#D4AF37]" size={20} />
-                    Payment Methods
-                  </h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold flex items-center">
+                      <CreditCard className="mr-2 text-[#D4AF37]" size={20} />
+                      Payment Methods
+                    </h2>
+                    <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black" onClick={() => openPaymentDialog()}>
+                      <Plus size={16} className="mr-2" />
+                      Add Payment Method
+                    </Button>
+                  </div>
 
-                  {userData.paymentMethods.length > 0 ? (
+                  {loadingPayments ? (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw className="animate-spin text-[#D4AF37] mr-2" size={24} />
+                      <span className="text-beige">Loading payment methods...</span>
+                    </div>
+                  ) : paymentMethods.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {userData.paymentMethods.map((method) => (
+                      {paymentMethods.map((method) => (
                         <div key={method.id} className="bg-[#222] border border-[#333] p-4 relative">
                           {method.default && (
                             <div className="absolute top-2 right-2 bg-[#D4AF37] text-black text-xs px-2 py-1 rounded-sm">
@@ -746,33 +1643,54 @@ export default function AccountPage() {
                             <span className="font-mono">**** {method.last4}</span>
                           </div>
 
-                          <p className="text-beige mb-4">Expires: {method.expiry}</p>
+                          <p className="text-beige mb-4">
+                            Expires: {method.expMonth}/{method.expYear}
+                          </p>
 
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" className="border-[#333] text-white hover:bg-[#333]">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                              onClick={() => openPaymentDialog(method)}
+                            >
+                              <Edit size={14} className="mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-[#333] text-white hover:bg-[#333]"
+                              onClick={() => deletePaymentMethod(method.id)}
+                            >
+                              <Trash size={14} className="mr-1" />
                               Remove
                             </Button>
                             {!method.default && (
-                              <Button variant="outline" size="sm" className="border-[#333] text-white hover:bg-[#333]">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-[#333] text-white hover:bg-[#333]"
+                                onClick={() => setDefaultPaymentMethod(method.id)}
+                              >
                                 Set as Default
                               </Button>
                             )}
                           </div>
                         </div>
                       ))}
-
-                      <div className="bg-[#222] border border-dashed border-[#333] p-4 flex items-center justify-center">
-                        <Button className="bg-transparent hover:bg-[#333] border border-[#333] text-white">
-                          + Add Payment Method
-                        </Button>
-                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-8">
                       <CreditCard className="mx-auto text-[#333] mb-4" size={48} />
                       <h3 className="text-lg font-medium mb-2">No Payment Methods Saved</h3>
                       <p className="text-beige mb-4">Add a payment method to speed up checkout.</p>
-                      <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">Add Payment Method</Button>
+                      <Button
+                        className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                        onClick={() => openPaymentDialog()}
+                      >
+                        Add Payment Method
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -788,8 +1706,8 @@ export default function AccountPage() {
 
                   <div className="mb-6">
                     <LoyaltyCard
-                      tier={userData.loyaltyInfo.tier}
-                      points={userData.loyaltyInfo.points}
+                      tier={loyaltyInfo.tier}
+                      points={loyaltyInfo.points}
                       name={user?.name || "Member"}
                       since="2023"
                       memberID={user?.id || "000000"}
@@ -801,15 +1719,15 @@ export default function AccountPage() {
                       <h3 className="font-medium mb-3">Points Summary</h3>
                       <div className="flex justify-between mb-2">
                         <span className="text-beige">Available Points</span>
-                        <span>{userData.loyaltyInfo.points}</span>
+                        <span>{loyaltyInfo.points}</span>
                       </div>
                       <div className="flex justify-between mb-2">
                         <span className="text-beige">Current Tier</span>
-                        <span className="capitalize">{userData.loyaltyInfo.tier}</span>
+                        <span className="capitalize">{loyaltyInfo.tier}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-beige">Next Tier</span>
-                        <span className="capitalize">{userData.loyaltyInfo.nextTier}</span>
+                        <span className="capitalize">{loyaltyInfo.nextTier}</span>
                       </div>
                     </div>
 
@@ -817,21 +1735,20 @@ export default function AccountPage() {
                       <h3 className="font-medium mb-3">Next Tier Progress</h3>
                       <div className="mb-3">
                         <div className="flex justify-between mb-1">
-                          <span className="text-sm text-beige">Points to {userData.loyaltyInfo.nextTier}</span>
-                          <span className="text-sm text-beige">{userData.loyaltyInfo.pointsToNextTier} more</span>
+                          <span className="text-sm text-beige">Points to {loyaltyInfo.nextTier}</span>
+                          <span className="text-sm text-beige">{loyaltyInfo.pointsToNextTier} more</span>
                         </div>
                         <div className="w-full bg-[#333] h-2">
                           <div
                             className="bg-[#D4AF37] h-2"
                             style={{
-                              width: `${(userData.loyaltyInfo.points / (userData.loyaltyInfo.points + userData.loyaltyInfo.pointsToNextTier)) * 100}%`,
+                              width: `${(loyaltyInfo.points / (loyaltyInfo.points + loyaltyInfo.pointsToNextTier)) * 100}%`,
                             }}
                           ></div>
                         </div>
                       </div>
                       <p className="text-sm text-beige">
-                        Earn {userData.loyaltyInfo.pointsToNextTier} more points to reach{" "}
-                        {userData.loyaltyInfo.nextTier} status
+                        Earn {loyaltyInfo.pointsToNextTier} more points to reach {loyaltyInfo.nextTier} status
                       </p>
                     </div>
                   </div>
@@ -881,7 +1798,7 @@ export default function AccountPage() {
                             <input
                               type="text"
                               value={user?.name?.split(" ")[0] || ""}
-                              className="w-full bg-black border border-[#333] p-2"
+                              className="w-full bg-black border border-[#333] p-2 text-white"
                               readOnly
                             />
                           </div>
@@ -890,7 +1807,7 @@ export default function AccountPage() {
                             <input
                               type="text"
                               value={user?.name?.split(" ")[1] || ""}
-                              className="w-full bg-black border border-[#333] p-2"
+                              className="w-full bg-black border border-[#333] p-2 text-white"
                               readOnly
                             />
                           </div>
@@ -900,11 +1817,15 @@ export default function AccountPage() {
                           <input
                             type="email"
                             value={user?.email || ""}
-                            className="w-full bg-black border border-[#333] p-2"
+                            className="w-full bg-black border border-[#333] p-2 text-white"
                             readOnly
                           />
                         </div>
-                        <Button variant="outline" className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10">
+                        <Button
+                          variant="outline"
+                          className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                          onClick={openProfileDialog}
+                        >
                           Edit Profile
                         </Button>
                       </div>
@@ -914,7 +1835,11 @@ export default function AccountPage() {
                       <h3 className="font-medium mb-3">Password</h3>
                       <div className="bg-[#222] border border-[#333] p-4">
                         <p className="text-beige mb-4">Change your account password</p>
-                        <Button variant="outline" className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10">
+                        <Button
+                          variant="outline"
+                          className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                          onClick={openPasswordDialog}
+                        >
                           Change Password
                         </Button>
                       </div>
@@ -924,26 +1849,48 @@ export default function AccountPage() {
                       <h3 className="font-medium mb-3">Communication Preferences</h3>
                       <div className="bg-[#222] border border-[#333] p-4">
                         <div className="space-y-3 mb-4">
-                          <div className="flex items-center">
-                            <input type="checkbox" id="emailOrders" className="mr-2" defaultChecked />
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="emailOrders"
+                              checked={communicationPrefs.orderUpdates}
+                              onCheckedChange={(checked) =>
+                                setCommunicationPrefs({ ...communicationPrefs, orderUpdates: checked })
+                              }
+                            />
                             <label htmlFor="emailOrders" className="text-beige">
                               Order confirmations and updates
                             </label>
                           </div>
-                          <div className="flex items-center">
-                            <input type="checkbox" id="emailPromos" className="mr-2" defaultChecked />
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="emailPromos"
+                              checked={communicationPrefs.promotions}
+                              onCheckedChange={(checked) =>
+                                setCommunicationPrefs({ ...communicationPrefs, promotions: checked })
+                              }
+                            />
                             <label htmlFor="emailPromos" className="text-beige">
                               Promotions and discounts
                             </label>
                           </div>
-                          <div className="flex items-center">
-                            <input type="checkbox" id="emailNews" className="mr-2" defaultChecked />
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="emailNews"
+                              checked={communicationPrefs.news}
+                              onCheckedChange={(checked) =>
+                                setCommunicationPrefs({ ...communicationPrefs, news: checked })
+                              }
+                            />
                             <label htmlFor="emailNews" className="text-beige">
                               News and product updates
                             </label>
                           </div>
                         </div>
-                        <Button variant="outline" className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10">
+                        <Button
+                          variant="outline"
+                          className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                          onClick={saveCommunicationPreferences}
+                        >
                           Save Preferences
                         </Button>
                       </div>
@@ -953,7 +1900,11 @@ export default function AccountPage() {
                       <h3 className="font-medium mb-3 text-red-500">Danger Zone</h3>
                       <div className="bg-[#222] border border-red-900/30 p-4">
                         <p className="text-beige mb-4">Permanently delete your account and all associated data.</p>
-                        <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-500/10">
+                        <Button
+                          variant="outline"
+                          className="border-red-500 text-red-500 hover:bg-red-500/10"
+                          onClick={confirmDeleteAccount}
+                        >
                           Delete Account
                         </Button>
                       </div>
@@ -964,6 +1915,414 @@ export default function AccountPage() {
             </Tabs>
           </motion.div>
         </div>
+
+        {/* Address Dialog */}
+        <Dialog open={addressDialog} onOpenChange={setAddressDialog}>
+          <DialogContent className="bg-[#111] border border-[#333] text-white">
+            <DialogHeader>
+              <DialogTitle>{addressForm.id ? "Edit Address" : "Add New Address"}</DialogTitle>
+            </DialogHeader>
+
+            {addressError && (
+              <Alert variant="destructive" className="bg-red-900/20 border-red-900 text-red-300 mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{addressError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="address-name">Address Name</Label>
+                <Input
+                  id="address-name"
+                  placeholder="Home, Work, etc."
+                  className="bg-[#222] border-[#333] text-white"
+                  value={addressForm.name}
+                  onChange={(e) => setAddressForm({ ...addressForm, name: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="street">Street Address</Label>
+                <Textarea
+                  id="street"
+                  placeholder="123 Main St, Apt 4B"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={addressForm.street}
+                  onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    placeholder="City"
+                    className="bg-[#222] border-[#333] text-white"
+                    value={addressForm.city}
+                    onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    placeholder="State"
+                    className="bg-[#222] border-[#333] text-white"
+                    value={addressForm.state}
+                    onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="zip">ZIP Code</Label>
+                  <Input
+                    id="zip"
+                    placeholder="ZIP Code"
+                    className="bg-[#222] border-[#333] text-white"
+                    value={addressForm.zip}
+                    onChange={(e) => setAddressForm({ ...addressForm, zip: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="country">Country</Label>
+                  <Select
+                    value={addressForm.country}
+                    onValueChange={(value) => setAddressForm({ ...addressForm, country: value })}
+                  >
+                    <SelectTrigger className="bg-[#222] border-[#333] text-white">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#222] border-[#333] text-white">
+                      <SelectItem value="United States">United States</SelectItem>
+                      <SelectItem value="Canada">Canada</SelectItem>
+                      <SelectItem value="Mexico">Mexico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="default-address"
+                  checked={addressForm.default}
+                  onCheckedChange={(checked) => setAddressForm({ ...addressForm, default: checked })}
+                />
+                <Label htmlFor="default-address">Set as default address</Label>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setAddressDialog(false)}>
+                  Cancel
+                </Button>
+                <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black" onClick={saveAddress}>
+                  {addressForm.id ? "Update" : "Add"} Address
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Payment Method Dialog */}
+        <Dialog open={paymentDialog} onOpenChange={setPaymentDialog}>
+          <DialogContent className="bg-[#111] border border-[#333] text-white">
+            <DialogHeader>
+              <DialogTitle>{paymentForm.id ? "Edit Payment Method" : "Add New Payment Method"}</DialogTitle>
+            </DialogHeader>
+
+            {paymentError && (
+              <Alert variant="destructive" className="bg-red-900/20 border-red-900 text-red-300 mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{paymentError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="card-type">Card Type</Label>
+                <Select
+                  value={paymentForm.type}
+                  onValueChange={(value) => setPaymentForm({ ...paymentForm, type: value })}
+                >
+                  <SelectTrigger className="bg-[#222] border-[#333] text-white">
+                    <SelectValue placeholder="Select card type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#222] border-[#333] text-white">
+                    <SelectItem value="visa">Visa</SelectItem>
+                    <SelectItem value="mastercard">Mastercard</SelectItem>
+                    <SelectItem value="amex">American Express</SelectItem>
+                    <SelectItem value="discover">Discover</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="card-number">Card Number</Label>
+                <Input
+                  id="card-number"
+                  placeholder="1234 5678 9012 3456"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={paymentForm.cardNumber}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, cardNumber: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="name-on-card">Name on Card</Label>
+                <Input
+                  id="name-on-card"
+                  placeholder="John Doe"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={paymentForm.nameOnCard}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, nameOnCard: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="exp-month">Exp Month</Label>
+                  <Select
+                    value={paymentForm.expMonth}
+                    onValueChange={(value) => setPaymentForm({ ...paymentForm, expMonth: value })}
+                  >
+                    <SelectTrigger className="bg-[#222] border-[#333] text-white">
+                      <SelectValue placeholder="MM" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#222] border-[#333] text-white">
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <SelectItem key={i + 1} value={String(i + 1).padStart(2, "0")}>
+                          {String(i + 1).padStart(2, "0")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="exp-year">Exp Year</Label>
+                  <Select
+                    value={paymentForm.expYear}
+                    onValueChange={(value) => setPaymentForm({ ...paymentForm, expYear: value })}
+                  >
+                    <SelectTrigger className="bg-[#222] border-[#333] text-white">
+                      <SelectValue placeholder="YYYY" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#222] border-[#333] text-white">
+                      {Array.from({ length: 10 }, (_, i) => (
+                        <SelectItem key={i} value={String(new Date().getFullYear() + i)}>
+                          {new Date().getFullYear() + i}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="cvv">CVV</Label>
+                  <Input
+                    id="cvv"
+                    placeholder="123"
+                    className="bg-[#222] border-[#333] text-white"
+                    value={paymentForm.cvv}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, cvv: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="default-payment"
+                  checked={paymentForm.default}
+                  onCheckedChange={(checked) => setPaymentForm({ ...paymentForm, default: checked })}
+                />
+                <Label htmlFor="default-payment">Set as default payment method</Label>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setPaymentDialog(false)}>
+                  Cancel
+                </Button>
+                <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black" onClick={savePaymentMethod}>
+                  {paymentForm.id ? "Update" : "Add"} Payment Method
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Profile Dialog */}
+        <Dialog open={profileDialog} onOpenChange={setProfileDialog}>
+          <DialogContent className="bg-[#111] border border-[#333] text-white">
+            <DialogHeader>
+              <DialogTitle>Edit Profile</DialogTitle>
+            </DialogHeader>
+
+            {profileError && (
+              <Alert variant="destructive" className="bg-red-900/20 border-red-900 text-red-300 mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{profileError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="first-name">First Name</Label>
+                  <Input
+                    id="first-name"
+                    placeholder="First Name"
+                    className="bg-[#222] border-[#333] text-white"
+                    value={profileForm.firstName}
+                    onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="last-name">Last Name</Label>
+                  <Input
+                    id="last-name"
+                    placeholder="Last Name"
+                    className="bg-[#222] border-[#333] text-white"
+                    value={profileForm.lastName}
+                    onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="email@example.com"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  placeholder="+1 (555) 123-4567"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={profileForm.phone}
+                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setProfileDialog(false)}>
+                  Cancel
+                </Button>
+                <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black" onClick={saveProfile}>
+                  Update Profile
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Password Dialog */}
+        <Dialog open={passwordDialog} onOpenChange={setPasswordDialog}>
+          <DialogContent className="bg-[#111] border border-[#333] text-white">
+            <DialogHeader>
+              <DialogTitle>Change Password</DialogTitle>
+            </DialogHeader>
+
+            {passwordError && (
+              <Alert variant="destructive" className="bg-red-900/20 border-red-900 text-red-300 mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{passwordError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="current-password">Current Password</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  placeholder="Enter current password"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Enter new password"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="Confirm new password"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setPasswordDialog(false)}>
+                  Cancel
+                </Button>
+                <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black" onClick={changePassword}>
+                  Change Password
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Account Dialog */}
+        <Dialog open={deleteAccountDialog} onOpenChange={setDeleteAccountDialog}>
+          <DialogContent className="bg-[#111] border border-[#333] text-white">
+            <DialogHeader>
+              <DialogTitle className="text-red-500">Delete Account</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <Alert variant="destructive" className="bg-red-900/20 border-red-900 text-red-300">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This action cannot be undone. This will permanently delete your account and remove all your data from
+                  our servers.
+                </AlertDescription>
+              </Alert>
+
+              <p className="text-beige">
+                Are you sure you want to delete your account? All your orders, wishlist, addresses, and other data will
+                be permanently removed.
+              </p>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setDeleteAccountDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={deleteAccount}
+                >
+                  Delete Account
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

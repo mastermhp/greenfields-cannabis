@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server"
-import { Database } from "@/lib/database"
-import { AuthToken, SessionManager } from "@/lib/auth"
+import { UserOperations } from "@/lib/database-operations"
+import jwt from "jsonwebtoken"
 
 export async function GET(request) {
   try {
     const authHeader = request.headers.get("authorization")
-    const sessionId = request.cookies.get("sessionId")?.value
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "No access token provided" }, { status: 401 })
@@ -16,23 +15,16 @@ export async function GET(request) {
     // Verify access token
     let tokenPayload
     try {
-      tokenPayload = AuthToken.verify(token)
+      tokenPayload = jwt.verify(token, process.env.JWT_SECRET)
     } catch (error) {
+      console.error("Token verification failed:", error)
       return NextResponse.json({ error: "Invalid access token" }, { status: 401 })
     }
 
-    // Verify session
-    if (sessionId) {
-      const session = SessionManager.getSession(sessionId)
-      if (!session || session.userId !== tokenPayload.userId) {
-        return NextResponse.json({ error: "Invalid session" }, { status: 401 })
-      }
-    }
-
     // Get user
-    const user = await Database.getUserById(tokenPayload.userId)
-    if (!user || !user.isActive) {
-      return NextResponse.json({ error: "User not found or inactive" }, { status: 401 })
+    const user = await UserOperations.getUserById(tokenPayload.userId)
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 })
     }
 
     // Remove password from response

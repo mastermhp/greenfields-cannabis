@@ -16,22 +16,56 @@ async function ensureInitialized() {
 // Verify admin authentication
 async function verifyAdmin(request) {
   try {
-    const token =
-      request.cookies.get("accessToken")?.value || request.headers.get("authorization")?.replace("Bearer ", "")
+    console.log("Verifying admin authentication...")
+
+    // Check for token in multiple places
+    let token = null
+
+    // 1. Check Authorization header
+    const authHeader = request.headers.get("authorization")
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.replace("Bearer ", "")
+      console.log("Token found in Authorization header")
+    }
+
+    // 2. Check cookies
+    if (!token) {
+      const cookieToken = request.cookies.get("accessToken")?.value
+      if (cookieToken) {
+        token = cookieToken
+        console.log("Token found in cookies")
+      }
+    }
 
     if (!token) {
+      console.log("No authentication token found")
       return { error: "No authentication token provided", status: 401 }
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    console.log("Token found, verifying...")
 
-    if (!decoded.isAdmin) {
+    // Verify the JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    console.log("Token decoded successfully:", { email: decoded.email, isAdmin: decoded.isAdmin })
+
+    // Check if user is admin
+    if (!decoded.isAdmin && decoded.role !== "admin") {
+      console.log("User is not admin:", { isAdmin: decoded.isAdmin, role: decoded.role })
       return { error: "Admin access required", status: 403 }
     }
 
+    console.log("Admin verification successful")
     return { user: decoded }
   } catch (error) {
-    return { error: "Invalid authentication token", status: 401 }
+    console.error("Authentication error:", error.message)
+
+    if (error.name === "TokenExpiredError") {
+      return { error: "Authentication token has expired", status: 401 }
+    } else if (error.name === "JsonWebTokenError") {
+      return { error: "Invalid authentication token", status: 401 }
+    } else {
+      return { error: "Authentication failed", status: 401 }
+    }
   }
 }
 
@@ -121,12 +155,12 @@ export async function POST(request) {
     console.log("Authentication successful for user:", authResult.user.email)
 
     const body = await request.json()
-    console.log("Creating product with data:", body)
+    console.log("Creating product with data:", JSON.stringify(body, null, 2))
 
     // Validate required fields
     const requiredFields = ["name", "description", "category", "price", "stock"]
     for (const field of requiredFields) {
-      if (!body[field]) {
+      if (!body[field] && body[field] !== 0) {
         console.log(`Missing required field: ${field}`)
         return NextResponse.json(
           {
@@ -183,7 +217,7 @@ export async function POST(request) {
       genetics: body.genetics || "",
     }
 
-    console.log("Processed product data:", productData)
+    console.log("Processed product data:", JSON.stringify(productData, null, 2))
 
     const product = await ProductOperations.createProduct(productData)
 
@@ -204,7 +238,7 @@ export async function POST(request) {
         success: false,
         error: "Failed to create product",
         message: error.message,
-        details: error.stack,
+        details: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
       { status: 500 },
     )

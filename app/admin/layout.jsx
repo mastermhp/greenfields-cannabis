@@ -24,22 +24,23 @@ import { useAuth } from "@/hooks/use-auth"
 // This is a standalone layout for admin that doesn't include the main site's navbar/footer
 const AdminLayout = ({ children }) => {
   const router = useRouter()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, logout, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifications, setNotifications] = useState(3)
 
   useEffect(() => {
-    // Check if user is admin (in real app, check user role)
-    if (!isAuthenticated) {
+    // Only redirect if we're done loading and not authenticated
+    if (!loading && !isAuthenticated) {
       router.push("/login?redirect=/admin")
       return
     }
 
-    if (!user?.isAdmin) {
+    // Check if user is admin (check both role and isAdmin properties)
+    if (!loading && isAuthenticated && user && !user.isAdmin && user.role !== "admin") {
       router.push("/")
       return
     }
-  }, [isAuthenticated, user, router])
+  }, [isAuthenticated, user, router, loading])
 
   const sidebarItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -59,7 +60,21 @@ const AdminLayout = ({ children }) => {
     router.push("/")
   }
 
-  if (!isAuthenticated || !user?.isAdmin) {
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold gold-text">Loading Admin Panel</h2>
+          <p className="text-beige">Verifying admin access...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading if not authenticated or not admin
+  if (!isAuthenticated || !user || (!user.isAdmin && user.role !== "admin")) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -121,7 +136,7 @@ const AdminLayout = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className="lg:ml-64 mt-24">
+      <div className="lg:ml-64">
         {/* Top bar */}
         <header className="bg-[#111] border-b border-[#333] px-6 py-4">
           <div className="flex items-center justify-between">

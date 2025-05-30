@@ -15,13 +15,14 @@ export async function POST(request) {
     try {
       tokenPayload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
     } catch (error) {
+      console.error("Refresh token verification failed:", error)
       return NextResponse.json({ error: "Invalid refresh token" }, { status: 401 })
     }
 
     // Get user
     const user = await UserOperations.getUserById(tokenPayload.userId)
-    if (!user || !user.isActive) {
-      return NextResponse.json({ error: "User not found or inactive" }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 })
     }
 
     // Generate new access token

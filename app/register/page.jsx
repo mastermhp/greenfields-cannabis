@@ -33,6 +33,7 @@ export default function RegisterPage() {
 
   // Get referral code from URL if present
   const referralCode = searchParams.get("ref")
+  const redirectTo = searchParams.get("redirect") || "/"
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -118,15 +119,21 @@ export default function RegisterPage() {
       const result = await register(fullName, formData.email, formData.password, formData.confirmPassword)
 
       if (result.success) {
+        // Store redirect path if present
+        if (redirectTo && redirectTo !== "/") {
+          localStorage.setItem("redirectAfterLogin", redirectTo)
+        }
+
         // Registration successful, redirect to login page
-        toast({
-          title: "Account Created!",
-          description: "Your account has been created successfully. Please log in.",
-        })
         router.push("/login")
       }
     } catch (error) {
       console.error("Registration error:", error)
+      toast({
+        title: "Registration Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
