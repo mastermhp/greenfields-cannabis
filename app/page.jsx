@@ -135,7 +135,7 @@ export default function Home() {
           <div className="flex flex-wrap justify-center gap-4 mb-10">
             <Button
               variant={activeCategory === "all" ? "default" : "outline"}
-              className={activeCategory === "all" ? "bg-[#D4AF37] text-black" : "border-[#D4AF37] text-[#D4AF37]"}
+              className={activeCategory === "all" ? "bg-[#D4AF37] text-white hover:text-[#D4AF37] hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000" : "border-2 border-[#D4AF37] text-[#D4AF37]"}
               onClick={() => setActiveCategory("all")}
             >
               All
@@ -145,7 +145,7 @@ export default function Home() {
                 key={category.id}
                 variant={activeCategory === category.id ? "default" : "outline"}
                 className={
-                  activeCategory === category.id ? "bg-[#D4AF37] text-black" : "border-[#D4AF37] text-[#D4AF37]"
+                  activeCategory === category.id ? "bg-[#D4AF37] text-black " : "border-2 border-[#D4AF37] text-[#D4AF37] hover:text-white hover:border-2 hover:border-white cursor-pointer transition-all duration-1000"
                 }
                 onClick={() => setActiveCategory(category.id)}
               >
@@ -189,14 +189,14 @@ export default function Home() {
           ) : (
             <div className="text-center py-16">
               <p className="text-beige text-lg mb-4">No products available in this category</p>
-              <Button asChild className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+              {/* <Button asChild className="bg-[#D4AF37] hover:bg-black text-black hover:text-[#D4AF37] hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000">
                 <Link href="/products">View All Products</Link>
-              </Button>
+              </Button> */}
             </div>
           )}
 
           <div className="text-center mt-16">
-            <Button asChild className="bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none">
+            <Button asChild className="bg-[#D4AF37] text-black text-lg py-6 px-10 rounded-none hover:text-[#D4AF37] hover:bg-black hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000">
               <Link href="/products">
                 View All Products <ChevronRight className="ml-2" />
               </Link>

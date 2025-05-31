@@ -163,7 +163,7 @@ export default function CartPage() {
                         clearCart();
                       }
                     }}
-                    className="text-[#D4AF37] hover:underline text-sm flex items-center"
+                    className="text-[#D4AF37] hover:underline text-sm flex items-center cursor-pointer"
                   >
                     <Trash2 size={16} className="mr-1" />
                     Clear Cart
@@ -239,7 +239,7 @@ export default function CartPage() {
 
                         <button
                           onClick={() => handleRemoveItem(item.id)}
-                          className="text-gray-400 hover:text-[#D4AF37]"
+                          className="text-[#D4AF37] hover:text-[#D4AF37] flex items-center justify-center h-10 w-10 border-2 border-[#D4AF37] rounded-full hover:bg-[#D4AF37]/40 cursor-pointer transition-all duration-1000"
                           aria-label="Remove item"
                         >
                           <Trash2 size={18} />
@@ -253,7 +253,7 @@ export default function CartPage() {
               <div className="p-6 border-t border-[#333] flex justify-between">
                 <Link
                   href="/products"
-                  className="text-[#D4AF37] hover:underline flex items-center"
+                  className="text-[#D4AF37] hover:underline flex items-center cursor-pointer"
                 >
                   <ArrowRight className="mr-2 rotate-180" size={16} />
                   Continue Shopping
@@ -338,7 +338,7 @@ export default function CartPage() {
                   <Button
                     onClick={handleApplyPromo}
                     disabled={isApplyingPromo}
-                    className="ml-2 bg-[#D4AF37] hover:bg-[#B8860B] text-black whitespace-nowrap"
+                    className="ml-2 bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] text-black whitespace-nowrap cursor-pointer transition-all duration-1000"
                   >
                     {isApplyingPromo ? "Applying..." : "Apply"}
                   </Button>
@@ -351,7 +351,7 @@ export default function CartPage() {
               <Button
                 onClick={handleCheckout}
                 disabled={loading}
-                className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 rounded-none mb-6"
+                className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all duration-1000 cursor-pointer text-black text-lg py-6 rounded-none mb-6"
               >
                 {loading ? (
                   <span className="flex items-center justify-center">

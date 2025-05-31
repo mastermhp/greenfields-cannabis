@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import React from "react"
+
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { MapPin, Phone, Mail, Clock, Send } from "lucide-react"
@@ -18,7 +20,34 @@ export default function ContactPage() {
     subject: "",
     message: "",
   })
-  const [loading, setLoading] = useState(false)
+  const [formLoading, setFormLoading] = useState(false)
+
+  const [content, setContent] = useState({
+    heroTitle: "Contact Us",
+    heroSubtitle: "We're here to help with any questions or concerns about our premium cannabis products",
+    address: "123 Cannabis Boulevard\nLos Angeles, CA 90210",
+    phone: "+1 (800) 420-6969",
+    email: "info@greenfields.com",
+    businessHours: "Monday - Friday: 9:00 AM - 8:00 PM\nSaturday - Sunday: 10:00 AM - 6:00 PM",
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const response = await fetch("/api/content-management?page=contact")
+        const data = await response.json()
+        if (data.success && data.data) {
+          setContent((prev) => ({ ...prev, ...data.data }))
+        }
+      } catch (error) {
+        console.error("Error fetching contact content:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchContent()
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -27,11 +56,11 @@ export default function ContactPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    setLoading(true)
+    setFormLoading(true)
 
     // Simulate form submission
     setTimeout(() => {
-      setLoading(false)
+      setFormLoading(false)
       toast({
         title: "Message Sent",
         description: "We've received your message and will get back to you soon.",
@@ -62,7 +91,7 @@ export default function ContactPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            Contact Us
+            {content.heroTitle}
           </motion.h1>
 
           <motion.p
@@ -71,7 +100,7 @@ export default function ContactPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            We're here to help with any questions or concerns about our premium cannabis products
+            {content.heroSubtitle}
           </motion.p>
         </div>
       </section>
@@ -168,10 +197,10 @@ export default function ContactPage() {
                 <div>
                   <Button
                     type="submit"
-                    disabled={loading}
+                    disabled={formLoading}
                     className="bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none w-full md:w-auto"
                   >
-                    {loading ? (
+                    {formLoading ? (
                       <span className="flex items-center">
                         <svg
                           className="animate-spin -ml-1 mr-3 h-5 w-5 text-black"
@@ -223,9 +252,12 @@ export default function ContactPage() {
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Our Location</h3>
                     <p className="text-beige">
-                      123 Cannabis Boulevard
-                      <br />
-                      Los Angeles, CA 90210
+                      {content.address.split("\n").map((line, index) => (
+                        <React.Fragment key={index}>
+                          {line}
+                          <br />
+                        </React.Fragment>
+                      ))}
                     </p>
                   </div>
                 </div>
@@ -236,8 +268,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Phone Number</h3>
-                    <p className="text-beige">+1 (800) 420-6969</p>
-                    <p className="text-beige">+1 (213) 555-1234</p>
+                    <p className="text-beige">{content.phone}</p>
                   </div>
                 </div>
 
@@ -247,8 +278,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Email Address</h3>
-                    <p className="text-beige">info@greenfields.com</p>
-                    <p className="text-beige">support@greenfields.com</p>
+                    <p className="text-beige">{content.email}</p>
                   </div>
                 </div>
 
@@ -258,8 +288,14 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Business Hours</h3>
-                    <p className="text-beige">Monday - Friday: 9:00 AM - 8:00 PM</p>
-                    <p className="text-beige">Saturday - Sunday: 10:00 AM - 6:00 PM</p>
+                    <p className="text-beige">
+                      {content.businessHours.split("\n").map((line, index) => (
+                        <React.Fragment key={index}>
+                          {line}
+                          <br />
+                        </React.Fragment>
+                      ))}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -291,9 +327,12 @@ export default function ContactPage() {
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 p-6 border border-[#D4AF37]">
               <h3 className="text-xl font-bold mb-2 gold-text">Greenfields Headquarters</h3>
               <p className="text-beige">
-                123 Cannabis Boulevard
-                <br />
-                Los Angeles, CA 90210
+                {content.address.split("\n").map((line, index) => (
+                  <React.Fragment key={index}>
+                    {line}
+                    <br />
+                  </React.Fragment>
+                ))}
               </p>
             </div>
           </div>

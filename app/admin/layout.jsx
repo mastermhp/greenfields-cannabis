@@ -9,7 +9,6 @@ import {
   Users,
   ShoppingCart,
   Settings,
-  FileText,
   Gift,
   Truck,
   BarChart3,
@@ -17,6 +16,8 @@ import {
   X,
   LogOut,
   Bell,
+  FileText, Receipt, MessageSquare,
+  ChartBar
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
@@ -45,13 +46,27 @@ const AdminLayout = ({ children }) => {
   const sidebarItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Products", href: "/admin/products", icon: Package },
-    { name: "Categories", href: "/admin/categories", icon: Package },
+    { name: "Categories", href: "/admin/categories", icon: ChartBar },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
     { name: "Loyalty", href: "/admin/loyalty", icon: Gift },
-    { name: "Shipping", href: "/admin/shipping", icon: Truck },
-    { name: "Content", href: "/admin/content", icon: FileText },
+    // { name: "Shipping", href: "/admin/shipping", icon: Truck },
+    {
+      name: "Content ",
+      href: "/admin/content-management",
+      icon: FileText,
+    },
+    {
+      name: "Invoices",
+      href: "/admin/invoices",
+      icon: Receipt,
+    },
+    // {
+    //   name: "SMS Notifications",
+    //   href: "/admin/sms-notifications",
+    //   icon: MessageSquare,
+    // },
     { name: "Settings", href: "/admin/settings", icon: Settings },
   ]
 

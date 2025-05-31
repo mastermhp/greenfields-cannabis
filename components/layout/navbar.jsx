@@ -22,6 +22,7 @@ import {
   Gift,
   LogOut,
   Settings,
+  ShieldUser,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -73,10 +74,10 @@ const NavLink = ({ href, name, isActive, icon: Icon }) => {
       <div className="flex items-center space-x-1.5 px-1 py-1">
         <Icon
           size={18}
-          className={`transition-all duration-300 ${isActive ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"}`}
+          className={`transition-all duration-1000 ${isActive ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"}`}
         />
         <span
-          className={`relative font-medium transition-all duration-300 ${isActive ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"}`}
+          className={`relative font-medium transition-all duration-1000 ${isActive ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"}`}
         >
           {name}
         </span>
@@ -94,7 +95,7 @@ const NavLink = ({ href, name, isActive, icon: Icon }) => {
 
       {/* Glow effect on hover */}
       <motion.div
-        className="absolute inset-0 rounded-md bg-[#D4AF37]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        className="absolute inset-0 rounded-md bg-[#D4AF37]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"
         whileHover={{ opacity: 1 }}
       />
     </Link>
@@ -133,7 +134,7 @@ const DropdownMenu = ({ items, isOpen, onClose }) => {
               >
                 <Link
                   href={item.href}
-                  className="flex items-center space-x-2 px-4 py-3 text-white hover:bg-[#D4AF37]/10 hover:text-[#D4AF37] transition-all duration-300"
+                  className="flex items-center space-x-2 px-4 py-3 text-white hover:bg-[#D4AF37]/10 hover:text-[#D4AF37] transition-all duration-1000"
                   onClick={onClose}
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]/70" />
@@ -344,7 +345,7 @@ const Navbar = () => {
       <motion.header
         initial={false}
         animate={controls}
-        className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-1000"
       >
         {/* Gradient border bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/50 to-transparent" />
@@ -352,12 +353,12 @@ const Navbar = () => {
         {/* Particle effect background */}
         <ParticleEffect />
 
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-full">
+        <div className="container mx-auto px-4 ">
+          <div className="flex items-center justify-between h-full ">
             {/* Logo with animation */}
-            <Link href="/" className="relative z-50">
+            <Link href="/" className="relative z-50 cursor-pointer">
               <motion.div
-                className="flex items-center"
+                className="flex items-center "
                 variants={logoVariants}
                 initial="hidden"
                 animate="visible"
@@ -384,7 +385,7 @@ const Navbar = () => {
             {/* Desktop Navigation with enhanced animations */}
             {!isMobile && (
               <motion.nav
-                className="hidden md:flex items-center space-x-6"
+                className="hidden md:flex items-center space-x-6  p-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
@@ -403,12 +404,12 @@ const Navbar = () => {
                         >
                           <link.icon
                             size={18}
-                            className={`transition-all duration-300 ${
+                            className={`transition-all duration-1000 ${
                               activeDropdown === index ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"
                             }`}
                           />
                           <span
-                            className={`relative font-medium transition-all duration-300 ${
+                            className={`relative font-medium transition-all duration-1000 ${
                               activeDropdown === index ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"
                             }`}
                           >
@@ -420,7 +421,7 @@ const Navbar = () => {
                           >
                             <ChevronDown
                               size={16}
-                              className={`transition-all duration-300 ${
+                              className={`transition-all duration-1000 ${
                                 activeDropdown === index ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"
                               }`}
                             />
@@ -443,7 +444,7 @@ const Navbar = () => {
 
             {/* Action Buttons with enhanced animations */}
             <motion.div
-              className="flex items-center space-x-3 md:space-x-5"
+              className="flex items-center space-x-3 md:space-x-5   p-6"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
@@ -455,11 +456,11 @@ const Navbar = () => {
                 whileHover="hover"
                 whileTap="tap"
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className="relative p-2"
+                className="relative cursor-pointer"
                 aria-label="Search"
               >
-                <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <Search size={20} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
+                <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                <Search size={24} className="text-white hover:text-[#D4AF37] transition-colors duration-1000" />
                 {isSearchOpen && (
                   <motion.div
                     className="absolute -bottom-1 left-1/2 w-1 h-1 bg-[#D4AF37] rounded-full"
@@ -476,12 +477,12 @@ const Navbar = () => {
                 whileTap="tap"
                 className="relative hidden sm:block"
               >
-                <Link href={getAccountLink()} className="relative p-2" aria-label="Account">
-                  <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                <Link href={getAccountLink()} className="relative cursor-pointer" aria-label="Account">
+                  <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/40 opacity-0 hover:opacity-100 transition-opacity duration-1000" />
                   {user?.role === "admin" ? (
-                    <Settings size={20} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
+                    <ShieldUser size={24} className="bg-[#D4AF37]/90 h-full w-full rounded-full text-white hover:text-[#D4AF37] transition-colors duration-1000" />
                   ) : (
-                    <User size={20} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
+                    <User size={24} className="text-white hover:text-[#D4AF37] transition-all duration-700" />
                   )}
                   {(pathname === "/account" || pathname === "/admin" || pathname === "/login") && (
                     <motion.div
@@ -500,9 +501,9 @@ const Navbar = () => {
                 whileTap="tap"
                 className="relative hidden sm:block"
               >
-                <Link href="/loyalty" className="relative p-2" aria-label="Loyalty">
-                  <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
-                  <Sparkles size={20} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
+                <Link href="/loyalty" className="relative cursor-pointer" aria-label="Loyalty">
+                  <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/40 opacity-0 hover:opacity-100 transition-opacity duration-1000" />
+                  <Sparkles size={24} className="text-white hover:text-[#D4AF37] transition-colors duration-1000" />
                   {pathname === "/loyalty" && (
                     <motion.div
                       className="absolute -bottom-1 left-1/2 w-1 h-1 bg-[#D4AF37] rounded-full"
@@ -518,11 +519,11 @@ const Navbar = () => {
                 initial="initial"
                 whileHover="hover"
                 whileTap="tap"
-                className="relative"
+                className="relative cursor-pointer "
               >
-                <Link href="/cart" className="relative p-2" aria-label="Cart">
-                  <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
-                  <ShoppingBag size={20} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
+                <Link href="/cart" className="relative cursor-pointer " aria-label="Cart">
+                  <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/40 opacity-0 hover:opacity-100 transition-opacity duration-1000" />
+                  <ShoppingBag size={24} className="text-white hover:text-[#D4AF37] transition-colors duration-1000" />
                   {cartItems.length > 0 && <CartBadge count={cartItems.length} />}
                   {pathname === "/cart" && (
                     <motion.div
@@ -547,7 +548,7 @@ const Navbar = () => {
                   className="relative z-50 p-2 mobile-menu-toggle"
                   aria-label={isMenuOpen ? "Close menu" : "Open menu"}
                 >
-                  <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/10 opacity-0 hover:opacity-100 transition-opacity duration-1000" />
                   <AnimatePresence mode="wait">
                     {isMenuOpen ? (
                       <motion.div
@@ -567,7 +568,7 @@ const Navbar = () => {
                         exit={{ rotate: -90, opacity: 0 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <Menu size={24} className="text-white hover:text-[#D4AF37] transition-colors duration-300" />
+                        <Menu size={24} className="text-white hover:text-[#D4AF37] transition-colors duration-1000" />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -601,7 +602,7 @@ const Navbar = () => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search for products..."
-                      className="pl-12 pr-32 py-6 bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-md h-14 text-white placeholder:text-gray-400 focus:ring-[#D4AF37]/30 focus:ring-2 transition-all duration-300"
+                      className="pl-12 pr-32 py-6 bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-md h-14 text-white placeholder:text-gray-400 focus:ring-[#D4AF37]/30 focus:ring-2 transition-all duration-1000"
                     />
                     <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-2">
                       <Button
@@ -614,7 +615,7 @@ const Navbar = () => {
                       </Button>
                       <Button
                         type="submit"
-                        className="bg-gradient-to-r from-[#D4AF37] to-[#B8860B] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-medium px-4 rounded-md transition-all duration-300"
+                        className="bg-gradient-to-r from-[#D4AF37] to-[#B8860B] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-medium px-4 rounded-md transition-all duration-1000"
                       >
                         Search
                       </Button>
@@ -666,7 +667,7 @@ const Navbar = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-md z-40 mobile-menu-container"
+            className="fixed inset-0 /95 backdrop-blur-md z-40 mobile-menu-container"
             style={{ paddingTop: "90px" }}
           >
             {/* Animated background elements */}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState, useEffect } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -8,10 +8,57 @@ import { ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import TeamMember from "@/components/about/team-member"
 import Timeline from "@/components/about/timeline"
-import { FaNetworkWired, FaBalanceScale } from "react-icons/fa";
-
+import { FaNetworkWired, FaBalanceScale } from "react-icons/fa"
 
 export default function AboutPage() {
+  const [content, setContent] = useState({
+    heroTitle: "Our Story",
+    heroSubtitle: "Redefining the cannabis experience by blending luxury, quality, and authenticity",
+    missionTitle: "Our Mission",
+    missionText: "At Greenfields Group Inc., we are redefining the cannabis experience...",
+    signatureTitle: "Our Signature Product Line",
+    signatureSubtitle:
+      "With sophisticated and elegant names, these strains embody the essence of Greenfields: quality, refinement, and purpose",
+    beyondTitle: "Beyond the Product",
+    beyondSubtitle: "A Lasting Connection",
+    beyondText1:
+      "At Greenfields, our mission extends far beyond delivering premium products. Our greatest priority is building lasting relationships rooted in trust, integrity, and genuine connection.",
+    beyondText2:
+      "We believe that cannabis is more than a product—it's an experience, a lifestyle, and a bridge that connects us to our customers in meaningful ways. By offering personalized service, unparalleled quality, and an unwavering dedication to customer satisfaction, we cultivate an experience that goes beyond a single purchase.",
+    beyondText3:
+      "From the moment our customers engage with us, they become part of the Greenfields family—a relationship built on mutual respect, authenticity, and a shared passion for the finest cannabis offerings.",
+    promiseTitle: "Our Promise",
+    promiseText1:
+      "Greenfields is not just a brand, it's a promise. A promise of luxury, quality, and a new standard in cannabis, where every interaction reflects our commitment to excellence.",
+    promiseText2:
+      "We are here to set the bar higher, ensuring that every experience with Greenfields leaves a lasting impression of trust, care, and uncompromising quality.",
+    teamTitle: "Meet Our Team",
+    teamSubtitle: "The passionate experts behind Greenfields' premium cannabis products",
+    journeyTitle: "Our Journey",
+    journeySubtitle: "The evolution of Greenfields from a small startup to an industry leader",
+    experienceTitle: "Experience Greenfields",
+    experienceSubtitle:
+      "Discover our premium selection of cannabis products, crafted with care and expertise for an unmatched experience",
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const response = await fetch("/api/content-management?page=about")
+        const data = await response.json()
+        if (data.success && data.data) {
+          setContent((prev) => ({ ...prev, ...data.data }))
+        }
+      } catch (error) {
+        console.error("Error fetching about content:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchContent()
+  }, [])
+
   const ref = useRef(null)
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -86,13 +133,7 @@ export default function AboutPage() {
       {/* Hero Section */}
       <section ref={ref} className="relative h-[70vh] flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" style={{ y, opacity }}>
-          <Image
-            src="/about.jpeg"
-            alt="About Greenfields"
-            fill
-            className="object-cover"
-            priority
-          />
+          <Image src="/about.jpeg" alt="About Greenfields" fill className="object-cover" priority />
           <div className="absolute inset-0 bg-black/60" />
         </motion.div>
 
@@ -103,7 +144,7 @@ export default function AboutPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            Our Story
+            {content.heroTitle || "Our Story"}
           </motion.h1>
 
           <motion.p
@@ -112,7 +153,7 @@ export default function AboutPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Redefining the cannabis experience by blending luxury, quality, and authenticity
+            {content.heroSubtitle || "Redefining the cannabis experience by blending luxury, quality, and authenticity"}
           </motion.p>
         </div>
       </section>
@@ -127,11 +168,10 @@ export default function AboutPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 gold-text">Our Mission</h2>
+              <h2 className="text-3xl md:text-5xl font-bold mb-6 gold-text">{content.missionTitle || "Our Mission"}</h2>
               <p className="text-beige text-lg mb-6">
-                At Greenfields Group Inc., we are redefining the cannabis experience by blending luxury, quality, and
-                authenticity. Our journey began in July 2021 with a bold mission—to build a state-of-the-art facility
-                from the ground up.
+                {content.missionText ||
+                  "At Greenfields Group Inc., we are redefining the cannabis experience by blending luxury, quality, and authenticity. Our journey began in July 2021 with a bold mission—to build a state-of-the-art facility from the ground up."}
               </p>
               <p className="text-beige text-lg mb-6">
                 After nearly two years of dedication, innovation, and perseverance, we completed the construction
@@ -157,12 +197,7 @@ export default function AboutPage() {
               </div>
               <div className="absolute -bottom-10 -left-10 w-2/3 aspect-square bg-[#111] p-8 border border-[#D4AF37]">
                 <div className="relative h-full w-full overflow-hidden">
-                  <Image
-                    src="/plant.jpeg"
-                    alt="Cannabis Plant"
-                    fill
-                    className="object-cover"
-                  />
+                  <Image src="/plant.jpeg" alt="Cannabis Plant" fill className="object-cover" />
                 </div>
               </div>
             </motion.div>
@@ -180,10 +215,12 @@ export default function AboutPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Our Signature Product Line</h2>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">
+              {content.signatureTitle || "Our Signature Product Line"}
+            </h2>
             <p className="text-beige max-w-2xl mx-auto">
-              With sophisticated and elegant names, these strains embody the essence of Greenfields: quality,
-              refinement, and purpose
+              {content.signatureSubtitle ||
+                "With sophisticated and elegant names, these strains embody the essence of Greenfields: quality, refinement, and purpose"}
             </p>
           </motion.div>
 
@@ -211,7 +248,6 @@ export default function AboutPage() {
                 icon: "🌙",
               },
             ].map((product, index) => (
-              
               <motion.div
                 key={index}
                 className="bg-black p-8 border border-[#333] hover:border-[#D4AF37] transition-all duration-300"
@@ -221,9 +257,7 @@ export default function AboutPage() {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 whileHover={{ y: -10, boxShadow: "0 10px 30px rgba(212, 175, 55, 0.2)" }}
               >
-                <div className="text-4xl mb-4">
-                  {product.icon}
-                </div>
+                <div className="text-4xl mb-4">{product.icon}</div>
                 <h3 className="text-2xl font-bold mb-1 gold-text">{product.title}</h3>
                 <h4 className="text-lg mb-4 text-[#D4AF37]/70">{product.subtitle}</h4>
                 <p className="text-beige">{product.description}</p>
@@ -242,8 +276,10 @@ export default function AboutPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Beyond the Product</h2>
-            <p className="text-beige max-w-2xl mx-auto">A Lasting Connection</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">
+              {content.beyondTitle || "Beyond the Product"}
+            </h2>
+            <p className="text-beige max-w-2xl mx-auto">{content.beyondSubtitle || "A Lasting Connection"}</p>
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -254,18 +290,16 @@ export default function AboutPage() {
               transition={{ duration: 0.8 }}
             >
               <p className="text-beige text-lg mb-6">
-                At Greenfields, our mission extends far beyond delivering premium products. Our greatest priority is
-                building lasting relationships rooted in trust, integrity, and genuine connection.
+                {content.beyondText1 ||
+                  "At Greenfields, our mission extends far beyond delivering premium products. Our greatest priority is building lasting relationships rooted in trust, integrity, and genuine connection."}
               </p>
               <p className="text-beige text-lg mb-6">
-                We believe that cannabis is more than a product—it's an experience, a lifestyle, and a bridge that
-                connects us to our customers in meaningful ways. By offering personalized service, unparalleled quality,
-                and an unwavering dedication to customer satisfaction, we cultivate an experience that goes beyond a
-                single purchase.
+                {content.beyondText2 ||
+                  "We believe that cannabis is more than a product—it's an experience, a lifestyle, and a bridge that connects us to our customers in meaningful ways. By offering personalized service, unparalleled quality, and an unwavering dedication to customer satisfaction, we cultivate an experience that goes beyond a single purchase."}
               </p>
               <p className="text-beige text-lg">
-                From the moment our customers engage with us, they become part of the Greenfields family—a relationship
-                built on mutual respect, authenticity, and a shared passion for the finest cannabis offerings.
+                {content.beyondText3 ||
+                  "From the moment our customers engage with us, they become part of the Greenfields family—a relationship built on mutual respect, authenticity, and a shared passion for the finest cannabis offerings."}
               </p>
             </motion.div>
 
@@ -277,14 +311,14 @@ export default function AboutPage() {
               className="relative"
             >
               <div className="bg-[#111] p-8 border border-[#D4AF37] gold-glow">
-                <h3 className="text-2xl font-bold mb-4 gold-text">Our Promise</h3>
+                <h3 className="text-2xl font-bold mb-4 gold-text">{content.promiseTitle || "Our Promise"}</h3>
                 <p className="text-beige text-lg mb-6">
-                  Greenfields is not just a brand, it's a promise. A promise of luxury, quality, and a new standard in
-                  cannabis, where every interaction reflects our commitment to excellence.
+                  {content.promiseText1 ||
+                    "Greenfields is not just a brand, it's a promise. A promise of luxury, quality, and a new standard in cannabis, where every interaction reflects our commitment to excellence."}
                 </p>
                 <p className="text-beige text-lg">
-                  We are here to set the bar higher, ensuring that every experience with Greenfields leaves a lasting
-                  impression of trust, care, and uncompromising quality.
+                  {content.promiseText2 ||
+                    "We are here to set the bar higher, ensuring that every experience with Greenfields leaves a lasting impression of trust, care, and uncompromising quality."}
                 </p>
               </div>
             </motion.div>
@@ -302,9 +336,9 @@ export default function AboutPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Meet Our Team</h2>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">{content.teamTitle || "Meet Our Team"}</h2>
             <p className="text-beige max-w-2xl mx-auto">
-              The passionate experts behind Greenfields' premium cannabis products
+              {content.teamSubtitle || "The passionate experts behind Greenfields' premium cannabis products"}
             </p>
           </motion.div>
 
@@ -326,9 +360,9 @@ export default function AboutPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Our Journey</h2>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">{content.journeyTitle || "Our Journey"}</h2>
             <p className="text-beige max-w-2xl mx-auto">
-              The evolution of Greenfields from a small startup to an industry leader
+              {content.journeySubtitle || "The evolution of Greenfields from a small startup to an industry leader"}
             </p>
           </motion.div>
 
@@ -351,10 +385,12 @@ export default function AboutPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold mb-4 gold-text">Experience Greenfields</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 gold-text">
+                {content.experienceTitle || "Experience Greenfields"}
+              </h2>
               <p className="text-beige max-w-2xl mx-auto">
-                Discover our premium selection of cannabis products, crafted with care and expertise for an unmatched
-                experience
+                {content.experienceSubtitle ||
+                  "Discover our premium selection of cannabis products, crafted with care and expertise for an unmatched experience"}
               </p>
             </motion.div>
 

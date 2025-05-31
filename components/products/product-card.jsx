@@ -104,7 +104,7 @@ const ProductCard = ({ product }) => {
           <Button
             onClick={handleAddToCart}
             disabled={!product.inStock}
-            className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+            className="w-full bg-[#D4AF37] hover:bg-[#B8860B]/10 text-black hover:text-[#D4AF37] hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000"
           >
             <ShoppingCart size={16} className="mr-2" />
             Add to Cart

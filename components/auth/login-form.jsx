@@ -166,7 +166,7 @@ export default function LoginForm() {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 rounded-none"
+          className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all duration-1000 cursor-pointer text-black text-lg py-6 rounded-none"
         >
           {loading ? (
             <span className="flex items-center justify-center">
@@ -195,7 +195,7 @@ export default function LoginForm() {
             Don&apos;t have an account?{" "}
             <Link
               href={`/register${referralCode ? `?ref=${referralCode}` : ""}${redirectTo !== "/" ? `${referralCode ? "&" : "?"}redirect=${redirectTo}` : ""}`}
-              className="text-[#D4AF37] hover:underline"
+              className="text-[#D4AF37] hover:underline cursor-pointer transition-all duration-1000"
             >
               Create Account
             </Link>

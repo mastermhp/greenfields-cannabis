@@ -54,7 +54,7 @@ const CategorySlider = ({ categories }) => {
       {canScrollLeft && (
         <button
           onClick={scrollLeft}
-          className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-black/70 hover:bg-[#D4AF37] text-white hover:text-black w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+          className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-black/70 hover:bg-[#D4AF37] text-white hover:text-black w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-1000 cursor-pointer"
           aria-label="Scroll left"
         >
           <ChevronLeft size={24} />
@@ -64,7 +64,7 @@ const CategorySlider = ({ categories }) => {
       {canScrollRight && (
         <button
           onClick={scrollRight}
-          className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-black/70 hover:bg-[#D4AF37] text-white hover:text-black w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+          className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-black/70 hover:bg-[#D4AF37] text-white hover:text-black w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-1000 cursor-pointer"
           aria-label="Scroll right"
         >
           <ChevronRight size={24} />
@@ -94,11 +94,11 @@ const CategorySlider = ({ categories }) => {
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-300"></div>
+                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-1000 cursor-pointer duration-300"></div>
                 </div>
 
                 <div className="p-4 text-center">
-                  <h3 className="text-xl font-bold mb-2 group-hover:text-[#D4AF37] transition-colors">
+                  <h3 className="text-xl font-bold mb-2 group-hover:text-[#D4AF37] transition-colors duration-1000 cursor-pointer">
                     {category.name}
                   </h3>
                   <p className="text-beige text-sm">{category.description}</p>

@@ -21,6 +21,7 @@ import {
   Info,
   AlertCircle,
   CheckCircle2,
+  FileText,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -172,7 +173,7 @@ const LoginRequired = () => {
                   localStorage.setItem("redirectAfterLogin", "/checkout")
                   router.push("/login")
                 }}
-                className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-3"
+                className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all duration-1000 cursor-pointer text-black text-lg py-3"
               >
                 Sign In to Continue
               </Button>
@@ -183,7 +184,7 @@ const LoginRequired = () => {
                   router.push("/register")
                 }}
                 variant="outline"
-                className="w-full border-[#333] text-white hover:bg-[#222] hover:text-white text-lg py-3"
+                className="w-full hover:bg-[#D4AF37]/20 border border-[#D4AF37] text-[#D4AF37] transition-all duration-1000 cursor-pointer hover:text-white text-lg py-3"
               >
                 Create New Account
               </Button>
@@ -211,6 +212,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(1)
   const [loadingPayment, setLoadingPayment] = useState(false)
   const [clientSecret, setClientSecret] = useState("")
+  const [orderCompleted, setOrderCompleted] = useState(false)
 
   // Form states
   const [shippingInfo, setShippingInfo] = useState({
@@ -224,6 +226,7 @@ export default function CheckoutPage() {
     state: "",
     zipCode: "",
     country: "United States",
+    driverLicense: null,
   })
 
   const [shippingMethod, setShippingMethod] = useState("standard")
@@ -253,13 +256,51 @@ export default function CheckoutPage() {
     setShippingInfo((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleDriverLicenseUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Driver license file must be less than 5MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"]
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a JPEG, PNG, or PDF file",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setShippingInfo((prev) => ({ ...prev, driverLicense: file }))
+  }
+
   const validateShippingInfo = () => {
-    const { firstName, lastName, email, phone, address, city, state, zipCode } = shippingInfo
+    const { firstName, lastName, email, phone, address, city, state, zipCode, driverLicense } = shippingInfo
 
     if (!firstName || !lastName || !email || !phone || !address || !city || !state || !zipCode) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return false
+    }
+
+    // Driver license validation
+    if (!driverLicense) {
+      toast({
+        title: "Driver License Required",
+        description: "Please upload a copy of your driver license for age verification",
         variant: "destructive",
       })
       return false
@@ -359,6 +400,25 @@ export default function CheckoutPage() {
 
   const handlePaymentSuccess = async (paymentIntent) => {
     try {
+      // Upload driver license first
+      let driverLicenseUrl = null
+      if (shippingInfo.driverLicense) {
+        const formData = new FormData()
+        formData.append("file", shippingInfo.driverLicense)
+        formData.append("userId", user?.id)
+        formData.append("documentType", "driverLicense")
+
+        const uploadResponse = await fetch("/api/user-documents", {
+          method: "POST",
+          body: formData,
+        })
+
+        const uploadResult = await uploadResponse.json()
+        if (uploadResult.success) {
+          driverLicenseUrl = uploadResult.data.url
+        }
+      }
+
       // Create order in database
       const orderData = {
         customer: {
@@ -377,13 +437,16 @@ export default function CheckoutPage() {
         subtotal,
         shipping,
         tax: totalTax,
-        shippingAddress: `${shippingInfo.address}${shippingInfo.apartment ? `, ${shippingInfo.apartment}` : ""}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
+        shippingAddress: `${shippingInfo.address}${shippingInfo.apartment ? `, ${shippingInfo.apartment}` : ""}, ${
+          shippingInfo.city
+        }, ${shippingInfo.state} ${shippingInfo.zipCode}`,
         shippingMethod,
         deliveryInstructions,
         deliveryTime,
         contactPreference,
         paymentIntentId: paymentIntent.id,
         paymentStatus: "paid",
+        driverLicenseUrl: driverLicenseUrl,
       }
 
       const response = await fetch("/api/orders", {
@@ -397,6 +460,7 @@ export default function CheckoutPage() {
       const result = await response.json()
 
       if (result.success) {
+        setOrderCompleted(true)
         clearCart()
         toast({
           title: "Order Placed Successfully!",
@@ -432,6 +496,25 @@ export default function CheckoutPage() {
     setLoadingPayment(true)
 
     try {
+      // Upload driver license first
+      let driverLicenseUrl = null
+      if (shippingInfo.driverLicense) {
+        const formData = new FormData()
+        formData.append("file", shippingInfo.driverLicense)
+        formData.append("userId", user?.id)
+        formData.append("documentType", "driverLicense")
+
+        const uploadResponse = await fetch("/api/user-documents", {
+          method: "POST",
+          body: formData,
+        })
+
+        const uploadResult = await uploadResponse.json()
+        if (uploadResult.success) {
+          driverLicenseUrl = uploadResult.data.url
+        }
+      }
+
       // Create order with cash payment
       const orderData = {
         customer: {
@@ -450,13 +533,16 @@ export default function CheckoutPage() {
         subtotal,
         shipping,
         tax: totalTax,
-        shippingAddress: `${shippingInfo.address}${shippingInfo.apartment ? `, ${shippingInfo.apartment}` : ""}, ${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}`,
+        shippingAddress: `${shippingInfo.address}${shippingInfo.apartment ? `, ${shippingInfo.apartment}` : ""}, ${
+          shippingInfo.city
+        }, ${shippingInfo.state} ${shippingInfo.zipCode}`,
         shippingMethod,
         deliveryInstructions,
         deliveryTime,
         contactPreference,
         paymentMethod: "cash",
         paymentStatus: "pending",
+        driverLicenseUrl: driverLicenseUrl,
       }
 
       const response = await fetch("/api/orders", {
@@ -470,6 +556,7 @@ export default function CheckoutPage() {
       const result = await response.json()
 
       if (result.success) {
+        setOrderCompleted(true)
         clearCart()
         toast({
           title: "Order Placed Successfully!",
@@ -480,7 +567,6 @@ export default function CheckoutPage() {
         toast({
           title: "Order Error",
           description: "Failed to place order. Please try again.",
-          variant: "destructive",
         })
       }
     } catch (error) {
@@ -488,7 +574,6 @@ export default function CheckoutPage() {
       toast({
         title: "Order Error",
         description: "Failed to place order. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setLoadingPayment(false)
@@ -508,10 +593,10 @@ export default function CheckoutPage() {
   const [shouldRedirect, setShouldRedirect] = useState(false)
 
   useEffect(() => {
-    if (cartItems.length === 0 && !loading) {
+    if (cartItems.length === 0 && !loading && !orderCompleted) {
       setShouldRedirect(true)
     }
-  }, [cartItems, loading])
+  }, [cartItems, loading, orderCompleted])
 
   useEffect(() => {
     if (shouldRedirect) {
@@ -617,580 +702,629 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Checkout Form */}
           <div className="lg:col-span-2">
-            <motion.div
-              key="shipping"
-              className="bg-[#111] border border-[#333]"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="p-6 border-b border-[#333]">
-                <h2 className="text-xl font-bold flex items-center">
-                  <MapPin className="mr-2 text-[#D4AF37]" size={20} />
-                  Shipping Information
-                </h2>
-              </div>
+            {/* Step 1: Shipping Information */}
+            {step === 1 && (
+              <motion.div
+                key="shipping"
+                className="bg-[#111] border border-[#333]"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="p-6 border-b border-[#333]">
+                  <h2 className="text-xl font-bold flex items-center">
+                    <MapPin className="mr-2 text-[#D4AF37]" size={20} />
+                    Shipping Information
+                  </h2>
+                </div>
 
-              <form onSubmit={handleContinueToDelivery} className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <Label htmlFor="firstName" className="text-beige mb-2 block">
-                      First Name *
+                <form onSubmit={handleContinueToDelivery} className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <Label htmlFor="firstName" className="text-beige mb-2 block">
+                        First Name *
+                      </Label>
+                      <Input
+                        id="firstName"
+                        name="firstName"
+                        value={shippingInfo.firstName}
+                        onChange={handleShippingInfoChange}
+                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="lastName" className="text-beige mb-2 block">
+                        Last Name *
+                      </Label>
+                      <Input
+                        id="lastName"
+                        name="lastName"
+                        value={shippingInfo.lastName}
+                        onChange={handleShippingInfoChange}
+                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <Label htmlFor="email" className="text-beige mb-2 block">
+                        Email Address *
+                      </Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={shippingInfo.email}
+                        onChange={handleShippingInfoChange}
+                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="phone" className="text-beige mb-2 block">
+                        Phone Number *
+                      </Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={shippingInfo.phone}
+                        onChange={handleShippingInfoChange}
+                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <Label htmlFor="address" className="text-beige mb-2 block">
+                      Street Address *
                     </Label>
                     <Input
-                      id="firstName"
-                      name="firstName"
-                      value={shippingInfo.firstName}
+                      id="address"
+                      name="address"
+                      value={shippingInfo.address}
                       onChange={handleShippingInfoChange}
                       className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="lastName" className="text-beige mb-2 block">
-                      Last Name *
+                  <div className="mb-6">
+                    <Label htmlFor="apartment" className="text-beige mb-2 block">
+                      Apartment, Suite, etc. (optional)
                     </Label>
                     <Input
-                      id="lastName"
-                      name="lastName"
-                      value={shippingInfo.lastName}
-                      onChange={handleShippingInfoChange}
-                      className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <Label htmlFor="email" className="text-beige mb-2 block">
-                      Email Address *
-                    </Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={shippingInfo.email}
+                      id="apartment"
+                      name="apartment"
+                      value={shippingInfo.apartment}
                       onChange={handleShippingInfoChange}
                       className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="phone" className="text-beige mb-2 block">
-                      Phone Number *
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
+                    <div className="col-span-2 md:col-span-1">
+                      <Label htmlFor="city" className="text-beige mb-2 block">
+                        City *
+                      </Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        value={shippingInfo.city}
+                        onChange={handleShippingInfoChange}
+                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="state" className="text-beige mb-2 block">
+                        State *
+                      </Label>
+                      <Input
+                        id="state"
+                        name="state"
+                        value={shippingInfo.state}
+                        onChange={handleShippingInfoChange}
+                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="zipCode" className="text-beige mb-2 block">
+                        ZIP Code *
+                      </Label>
+                      <Input
+                        id="zipCode"
+                        name="zipCode"
+                        value={shippingInfo.zipCode}
+                        onChange={handleShippingInfoChange}
+                        className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <Label htmlFor="country" className="text-beige mb-2 block">
+                      Country *
                     </Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={shippingInfo.phone}
-                      onChange={handleShippingInfoChange}
-                      className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                    />
+                    <div className="relative">
+                      <select
+                        id="country"
+                        name="country"
+                        value={shippingInfo.country}
+                        onChange={handleShippingInfoChange}
+                        className="w-full bg-black border border-[#333] text-white px-4 py-3 appearance-none focus:border-[#D4AF37] rounded-none"
+                      >
+                        <option value="United States">United States</option>
+                        <option value="Canada">Canada</option>
+                      </select>
+                      <ChevronDown
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
+                        size={18}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="mb-6">
-                  <Label htmlFor="address" className="text-beige mb-2 block">
-                    Street Address *
-                  </Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={shippingInfo.address}
-                    onChange={handleShippingInfoChange}
-                    className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                  />
-                </div>
-
-                <div className="mb-6">
-                  <Label htmlFor="apartment" className="text-beige mb-2 block">
-                    Apartment, Suite, etc. (optional)
-                  </Label>
-                  <Input
-                    id="apartment"
-                    name="apartment"
-                    value={shippingInfo.apartment}
-                    onChange={handleShippingInfoChange}
-                    className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
-                  <div className="col-span-2 md:col-span-1">
-                    <Label htmlFor="city" className="text-beige mb-2 block">
-                      City *
+                  {/* Driver License Upload Field */}
+                  <div className="mb-6">
+                    <Label htmlFor="driverLicense" className="text-beige mb-2 block flex items-center">
+                      <FileText className="mr-2 text-[#D4AF37]" size={18} />
+                      Driver License Upload *
                     </Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      value={shippingInfo.city}
-                      onChange={handleShippingInfoChange}
-                      className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                    />
+                    <div className="mt-2">
+                      <input
+                        type="file"
+                        id="driverLicense"
+                        accept="image/*,.pdf"
+                        onChange={handleDriverLicenseUpload}
+                        className="block w-full text-sm text-beige
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-full file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-[#D4AF37] file:text-black
+                          hover:file:bg-[#B8860B]
+                          bg-black border border-[#333] rounded-none"
+                        required
+                      />
+                    </div>
+                    {shippingInfo.driverLicense && (
+                      <p className="mt-2 text-sm text-green-500">
+                        ✓ Driver license uploaded: {shippingInfo.driverLicense.name}
+                      </p>
+                    )}
+                    <p className="text-xs text-beige mt-2">
+                      Please upload a clear photo or scan of your driver license (required for age verification)
+                    </p>
                   </div>
 
-                  <div>
-                    <Label htmlFor="state" className="text-beige mb-2 block">
-                      State *
-                    </Label>
-                    <Input
-                      id="state"
-                      name="state"
-                      value={shippingInfo.state}
-                      onChange={handleShippingInfoChange}
-                      className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                    />
+                  <div className="flex justify-end">
+                    <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                      Continue to Delivery <ChevronRight className="ml-2" size={16} />
+                    </Button>
                   </div>
-
-                  <div>
-                    <Label htmlFor="zipCode" className="text-beige mb-2 block">
-                      ZIP Code *
-                    </Label>
-                    <Input
-                      id="zipCode"
-                      name="zipCode"
-                      value={shippingInfo.zipCode}
-                      onChange={handleShippingInfoChange}
-                      className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <Label htmlFor="country" className="text-beige mb-2 block">
-                    Country *
-                  </Label>
-                  <div className="relative">
-                    <select
-                      id="country"
-                      name="country"
-                      value={shippingInfo.country}
-                      onChange={handleShippingInfoChange}
-                      className="w-full bg-black border border-[#333] text-white px-4 py-3 appearance-none focus:border-[#D4AF37] rounded-none"
-                    >
-                      <option value="United States">United States</option>
-                      <option value="Canada">Canada</option>
-                    </select>
-                    <ChevronDown
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
-                      size={18}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
-                    Continue to Delivery <ChevronRight className="ml-2" size={16} />
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
+                </form>
+              </motion.div>
+            )}
 
             {/* Step 2: Delivery Options */}
-            <motion.div
-              key="delivery"
-              className="bg-[#111] border border-[#333]"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="p-6 border-b border-[#333]">
-                <h2 className="text-xl font-bold flex items-center">
-                  <Truck className="mr-2 text-[#D4AF37]" size={20} />
-                  Delivery Options
-                </h2>
-              </div>
-
-              <form onSubmit={handleContinueToPayment} className="p-6">
-                <div className="mb-8">
-                  <h3 className="text-lg font-medium mb-4">Shipping Method</h3>
-                  <RadioGroup value={shippingMethod} onValueChange={setShippingMethod} className="space-y-4">
-                    <div
-                      className={`border ${
-                        shippingMethod === "standard" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-start">
-                        <RadioGroupItem value="standard" id="standard" className="mt-1 border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="standard" className="ml-3 cursor-pointer flex-grow">
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="font-medium">Standard Shipping</p>
-                              <p className="text-sm text-beige">Delivery in 3-5 business days</p>
-                            </div>
-                            <div className="text-right">
-                              {subtotal >= 100 ? <span className="text-green-500">Free</span> : <span>$9.99</span>}
-                            </div>
-                          </div>
-                        </Label>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`border ${
-                        shippingMethod === "express" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-start">
-                        <RadioGroupItem value="express" id="express" className="mt-1 border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="express" className="ml-3 cursor-pointer flex-grow">
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="font-medium">Express Shipping</p>
-                              <p className="text-sm text-beige">Delivery in 1-2 business days</p>
-                            </div>
-                            <div className="text-right">
-                              <span>$19.99</span>
-                            </div>
-                          </div>
-                        </Label>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`border ${
-                        shippingMethod === "same-day" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-start">
-                        <RadioGroupItem value="same-day" id="same-day" className="mt-1 border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="same-day" className="ml-3 cursor-pointer flex-grow">
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="font-medium">Same-Day Delivery</p>
-                              <p className="text-sm text-beige">Delivery within 3-4 hours (select areas only)</p>
-                            </div>
-                            <div className="text-right">
-                              <span>$29.99</span>
-                            </div>
-                          </div>
-                        </Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
+            {step === 2 && (
+              <motion.div
+                key="delivery"
+                className="bg-[#111] border border-[#333]"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="p-6 border-b border-[#333]">
+                  <h2 className="text-xl font-bold flex items-center">
+                    <Truck className="mr-2 text-[#D4AF37]" size={20} />
+                    Delivery Options
+                  </h2>
                 </div>
 
-                <div className="mb-8">
-                  <h3 className="text-lg font-medium mb-4">Preferred Delivery Time</h3>
-                  <RadioGroup value={deliveryTime} onValueChange={setDeliveryTime} className="space-y-4">
-                    <div
-                      className={`border ${
-                        deliveryTime === "anytime" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-center">
-                        <RadioGroupItem value="anytime" id="anytime" className="border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="anytime" className="ml-3 cursor-pointer">
-                          <span className="font-medium">Anytime (9am - 9pm)</span>
-                        </Label>
+                <form onSubmit={handleContinueToPayment} className="p-6">
+                  <div className="mb-8">
+                    <h3 className="text-lg font-medium mb-4">Shipping Method</h3>
+                    <RadioGroup value={shippingMethod} onValueChange={setShippingMethod} className="space-y-4">
+                      <div
+                        className={`border ${
+                          shippingMethod === "standard" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-start">
+                          <RadioGroupItem
+                            value="standard"
+                            id="standard"
+                            className="mt-1 border-[#333] text-[#D4AF37]"
+                          />
+                          <Label htmlFor="standard" className="ml-3 cursor-pointer flex-grow">
+                            <div className="flex justify-between">
+                              <div>
+                                <p className="font-medium">Standard Shipping</p>
+                                <p className="text-sm text-beige">Delivery in 3-5 business days</p>
+                              </div>
+                              <div className="text-right">
+                                {subtotal >= 100 ? <span className="text-green-500">Free</span> : <span>$9.99</span>}
+                              </div>
+                            </div>
+                          </Label>
+                        </div>
                       </div>
-                    </div>
 
-                    <div
-                      className={`border ${
-                        deliveryTime === "morning" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-center">
-                        <RadioGroupItem value="morning" id="morning" className="border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="morning" className="ml-3 cursor-pointer">
-                          <span className="font-medium">Morning (9am - 12pm)</span>
-                        </Label>
+                      <div
+                        className={`border ${
+                          shippingMethod === "express" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-start">
+                          <RadioGroupItem value="express" id="express" className="mt-1 border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="express" className="ml-3 cursor-pointer flex-grow">
+                            <div className="flex justify-between">
+                              <div>
+                                <p className="font-medium">Express Shipping</p>
+                                <p className="text-sm text-beige">Delivery in 1-2 business days</p>
+                              </div>
+                              <div className="text-right">
+                                <span>$19.99</span>
+                              </div>
+                            </div>
+                          </Label>
+                        </div>
                       </div>
-                    </div>
 
-                    <div
-                      className={`border ${
-                        deliveryTime === "afternoon" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-center">
-                        <RadioGroupItem value="afternoon" id="afternoon" className="border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="afternoon" className="ml-3 cursor-pointer">
-                          <span className="font-medium">Afternoon (12pm - 5pm)</span>
-                        </Label>
+                      <div
+                        className={`border ${
+                          shippingMethod === "same-day" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-start">
+                          <RadioGroupItem
+                            value="same-day"
+                            id="same-day"
+                            className="mt-1 border-[#333] text-[#D4AF37]"
+                          />
+                          <Label htmlFor="same-day" className="ml-3 cursor-pointer flex-grow">
+                            <div className="flex justify-between">
+                              <div>
+                                <p className="font-medium">Same-Day Delivery</p>
+                                <p className="text-sm text-beige">Delivery within 3-4 hours (select areas only)</p>
+                              </div>
+                              <div className="text-right">
+                                <span>$29.99</span>
+                              </div>
+                            </div>
+                          </Label>
+                        </div>
                       </div>
-                    </div>
-
-                    <div
-                      className={`border ${
-                        deliveryTime === "evening" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-center">
-                        <RadioGroupItem value="evening" id="evening" className="border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="evening" className="ml-3 cursor-pointer">
-                          <span className="font-medium">Evening (5pm - 9pm)</span>
-                        </Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="mb-8">
-                  <h3 className="text-lg font-medium mb-4">Contact Preference</h3>
-                  <RadioGroup value={contactPreference} onValueChange={setContactPreference} className="space-y-4">
-                    <div
-                      className={`border ${
-                        contactPreference === "text" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-center">
-                        <RadioGroupItem value="text" id="text" className="border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="text" className="ml-3 cursor-pointer">
-                          <span className="font-medium">Text me when my order is out for delivery</span>
-                        </Label>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`border ${
-                        contactPreference === "call" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-center">
-                        <RadioGroupItem value="call" id="call" className="border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="call" className="ml-3 cursor-pointer">
-                          <span className="font-medium">Call me when my order is out for delivery</span>
-                        </Label>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`border ${
-                        contactPreference === "none" ? "border-[#D4AF37]" : "border-[#333]"
-                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                    >
-                      <div className="flex items-center">
-                        <RadioGroupItem value="none" id="none" className="border-[#333] text-[#D4AF37]" />
-                        <Label htmlFor="none" className="ml-3 cursor-pointer">
-                          <span className="font-medium">No notification needed</span>
-                        </Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="mb-8">
-                  <Label htmlFor="deliveryInstructions" className="text-beige mb-2 block">
-                    Delivery Instructions (optional)
-                  </Label>
-                  <Textarea
-                    id="deliveryInstructions"
-                    value={deliveryInstructions}
-                    onChange={(e) => setDeliveryInstructions(e.target.value)}
-                    placeholder="Add any special delivery instructions or gate codes"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none min-h-[100px]"
-                  />
-                </div>
-
-                <div className="mb-8 p-4 border border-[#D4AF37] bg-[#D4AF37]/10">
-                  <div className="flex items-start mb-4">
-                    <AlertCircle className="text-[#D4AF37] mr-3 mt-0.5 flex-shrink-0" size={20} />
-                    <p className="text-sm text-beige">
-                      <span className="font-medium text-[#D4AF37] block mb-1">Age Verification Required</span>
-                      All deliveries require age verification (21+) with a valid government-issued ID at the time of
-                      delivery. The person accepting the delivery must be the same person who placed the order.
-                    </p>
+                    </RadioGroup>
                   </div>
 
-                  <div className="flex items-center">
-                    <Checkbox
-                      id="terms"
-                      checked={agreeToTerms}
-                      onCheckedChange={setAgreeToTerms}
-                      className="border-[#D4AF37] text-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                  <div className="mb-8">
+                    <h3 className="text-lg font-medium mb-4">Preferred Delivery Time</h3>
+                    <RadioGroup value={deliveryTime} onValueChange={setDeliveryTime} className="space-y-4">
+                      <div
+                        className={`border ${
+                          deliveryTime === "anytime" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="anytime" id="anytime" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="anytime" className="ml-3 cursor-pointer">
+                            <span className="font-medium">Anytime (9am - 9pm)</span>
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`border ${
+                          deliveryTime === "morning" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="morning" id="morning" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="morning" className="ml-3 cursor-pointer">
+                            <span className="font-medium">Morning (9am - 12pm)</span>
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`border ${
+                          deliveryTime === "afternoon" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="afternoon" id="afternoon" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="afternoon" className="ml-3 cursor-pointer">
+                            <span className="font-medium">Afternoon (12pm - 5pm)</span>
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`border ${
+                          deliveryTime === "evening" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="evening" id="evening" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="evening" className="ml-3 cursor-pointer">
+                            <span className="font-medium">Evening (5pm - 9pm)</span>
+                          </Label>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="mb-8">
+                    <h3 className="text-lg font-medium mb-4">Contact Preference</h3>
+                    <RadioGroup value={contactPreference} onValueChange={setContactPreference} className="space-y-4">
+                      <div
+                        className={`border ${
+                          contactPreference === "text" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="text" id="text" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="text" className="ml-3 cursor-pointer">
+                            <span className="font-medium">Text me when my order is out for delivery</span>
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`border ${
+                          contactPreference === "call" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="call" id="call" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="call" className="ml-3 cursor-pointer">
+                            <span className="font-medium">Call me when my order is out for delivery</span>
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`border ${
+                          contactPreference === "none" ? "border-[#D4AF37]" : "border-[#333]"
+                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="none" id="none" className="border-[#333] text-[#D4AF37]" />
+                          <Label htmlFor="none" className="ml-3 cursor-pointer">
+                            <span className="font-medium">No notification needed</span>
+                          </Label>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="mb-8">
+                    <Label htmlFor="deliveryInstructions" className="text-beige mb-2 block">
+                      Delivery Instructions (optional)
+                    </Label>
+                    <Textarea
+                      id="deliveryInstructions"
+                      value={deliveryInstructions}
+                      onChange={(e) => setDeliveryInstructions(e.target.value)}
+                      placeholder="Add any special delivery instructions or gate codes"
+                      className="bg-black border-[#333] focus:border-[#D4AF37] rounded-none min-h-[100px]"
                     />
-                    <label htmlFor="terms" className="ml-3 text-sm text-beige cursor-pointer">
-                      I confirm I am 21+ years of age and agree to the{" "}
-                      <Link href="/terms-conditions" className="text-[#D4AF37] underline">
-                        Terms of Service
-                      </Link>
-                    </label>
                   </div>
-                </div>
 
-                <div className="flex justify-between">
-                  <Button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    variant="outline"
-                    className="border-[#333] text-white hover:bg-[#222] hover:text-white"
-                  >
-                    <ArrowLeft className="mr-2" size={16} />
-                    Back to Shipping
-                  </Button>
+                  <div className="mb-8 p-4 border border-[#D4AF37] bg-[#D4AF37]/10">
+                    <div className="flex items-start mb-4">
+                      <AlertCircle className="text-[#D4AF37] mr-3 mt-0.5 flex-shrink-0" size={20} />
+                      <p className="text-sm text-beige">
+                        <span className="font-medium text-[#D4AF37] block mb-1">Age Verification Required</span>
+                        All deliveries require age verification (21+) with a valid government-issued ID at the time of
+                        delivery. The person accepting the delivery must be the same person who placed the order.
+                      </p>
+                    </div>
 
-                  <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
-                    Continue to Payment <ChevronRight className="ml-2" size={16} />
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
+                    <div className="flex items-center">
+                      <Checkbox
+                        id="terms"
+                        checked={agreeToTerms}
+                        onCheckedChange={setAgreeToTerms}
+                        className="border-[#D4AF37] text-[#D4AF37] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:text-black"
+                      />
+                      <label htmlFor="terms" className="ml-3 text-sm text-beige cursor-pointer">
+                        I confirm I am 21+ years of age and agree to the{" "}
+                        <Link href="/terms-conditions" className="text-[#D4AF37] underline">
+                          Terms of Service
+                        </Link>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <Button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      variant="outline"
+                      className="border-[#333] text-white hover:bg-[#222] hover:text-white"
+                    >
+                      <ArrowLeft className="mr-2" size={16} />
+                      Back to Shipping
+                    </Button>
+
+                    <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                      Continue to Payment <ChevronRight className="ml-2" size={16} />
+                    </Button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
 
             {/* Step 3: Payment */}
-            <motion.div
-              key="payment"
-              className="bg-[#111] border border-[#333]"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="p-6 border-b border-[#333]">
-                <h2 className="text-xl font-bold flex items-center">
-                  <CreditCard className="mr-2 text-[#D4AF37]" size={20} />
-                  Payment Method
-                </h2>
-              </div>
+            {step === 3 && (
+              <motion.div
+                key="payment"
+                className="bg-[#111] border border-[#333]"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="p-6 border-b border-[#333]">
+                  <h2 className="text-xl font-bold flex items-center">
+                    <CreditCard className="mr-2 text-[#D4AF37]" size={20} />
+                    Payment Method
+                  </h2>
+                </div>
 
-              <div className="p-6">
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-4 mb-8">
-                  <div
-                    className={`border ${
-                      paymentMethod === "credit-card" ? "border-[#D4AF37]" : "border-[#333]"
-                    } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="credit-card" id="credit-card" className="border-[#333] text-[#D4AF37]" />
-                      <Label htmlFor="credit-card" className="ml-3 cursor-pointer flex-grow">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">Credit / Debit Card</span>
-                          <div className="flex space-x-2">
-                            <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">
-                              VISA
-                            </div>
-                            <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center">
-                              MC
-                            </div>
-                            <div className="w-8 h-5 bg-blue-800 rounded text-white text-xs flex items-center justify-center">
-                              AMEX
+                <div className="p-6">
+                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-4 mb-8">
+                    <div
+                      className={`border ${
+                        paymentMethod === "credit-card" ? "border-[#D4AF37]" : "border-[#333]"
+                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                    >
+                      <div className="flex items-center">
+                        <RadioGroupItem value="credit-card" id="credit-card" className="border-[#333] text-[#D4AF37]" />
+                        <Label htmlFor="credit-card" className="ml-3 cursor-pointer flex-grow">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Credit / Debit Card</span>
+                            <div className="flex space-x-2">
+                              <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">
+                                VISA
+                              </div>
+                              <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center">
+                                MC
+                              </div>
+                              <div className="w-8 h-5 bg-blue-800 rounded text-white text-xs flex items-center justify-center">
+                                AMEX
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Label>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`border ${
-                      paymentMethod === "cash" ? "border-[#D4AF37]" : "border-[#333]"
-                    } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="cash" id="cash" className="border-[#333] text-[#D4AF37]" />
-                      <Label htmlFor="cash" className="ml-3 cursor-pointer">
-                        <span className="font-medium">Cash on Delivery</span>
-                      </Label>
-                    </div>
-                  </div>
-                </RadioGroup>
-
-                {paymentMethod === "credit-card" && clientSecret && (
-                  <motion.div
-                    className="space-y-6 mb-8"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Elements stripe={stripePromise}>
-                      <PaymentForm
-                        clientSecret={clientSecret}
-                        orderData={{ shippingInfo }}
-                        onSuccess={handlePaymentSuccess}
-                        onError={handlePaymentError}
-                        loading={loadingPayment}
-                        setLoading={setLoadingPayment}
-                      />
-                    </Elements>
-                  </motion.div>
-                )}
-
-                {paymentMethod === "cash" && (
-                  <motion.div
-                    className="mb-8"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="p-6 border border-[#333] bg-black">
-                      <div className="flex items-start">
-                        <Info className="text-[#D4AF37] mr-3 mt-0.5 flex-shrink-0" size={20} />
-                        <div>
-                          <p className="font-medium text-white mb-2">Cash on Delivery Information</p>
-                          <p className="text-sm text-beige mb-2">
-                            Please have the exact amount ready at the time of delivery. Our delivery personnel cannot
-                            provide change.
-                          </p>
-                          <p className="text-sm text-beige">Payment must be made before the package is handed over.</p>
-                        </div>
+                        </Label>
                       </div>
                     </div>
 
-                    <div className="mt-6">
-                      <Button
-                        onClick={handleCashOnDelivery}
-                        disabled={loadingPayment}
-                        className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black"
-                      >
-                        {loadingPayment ? (
-                          <span className="flex items-center">
-                            <svg
-                              className="animate-spin -ml-1 mr-3 h-5 w-5 text-black"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Placing Order...
-                          </span>
-                        ) : (
-                          "Place Order"
-                        )}
-                      </Button>
+                    <div
+                      className={`border ${
+                        paymentMethod === "cash" ? "border-[#D4AF37]" : "border-[#333]"
+                      } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                    >
+                      <div className="flex items-center">
+                        <RadioGroupItem value="cash" id="cash" className="border-[#333] text-[#D4AF37]" />
+                        <Label htmlFor="cash" className="ml-3 cursor-pointer">
+                          <span className="font-medium">Cash on Delivery</span>
+                        </Label>
+                      </div>
                     </div>
-                  </motion.div>
-                )}
+                  </RadioGroup>
 
-                <div className="flex items-center mb-8 p-4 border border-[#D4AF37] bg-[#D4AF37]/10">
-                  <ShieldCheck size={20} className="text-[#D4AF37] mr-3 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-[#D4AF37] mb-1">Secure Payment</p>
-                    <p className="text-sm text-beige">
-                      Your payment information is encrypted and secure. We use industry-standard security measures to
-                      protect your data.
-                    </p>
+                  {paymentMethod === "credit-card" && clientSecret && (
+                    <motion.div
+                      className="space-y-6 mb-8"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Elements stripe={stripePromise}>
+                        <PaymentForm
+                          clientSecret={clientSecret}
+                          orderData={{ shippingInfo }}
+                          onSuccess={handlePaymentSuccess}
+                          onError={handlePaymentError}
+                          loading={loadingPayment}
+                          setLoading={setLoadingPayment}
+                        />
+                      </Elements>
+                    </motion.div>
+                  )}
+
+                  {paymentMethod === "cash" && (
+                    <motion.div
+                      className="mb-8"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 border border-[#333] bg-black">
+                        <div className="flex items-start">
+                          <Info className="text-[#D4AF37] mr-3 mt-0.5 flex-shrink-0" size={20} />
+                          <div>
+                            <p className="font-medium text-white mb-2">Cash on Delivery Information</p>
+                            <p className="text-sm text-beige mb-2">
+                              Please have the exact amount ready at the time of delivery. Our delivery personnel cannot
+                              provide change.
+                            </p>
+                            <p className="text-sm text-beige">
+                              Payment must be made before the package is handed over.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-6">
+                        <Button
+                          onClick={handleCashOnDelivery}
+                          disabled={loadingPayment}
+                          className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                        >
+                          {loadingPayment ? (
+                            <span className="flex items-center">
+                              <svg
+                                className="animate-spin -ml-1 mr-3 h-5 w-5 text-black"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                ></circle>
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                ></path>
+                              </svg>
+                              Placing Order...
+                            </span>
+                          ) : (
+                            "Place Order"
+                          )}
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <div className="flex items-center mb-8 p-4 border border-[#D4AF37] bg-[#D4AF37]/10">
+                    <ShieldCheck size={20} className="text-[#D4AF37] mr-3 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-[#D4AF37] mb-1">Secure Payment</p>
+                      <p className="text-sm text-beige">
+                        Your payment information is encrypted and secure. We use industry-standard security measures to
+                        protect your data.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <Button
+                      onClick={() => setStep(2)}
+                      variant="outline"
+                      className="border-[#333] text-white hover:bg-[#222] hover:text-white"
+                    >
+                      <ArrowLeft className="mr-2" size={16} />
+                      Back to Delivery
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex justify-between">
-                  <Button
-                    onClick={() => setStep(2)}
-                    variant="outline"
-                    className="border-[#333] text-white hover:bg-[#222] hover:text-white"
-                  >
-                    <ArrowLeft className="mr-2" size={16} />
-                    Back to Delivery
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            )}
           </div>
 
           {/* Order Summary */}
