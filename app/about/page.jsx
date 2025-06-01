@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Moon, Sun, SunMoon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import TeamMember from "@/components/about/team-member"
 import Timeline from "@/components/about/timeline"
@@ -231,21 +231,21 @@ export default function AboutPage() {
                 subtitle: "Sativa Strain",
                 description:
                   "Inspired by the French name meaning 'hardworking' or 'industrious,' Amelie reflects the dedication and meticulous care behind our products. This sativa strain is perfect for daytime use, offering energizing and uplifting effects that fuel creativity and productivity.",
-                icon: <FaNetworkWired className="text-[#D4AF37] text-4xl" />,
+                icon: <Sun className="text-[#D4AF37] text-4xl w-10 h-10" />,
               },
               {
                 title: "Baylie",
                 subtitle: "Hybrid Strain",
                 description:
                   "Baylie represents trust, balance, and transparency. Its name, derived from the idea of 'making something true,' symbolizes harmony in every form. This hybrid strain strikes the perfect balance between the energizing effects of sativa and the calming effects of indica, making it a versatile choice for any time of day.",
-                icon: <FaBalanceScale className="text-[#D4AF37] text-4xl" />,
+                icon: <SunMoon className="text-[#D4AF37] text-5xl w-10 h-10" />,
               },
               {
                 title: "Chloe",
                 subtitle: "Indica Strain",
                 description:
                   "Rooted in elegance, Chloe is inspired by a name associated with blooming and growth. This indica strain is ideal for nighttime use, offering soothing and relaxing effects that help you unwind and recharge naturally.",
-                icon: "🌙",
+                icon: <Moon className="text-[#D4AF37] text-5xl w-10 h-10" />,
               },
             ].map((product, index) => (
               <motion.div

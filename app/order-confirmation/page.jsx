@@ -210,7 +210,7 @@ export default function OrderConfirmationPage() {
 
             {isAuthenticated ? (
               <Button asChild variant="outline" className="border-[#333] hover:border-[#D4AF37]">
-                <Link href="/account/orders">View My Orders</Link>
+                <Link href="/account">View My Orders</Link>
               </Button>
             ) : (
               <Button asChild variant="outline" className="border-[#333] hover:border-[#D4AF37]">
