@@ -255,7 +255,7 @@ const CategoriesPage = () => {
           <h1 className="text-3xl font-bold gold-text">Categories Management</h1>
           <p className="text-beige mt-2">Manage your product categories</p>
         </div>
-        <Button onClick={() => setShowAddForm(true)} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+        <Button onClick={() => setShowAddForm(true)} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
           <Plus size={16} className="mr-2" />
           Add Category
         </Button>
@@ -386,7 +386,7 @@ const CategoriesPage = () => {
                     onClick={() => handleEdit(category)}
                     variant="outline"
                     size="sm"
-                    className="border-[#333] flex-1"
+                    className="border-[#333] flex-1 bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37]"
                   >
                     <Edit size={16} className="mr-2" />
                     Edit
@@ -395,7 +395,7 @@ const CategoriesPage = () => {
                     onClick={() => handleDelete(category.id || category._id)}
                     variant="destructive"
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 bg-[#D4AF37]/10 border-2 border-red-900 text-red-600 hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37]"
                   >
                     <Trash2 size={16} className="mr-2" />
                     Delete
@@ -413,7 +413,7 @@ const CategoriesPage = () => {
             <Package size={48} className="mx-auto text-gray-400 mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">No categories found</h3>
             <p className="text-beige mb-4">Create your first category to get started</p>
-            <Button onClick={() => setShowAddForm(true)} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+            <Button onClick={() => setShowAddForm(true)} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
               <Plus size={16} className="mr-2" />
               Add Category
             </Button>

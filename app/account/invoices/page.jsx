@@ -136,20 +136,20 @@ export default function UserInvoicesPage() {
         <Button
           onClick={handleBack}
           variant="ghost"
-          className="mb-4 p-0 h-auto font-normal text-gray-600 hover:text-gray-900"
+          className="mb-4 p-0 h-auto font-normal text-gray-200 hover:text-[#D4AF37] hover:cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Account
+          Back 
         </Button>
         <h1 className="text-3xl font-bold mb-2">My Invoices</h1>
         <p className="text-gray-600">View detailed information about your purchase invoices</p>
       </div>
 
       {/* Search */}
-      <Card className="mb-6">
+      <Card className="mb-6 bg-[#D4AF37]/40 border-2 border-[#D4AF37]/80">
         <CardContent className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 " />
             <Input
               placeholder="Search by invoice number or order ID..."
               value={searchTerm}
@@ -188,7 +188,7 @@ export default function UserInvoicesPage() {
       ) : (
         <div className="grid gap-4">
           {filteredInvoices.map((invoice) => (
-            <Card key={invoice._id} className="hover:shadow-md transition-shadow">
+            <Card key={invoice._id} className="hover:shadow-md transition-shadow bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -232,7 +232,7 @@ export default function UserInvoicesPage() {
                       {invoice.items?.length || 0} item{(invoice.items?.length || 0) !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <Button onClick={() => toggleInvoiceDetails(invoice._id)} variant="outline" size="sm">
+                  <Button onClick={() => toggleInvoiceDetails(invoice._id)} variant="outline" size="sm" className="bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80 text-[#D4AF37] hover:border-white hover:cursor-pointer transition-all duration-500">
                     {expandedInvoice === invoice._id ? (
                       <>
                         <EyeOff className="h-4 w-4 mr-2" />

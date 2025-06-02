@@ -103,7 +103,7 @@ export default function ProductPage() {
 
   return (
     <div className="bg-black min-h-screen">
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-40">
         {/* Breadcrumb */}
         <div className="mb-8">
           <Link href="/products" className="flex items-center text-beige hover:text-[#D4AF37] transition-colors">
@@ -267,19 +267,19 @@ export default function ProductPage() {
             <TabsList className="w-full border-b border-[#333] bg-transparent">
               <TabsTrigger
                 value="description"
-                className="text-lg py-4 rounded-none data-[state=active]:text-[#D4AF37] data-[state=active]:border-b-2 data-[state=active]:border-[#D4AF37]"
+                className="text-lg py-4 rounded-none data-[state=active]:text-[#D4AF37] data-[state=active]:border-b-2 data-[state=active]:border-[#D4AF37] hover:cursor-pointer"
               >
                 Description
               </TabsTrigger>
               <TabsTrigger
                 value="details"
-                className="text-lg py-4 rounded-none data-[state=active]:text-[#D4AF37] data-[state=active]:border-b-2 data-[state=active]:border-[#D4AF37]"
+                className="text-lg py-4 rounded-none data-[state=active]:text-[#D4AF37] data-[state=active]:border-b-2 data-[state=active]:border-[#D4AF37] hover:cursor-pointer"
               >
                 Details
               </TabsTrigger>
               <TabsTrigger
                 value="reviews"
-                className="text-lg py-4 rounded-none data-[state=active]:text-[#D4AF37] data-[state=active]:border-b-2 data-[state=active]:border-[#D4AF37]"
+                className="text-lg py-4 rounded-none data-[state=active]:text-[#D4AF37] data-[state=active]:border-b-2 data-[state=active]:border-[#D4AF37] hover:cursor-pointer"
               >
                 Reviews ({product.reviewCount || 0})
               </TabsTrigger>

@@ -155,7 +155,7 @@ const AdminProducts = () => {
         </div>
         <Button
           onClick={() => router.push("/admin/products/new")}
-          className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+          className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
         >
           <Plus size={16} className="mr-2" />
           Add New Product
@@ -259,7 +259,7 @@ const AdminProducts = () => {
                     <td className="p-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-8 w-8 p-0 hover:cursor-pointer">
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>

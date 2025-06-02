@@ -121,7 +121,7 @@ const AdminDashboard = () => {
           <p className="text-beige mt-2">Welcome back! Here's what's happening with your store.</p>
         </div>
         <div className="flex space-x-3">
-          <Button asChild className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+          <Button asChild className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
             <Link href="/admin/products/new">
               <Plus size={16} className="mr-2" />
               Add Product

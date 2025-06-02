@@ -251,7 +251,7 @@ const AdminOrders = () => {
             variant="outline"
             onClick={fetchOrders}
             disabled={loading}
-            className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+            className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-white transition-all duration-500 hover:cursor-pointer"
           >
             Refresh Orders
           </Button>
@@ -308,7 +308,7 @@ const AdminOrders = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-black border border-[#333] rounded-md text-white focus:border-[#D4AF37]"
+              className="px-4 py-2 bg-black border border-[#333] rounded-md text-white focus:border-[#D4AF37] hover:cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -381,13 +381,13 @@ const AdminOrders = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-[#333]"
+                          className="border-[#333] hover:cursor-pointer"
                           disabled={updatingOrder === order.id}
                         >
                           {updatingOrder === order.id ? "Updating..." : "Update Status"}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-[#111] border-[#333]">
+                      <DropdownMenuContent className="bg-[#111] border-[#333] hover:cursor-pointer">
                         <DropdownMenuItem
                           onClick={() => updateOrderStatus(order.id, "pending")}
                           disabled={order.status === "pending"}

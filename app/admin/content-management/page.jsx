@@ -663,12 +663,12 @@ export default function ContentManagementPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="about" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 mb-8 ">
+            <TabsTrigger value="about" className="flex items-center gap-2 border border-[#D4AF37] text-[#D4AF37] hover:border-white hover:text-white hover:cursor-pointer transition-all duration-500">
               <FileText size={16} />
               About Page
             </TabsTrigger>
-            <TabsTrigger value="contact" className="flex items-center gap-2">
+            <TabsTrigger value="contact" className="flex items-center gap-2 border border-[#D4AF37] text-[#D4AF37] hover:border-white hover:text-white hover:cursor-pointer transition-all duration-500">
               <Globe size={16} />
               Contact Page
             </TabsTrigger>
@@ -676,7 +676,7 @@ export default function ContentManagementPage() {
               <ImageIcon size={16} />
               Home Page
             </TabsTrigger> */}
-            <TabsTrigger value="policies" className="flex items-center gap-2">
+            <TabsTrigger value="policies" className="flex items-center gap-2 border border-[#D4AF37] text-[#D4AF37] hover:border-white hover:text-white hover:cursor-pointer transition-all duration-500">
               <FileText size={16} />
               Policies
             </TabsTrigger>
@@ -969,7 +969,7 @@ export default function ContentManagementPage() {
                 <Button
                   onClick={() => saveContent("about", aboutContent)}
                   disabled={saving}
-                  className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                  className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
                 >
                   {saving ? (
                     <>
@@ -1132,7 +1132,7 @@ export default function ContentManagementPage() {
                 <Button
                   onClick={() => saveContent("contact", contactContent)}
                   disabled={saving}
-                  className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                  className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
                 >
                   {saving ? (
                     <>
@@ -1254,7 +1254,7 @@ export default function ContentManagementPage() {
                 <Button
                   onClick={() => saveContent("home", homeContent)}
                   disabled={saving}
-                  className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                  className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
                 >
                   {saving ? (
                     <>
@@ -1701,7 +1701,7 @@ export default function ContentManagementPage() {
                 <Button
                   onClick={() => saveContent("policies", policyContent)}
                   disabled={saving}
-                  className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                  className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
                 >
                   {saving ? (
                     <>

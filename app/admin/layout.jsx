@@ -117,7 +117,7 @@ const AdminLayout = ({ children }) => {
             <div className="w-8 h-8 bg-[#D4AF37] rounded-full flex items-center justify-center">
               <span className="text-black font-bold">G</span>
             </div>
-            <h1 className="text-xl font-bold gold-text">Admin Panel</h1>
+            <h1 className="text-lg font-bold gold-text">Admin Panel</h1>
           </Link>
           <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)} className="lg:hidden">
             <X size={20} />
@@ -142,7 +142,7 @@ const AdminLayout = ({ children }) => {
           <Button
             onClick={handleLogout}
             variant="outline"
-            className="w-full border-[#333] text-beige hover:bg-red-500/10 hover:text-red-400 hover:border-red-400"
+            className="w-full border-[#333] text-beige hover:bg-red-500/10 hover:text-red-400 hover:border-red-400 hover:cursor-pointer"
           >
             <LogOut size={16} className="mr-2" />
             Logout
@@ -163,14 +163,14 @@ const AdminLayout = ({ children }) => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
+              {/* <Button variant="ghost" size="sm" className="relative">
                 <Bell size={20} />
                 {notifications > 0 && (
                   <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-black text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {notifications}
                   </span>
                 )}
-              </Button>
+              </Button> */}
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-[#D4AF37] rounded-full flex items-center justify-center">
                   <span className="text-black font-medium">{user?.name?.charAt(0) || "A"}</span>

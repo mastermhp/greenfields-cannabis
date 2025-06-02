@@ -465,9 +465,12 @@ export default function OrderDetailsPage() {
                         </div>
                       </div>
 
-                      <Button onClick={downloadInvoice} className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black">
-                        <Download className="w-4 h-4 mr-2" />
-                        Download Invoice PDF
+                      <Button className="w-full bg-[#D4AF37]  hover:bg-[#D4AF37]/20 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 text-black hover:text-[#D4AF37]">
+                      {/* <Button onClick={downloadInvoice} className="w-full bg-[#D4AF37]  hover:bg-[#D4AF37]/20 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 text-black hover:text-[#D4AF37]"> */}
+                        <Link href={`/account/invoices?order=${order.id}`}>
+                        {/* <Download className="w-4 h-4 mr-2" /> */}
+                         Invoice 
+                         </Link>
                       </Button>
                     </div>
                   </CardContent>
@@ -632,7 +635,7 @@ export default function OrderDetailsPage() {
                     </Link>
                   </Button>
 
-                  <Button className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black" asChild>
+                  <Button className="w-full bg-[#D4AF37]  hover:bg-[#D4AF37]/20 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 text-black hover:text-[#D4AF37]" asChild>
                     <Link href="/products">
                       <ShoppingBag className="w-4 h-4 mr-2" />
                       Shop Again

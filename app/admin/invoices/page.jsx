@@ -513,7 +513,7 @@ export default function InvoicesPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => viewInvoice(invoice)}
-                            className="border-[#333]"
+                            className="border-white hover:cursor-pointer"
                             title="View Invoice"
                           >
                             <Eye className="h-4 w-4" />
@@ -522,10 +522,10 @@ export default function InvoicesPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => editInvoice(invoice)}
-                            className="border-[#333]"
+                            className="border-[#D4AF37] hover:cursor-pointer"
                             title="Edit Invoice"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-4 w-4 text-[#D4AF37]" />
                           </Button>
                           {/* <Button
                             size="sm"
@@ -549,7 +549,7 @@ export default function InvoicesPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => deleteInvoice(invoice.id)}
-                            className="border-red-500 text-red-500 hover:bg-red-500/10"
+                            className="border-red-500 text-red-500 hover:bg-red-500/10 hover:cursor-pointer"
                             title="Delete Invoice"
                           >
                             <Trash className="h-4 w-4" />
@@ -567,9 +567,9 @@ export default function InvoicesPage() {
 
       {/* View Invoice Dialog */}
       <Dialog open={viewDialog} onOpenChange={setViewDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-5xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Invoice Details - {selectedInvoice?.invoiceNumber}</DialogTitle>
+            <DialogTitle>Invoice Details - <span className="text-green-500">{selectedInvoice?.invoiceNumber}</span></DialogTitle>
           </DialogHeader>
 
           {selectedInvoice && (
@@ -577,7 +577,7 @@ export default function InvoicesPage() {
               {/* Invoice Header */}
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <h3 className="font-semibold mb-2">Invoice Information</h3>
+                  <h3 className="font-semibold text-lg text-[#D4AF37] mb-2">Invoice Information</h3>
                   <div className="space-y-1 text-sm">
                     <p>
                       <span className="text-beige">Invoice #:</span> {selectedInvoice.invoiceNumber}
@@ -603,7 +603,7 @@ export default function InvoicesPage() {
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Customer Information</h3>
+                  <h3 className="font-semibold text-lg text-[#D4AF37] mb-2">Customer Information</h3>
                   <div className="space-y-1 text-sm">
                     <p>
                       <span className="text-beige">Name:</span> {selectedInvoice.customerInfo?.name}
@@ -621,7 +621,7 @@ export default function InvoicesPage() {
               {/* Addresses */}
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <h3 className="font-semibold mb-2">Shipping Address</h3>
+                  <h3 className="font-semibold text-lg text-[#D4AF37] mb-2">Shipping Address</h3>
                   <div className="text-sm text-beige">
                     <p>{selectedInvoice.shippingAddress?.street}</p>
                     <p>
@@ -633,7 +633,7 @@ export default function InvoicesPage() {
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Billing Address</h3>
+                  <h3 className="font-semibold text-lg text-[#D4AF37] mb-2">Billing Address</h3>
                   <div className="text-sm text-beige">
                     <p>{selectedInvoice.billingAddress?.street || selectedInvoice.shippingAddress?.street}</p>
                     <p>
@@ -648,7 +648,7 @@ export default function InvoicesPage() {
 
               {/* Items */}
               <div>
-                <h3 className="font-semibold mb-2">Items</h3>
+                <h3 className="font-semibold text-2xl text-[#D4AF37] mb-2">Items</h3>
                 <div className="border border-[#333] rounded">
                   <table className="w-full">
                     <thead>
@@ -762,7 +762,7 @@ export default function InvoicesPage() {
               <Button variant="outline" onClick={() => setEditDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={saveInvoiceChanges} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+              <Button onClick={saveInvoiceChanges} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
                 Save Changes
               </Button>
             </div>
@@ -804,7 +804,7 @@ export default function InvoicesPage() {
               <Button variant="outline" onClick={() => setEmailDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={sendInvoiceEmail} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+              <Button onClick={sendInvoiceEmail} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
                 <Mail className="h-4 w-4 mr-2" />
                 Send Invoice
               </Button>

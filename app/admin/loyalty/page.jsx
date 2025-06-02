@@ -64,13 +64,13 @@ const LoyaltyPage = () => {
             </Label>
           </div>
           {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+            <Button onClick={() => setIsEditing(true)} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
               <Edit size={16} className="mr-2" />
               Edit Program
             </Button>
           ) : (
             <div className="flex space-x-2">
-              <Button onClick={() => setIsEditing(false)} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+              <Button onClick={() => setIsEditing(false)} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
                 <Save size={16} className="mr-2" />
                 Save Changes
               </Button>
@@ -243,7 +243,7 @@ const LoyaltyPage = () => {
                   </CardDescription>
                 </div>
                 {isEditing && (
-                  <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                  <Button className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
                     <Plus size={16} className="mr-2" />
                     Add Tier
                   </Button>
@@ -384,7 +384,7 @@ const LoyaltyPage = () => {
                   </CardDescription>
                 </div>
                 {isEditing && (
-                  <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                  <Button className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
                     <Plus size={16} className="mr-2" />
                     Add Reward
                   </Button>

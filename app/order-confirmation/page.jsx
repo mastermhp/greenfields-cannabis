@@ -146,27 +146,27 @@ export default function OrderConfirmationPage() {
             <div className="flex-1 bg-[#111] border border-[#333] p-6">
               <h2 className="text-lg font-bold mb-4">What's Next?</h2>
               <ul className="space-y-3 text-beige">
-                <li className="flex items-start">
+                {/* <li className="flex items-start">
                   <span className="inline-block w-5 h-5 bg-[#D4AF37] text-black rounded-full flex-shrink-0 flex items-center justify-center mr-3 mt-0.5">
                     1
                   </span>
                   <span>You'll receive an email confirmation with your order details.</span>
-                </li>
+                </li> */}
                 <li className="flex items-start">
-                  <span className="inline-block w-5 h-5 bg-[#D4AF37] text-black rounded-full flex-shrink-0 flex items-center justify-center mr-3 mt-0.5">
-                    2
+                  <span className=" w-5 h-5 bg-[#D4AF37] text-black rounded-full flex-shrink-0 flex items-center justify-center mr-3 mt-0.5">
+                    1
                   </span>
                   <span>We'll process your order and prepare it for shipping.</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="inline-block w-5 h-5 bg-[#D4AF37] text-black rounded-full flex-shrink-0 flex items-center justify-center mr-3 mt-0.5">
-                    3
+                  <span className=" w-5 h-5 bg-[#D4AF37] text-black rounded-full flex-shrink-0 flex items-center justify-center mr-3 mt-0.5">
+                    2
                   </span>
                   <span>You'll receive a shipping confirmation with tracking information.</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="inline-block w-5 h-5 bg-[#D4AF37] text-black rounded-full flex-shrink-0 flex items-center justify-center mr-3 mt-0.5">
-                    4
+                  <span className=" w-5 h-5 bg-[#D4AF37] text-black rounded-full flex-shrink-0 flex items-center justify-center mr-3 mt-0.5">
+                    3
                   </span>
                   <span>
                     Your order will be delivered to your address. Age verification (21+) required upon delivery.

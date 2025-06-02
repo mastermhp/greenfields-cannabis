@@ -209,7 +209,7 @@ const AdminUsers = () => {
           <h1 className="text-3xl font-bold gold-text">Users Management</h1>
           <p className="text-beige mt-2">Manage customer accounts and permissions</p>
         </div>
-        <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+        <Button className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
           <UserPlus size={16} className="mr-2" />
           Add User
         </Button>

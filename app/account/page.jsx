@@ -1198,7 +1198,7 @@ export default function AccountPage() {
                   )}
                   <button
                     onClick={() => setAvatarDialog(true)}
-                    className="absolute bottom-0 right-0 bg-[#D4AF37] text-black rounded-full p-1 hover:bg-[#B8860B] transition-colors"
+                    className="absolute bottom-0 right-0 bg-[#D4AF37] text-black rounded-full p-1 hover:bg-[#B8860B] transition-colors "
                   >
                     <Camera size={12} />
                   </button>
@@ -1212,7 +1212,7 @@ export default function AccountPage() {
               <div className="space-y-2">
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start ${activeTab === "overview" ? "bg-[#222]" : ""}`}
+                  className={`w-full justify-start ${activeTab === "overview" ? "bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80" : "hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37]/80 hover:cursor-pointer transition-all duration-500"}`}
                   onClick={() => setActiveTab("overview")}
                 >
                   <User size={18} className="mr-2" />
@@ -1220,7 +1220,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start ${activeTab === "orders" ? "bg-[#222]" : ""}`}
+                  className={`w-full justify-start ${activeTab === "orders" ? "bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80" : "hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37]/80 hover:cursor-pointer transition-all duration-500"}`}
                   onClick={() => setActiveTab("orders")}
                 >
                   <Package size={18} className="mr-2" />
@@ -1233,7 +1233,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start ${activeTab === "wishlist" ? "bg-[#222]" : ""}`}
+                  className={`w-full justify-start ${activeTab === "wishlist" ? "bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80" : "hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37]/80 hover:cursor-pointer transition-all duration-500"}`}
                   onClick={() => setActiveTab("wishlist")}
                 >
                   <Heart size={18} className="mr-2" />
@@ -1246,7 +1246,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start ${activeTab === "addresses" ? "bg-[#222]" : ""}`}
+                  className={`w-full justify-start ${activeTab === "addresses" ? "bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80" : "hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37]/80 hover:cursor-pointer transition-all duration-500"}`}
                   onClick={() => setActiveTab("addresses")}
                 >
                   <MapPin size={18} className="mr-2" />
@@ -1254,7 +1254,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start ${activeTab === "payment" ? "bg-[#222]" : ""}`}
+                  className={`w-full justify-start ${activeTab === "payment" ? "bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80" : "hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37]/80 hover:cursor-pointer transition-all duration-500"}`}
                   onClick={() => setActiveTab("payment")}
                 >
                   <CreditCard size={18} className="mr-2" />
@@ -1262,7 +1262,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start ${activeTab === "loyalty" ? "bg-[#222]" : ""}`}
+                  className={`w-full justify-start ${activeTab === "loyalty" ? "bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80" : "hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37]/80 hover:cursor-pointer transition-all duration-500"}`}
                   onClick={() => setActiveTab("loyalty")}
                 >
                   <Award size={18} className="mr-2" />
@@ -1270,7 +1270,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`w-full justify-start ${activeTab === "settings" ? "bg-[#222]" : ""}`}
+                  className={`w-full justify-start ${activeTab === "settings" ? "bg-[#D4AF37]/10 border-2 border-[#D4AF37]/80" : "hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37]/80 hover:cursor-pointer transition-all duration-500"}`}
                   onClick={() => setActiveTab("settings")}
                 >
                   <Settings size={18} className="mr-2" />
@@ -1278,7 +1278,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className="w-full justify-start text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                  className="w-full justify-start text-red-500 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
                   onClick={handleLogout}
                 >
                   <LogOut size={18} className="mr-2" />
@@ -1289,8 +1289,8 @@ export default function AccountPage() {
 
             <div className="bg-[#111] border border-[#333] p-6">
               <div className="flex items-center mb-4">
-                <Award className="text-[#D4AF37] mr-2" size={20} />
-                <h3 className="font-bold">Loyalty Status</h3>
+                <Award className="text-[#D4AF37] mr-2" size={32} />
+                <h3 className="font-bold text-xl">Loyalty Status</h3>
               </div>
 
               <div className="mb-4">
@@ -1304,7 +1304,7 @@ export default function AccountPage() {
                 </div>
               </div>
 
-              <Button asChild className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+              <Button asChild className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 text-black hover:text-white">
                 <Link href="/loyalty">
                   View Rewards <ChevronRight size={16} className="ml-1" />
                 </Link>
@@ -1371,7 +1371,7 @@ export default function AccountPage() {
                     <div className="mt-4">
                       <Button
                         variant="outline"
-                        className="w-full border-[#333] text-white hover:bg-[#222]"
+                        className="w-full  hover:bg-[#D4AF37]/20 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 text-white hover:text-[#D4AF37]"
                         onClick={() => setActiveTab("orders")}
                       >
                         View All Orders
@@ -1395,7 +1395,7 @@ export default function AccountPage() {
                       />
                     </div>
 
-                    <Button asChild className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                    <Button asChild className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 text-black hover:text-white">
                       <Link href="/loyalty">View Rewards Program</Link>
                     </Button>
                   </div>
@@ -1403,8 +1403,8 @@ export default function AccountPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="bg-[#111] border border-[#333] p-6">
-                    <h2 className="font-bold mb-4 flex items-center">
-                      <MapPin className="mr-2 text-[#D4AF37]" size={18} />
+                    <h2 className="font-bold mb-4 flex items-center text-lg">
+                      <MapPin className="mr-2 text-[#D4AF37]" size={28} />
                       Default Address
                     </h2>
 
@@ -1451,8 +1451,8 @@ export default function AccountPage() {
                   </div>
 
                   <div className="bg-[#111] border border-[#333] p-6">
-                    <h2 className="font-bold mb-4 flex items-center">
-                      <CreditCard className="mr-2 text-[#D4AF37]" size={18} />
+                    <h2 className="font-bold mb-4 flex items-center text-lg">
+                      <CreditCard className="mr-2 text-[#D4AF37]" size={28} />
                       Payment Method
                     </h2>
 
@@ -1497,8 +1497,8 @@ export default function AccountPage() {
                   </div>
 
                   <div className="bg-[#111] border border-[#333] p-6">
-                    <h2 className="font-bold mb-4 flex items-center">
-                      <Heart className="mr-2 text-[#D4AF37]" size={18} />
+                    <h2 className="font-bold mb-4 flex items-center text-lg">
+                      <Heart className="mr-2 text-[#D4AF37]" size={28} />
                       Wishlist
                     </h2>
 
