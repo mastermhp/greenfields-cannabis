@@ -23,7 +23,25 @@ const AdminOrders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/orders")
+
+      // Get the access token from localStorage
+      const accessToken = localStorage.getItem("accessToken")
+
+      if (!accessToken) {
+        toast({
+          title: "Error",
+          description: "Authentication required. Please log in again.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch("/api/orders", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -111,10 +129,23 @@ const AdminOrders = () => {
       setUpdatingOrder(orderId)
       console.log(`Updating order ${orderId} to status: ${newStatus}`)
 
+      // Get the access token from localStorage
+      const accessToken = localStorage.getItem("accessToken")
+
+      if (!accessToken) {
+        toast({
+          title: "Error",
+          description: "Authentication required. Please log in again.",
+          variant: "destructive",
+        })
+        return
+      }
+
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           status: newStatus,
@@ -224,10 +255,10 @@ const AdminOrders = () => {
           >
             Refresh Orders
           </Button>
-          <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+          {/* <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
             <Download size={16} className="mr-2" />
             Export Orders
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -396,7 +427,7 @@ const AdminOrders = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <DropdownMenu>
+                    {/* <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
                           <MoreHorizontal size={16} />
@@ -412,7 +443,7 @@ const AdminOrders = () => {
                           Download Invoice
                         </DropdownMenuItem>
                       </DropdownMenuContent>
-                    </DropdownMenu>
+                    </DropdownMenu> */}
                   </div>
                 </div>
               </CardContent>
