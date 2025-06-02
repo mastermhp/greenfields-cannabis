@@ -19,6 +19,7 @@ const EditProduct = ({ params }) => {
   const { accessToken, user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingImages, setUploadingImages] = useState(false)
   const [images, setImages] = useState([])
 
   // Unwrap params using React.use()
@@ -89,8 +90,8 @@ const EditProduct = ({ params }) => {
 
         // Check for different response structures
         let product = null
-        if (data.success && data.data) {
-          product = data.data
+        if (data.success && data.product) {
+          product = data.product
         } else if (data.product) {
           product = data.product
         } else if (data.success === false) {
@@ -139,10 +140,13 @@ const EditProduct = ({ params }) => {
 
         // Set images
         if (product.images && product.images.length > 0) {
+          const cloudinaryIds = product.cloudinaryIds || []
+
           setImages(
             product.images.map((url, index) => ({
               id: `existing-${index}`,
               url,
+              public_id: cloudinaryIds[index] || null,
               existing: true,
             })),
           )
@@ -187,25 +191,84 @@ const EditProduct = ({ params }) => {
     }))
   }
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files)
-    files.forEach((file) => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + Math.random(),
-            url: e.target.result,
-            file,
+    if (files.length === 0) return
+
+    setUploadingImages(true)
+
+    try {
+      // Create an array of promises for each file upload
+      const uploadPromises = files.map(async (file) => {
+        // Create FormData for the file
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("folder", "products")
+
+        // Upload to Cloudinary via our API
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
           },
-        ])
-      }
-      reader.readAsDataURL(file)
-    })
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to upload image")
+        }
+
+        const data = await response.json()
+        return {
+          id: Date.now() + Math.random(),
+          url: data.url,
+          public_id: data.public_id,
+        }
+      })
+
+      // Wait for all uploads to complete
+      const uploadedImages = await Promise.all(uploadPromises)
+
+      // Add the new images to the state
+      setImages((prev) => [...prev, ...uploadedImages])
+
+      toast({
+        title: "Images Uploaded",
+        description: `Successfully uploaded ${uploadedImages.length} image(s)`,
+      })
+    } catch (error) {
+      console.error("Image upload error:", error)
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload images. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingImages(false)
+    }
   }
 
-  const removeImage = (id) => {
+  const removeImage = async (id) => {
+    const imageToRemove = images.find((img) => img.id === id)
+
+    if (imageToRemove && imageToRemove.public_id) {
+      try {
+        // Delete from Cloudinary via our API
+        await fetch("/api/upload", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ public_id: imageToRemove.public_id }),
+        })
+      } catch (error) {
+        console.error("Failed to delete image from Cloudinary:", error)
+        // Continue anyway to remove from UI
+      }
+    }
+
     setImages(images.filter((img) => img.id !== id))
   }
 
@@ -242,6 +305,7 @@ const EditProduct = ({ params }) => {
         inStock: formData.inStock,
         featured: formData.featured,
         images: images.length > 0 ? images.map((img) => img.url) : ["/placeholder.svg?height=400&width=400"],
+        cloudinaryIds: images.length > 0 ? images.map((img) => img.public_id).filter((id) => id) : [],
       }
 
       console.log("Submitting updated product data:", productData)
@@ -616,14 +680,23 @@ const EditProduct = ({ params }) => {
                   onChange={handleImageUpload}
                   className="hidden"
                   id="image-upload"
+                  disabled={uploadingImages}
                 />
                 <Button
                   type="button"
                   variant="outline"
                   className="border-[#333]"
                   onClick={() => document.getElementById("image-upload").click()}
+                  disabled={uploadingImages}
                 >
-                  Choose Files
+                  {uploadingImages ? (
+                    <span className="flex items-center">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Uploading...
+                    </span>
+                  ) : (
+                    "Choose Files"
+                  )}
                 </Button>
               </div>
 
@@ -686,7 +759,11 @@ const EditProduct = ({ params }) => {
           <Card className="bg-[#111] border-[#333]">
             <CardContent className="p-6">
               <div className="space-y-3">
-                <Button type="submit" disabled={saving} className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                <Button
+                  type="submit"
+                  disabled={saving || uploadingImages}
+                  className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                >
                   {saving ? (
                     <span className="flex items-center">
                       <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin mr-2"></div>

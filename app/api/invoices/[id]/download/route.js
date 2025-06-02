@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server"
 import { InvoiceOperations } from "@/lib/database-operations"
+import { verifyAuth } from "@/lib/auth"
 
 export async function GET(request, { params }) {
   try {
-    const { id } = params
+    const authResult = await verifyAuth(request)
+    if (!authResult.success) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { id } = await params
+    console.log(`Downloading invoice with ID: ${id}`)
+
     const invoice = await InvoiceOperations.getInvoiceById(id)
 
     if (!invoice) {
@@ -16,6 +24,17 @@ export async function GET(request, { params }) {
       )
     }
 
+    // Check if user can access this invoice
+    if (authResult.user.role !== "admin" && invoice.customerInfo.id !== authResult.user.userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Access denied",
+        },
+        { status: 403 },
+      )
+    }
+
     // Generate PDF buffer
     const pdfBuffer = await InvoiceOperations.generateInvoicePDF(invoice)
 
@@ -23,6 +42,7 @@ export async function GET(request, { params }) {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`,
+        "Cache-Control": "no-cache",
       },
     })
   } catch (error) {

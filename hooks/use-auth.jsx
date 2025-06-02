@@ -27,6 +27,7 @@ export const AuthProvider = ({ children }) => {
     checkAuth()
   }, [])
 
+  // Update the checkAuth function to properly handle the token
   const checkAuth = async () => {
     try {
       const token = localStorage.getItem("accessToken")
@@ -90,6 +91,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Update the login function to ensure token is properly stored
   const login = async (email, password, rememberMe = false, isAdminLogin = false) => {
     try {
       const endpoint = isAdminLogin ? "/api/admin-login" : "/api/auth/login"
@@ -106,6 +108,7 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json()
 
       if (response.ok) {
+        // Store token in localStorage and state
         localStorage.setItem("accessToken", data.accessToken)
         setAccessToken(data.accessToken)
         setUser(data.user)

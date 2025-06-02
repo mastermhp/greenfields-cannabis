@@ -12,7 +12,6 @@ import RelatedProducts from "@/components/products/related-products"
 import ProductReviews from "@/components/products/product-reviews"
 import { useToast } from "@/hooks/use-toast"
 import { useCart } from "@/hooks/use-cart"
-import { allProducts } from "@/lib/data"
 
 export default function ProductPage() {
   const params = useParams()
@@ -27,22 +26,41 @@ export default function ProductPage() {
   const [isFavorite, setIsFavorite] = useState(false)
 
   useEffect(() => {
-    // Simulate API call
-    const fetchProduct = () => {
-      const foundProduct = allProducts.find((p) => p.id === params.id)
+    const fetchProduct = async () => {
+      try {
+        // Fetch the product from the API using the ID from the URL
+        const response = await fetch(`/api/products/${params.id}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        })
 
-      if (foundProduct) {
-        setProduct(foundProduct)
-      } else {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        console.log("Product API response:", data)
+
+        if (data.success && data.product) {
+          setProduct(data.product)
+        } else {
+          console.error("Product not found or API error:", data.error || "Unknown error")
+          router.push("/products")
+        }
+      } catch (error) {
+        console.error("Error fetching product:", error)
         router.push("/products")
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
-    const timer = setTimeout(fetchProduct, 1000)
-
-    return () => clearTimeout(timer)
+    if (params.id) {
+      fetchProduct()
+    }
   }, [params.id, router])
 
   const handleAddToCart = () => {
@@ -108,7 +126,11 @@ export default function ProductPage() {
                   className="h-full"
                 >
                   <Image
-                    src={product.images[selectedImage] || "/placeholder.svg?height=600&width=600"}
+                    src={
+                      product.images && product.images[selectedImage]
+                        ? product.images[selectedImage]
+                        : "/placeholder.svg?height=600&width=600"
+                    }
                     alt={product.name}
                     fill
                     className="object-cover"
@@ -118,20 +140,21 @@ export default function ProductPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-4">
-              {product.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`relative aspect-square bg-[#111] overflow-hidden border-2 ${selectedImage === index ? "border-[#D4AF37]" : "border-transparent"} transition-all hover:opacity-80`}
-                >
-                  <Image
-                    src={image || "/placeholder.svg?height=150&width=150"}
-                    alt={`${product.name} - Image ${index + 1}`}
-                    fill
-                    className="object-cover"
-                  />
-                </button>
-              ))}
+              {product.images &&
+                product.images.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`relative aspect-square bg-[#111] overflow-hidden border-2 ${selectedImage === index ? "border-[#D4AF37]" : "border-transparent"} transition-all hover:opacity-80`}
+                  >
+                    <Image
+                      src={image || "/placeholder.svg?height=150&width=150"}
+                      alt={`${product.name} - Image ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
             </div>
           </motion.div>
 
@@ -158,7 +181,7 @@ export default function ProductPage() {
                   />
                 ))}
               </div>
-              <span className="ml-2 text-beige">({product.reviewCount} reviews)</span>
+              <span className="ml-2 text-beige">({product.reviewCount || 0} reviews)</span>
             </div>
 
             <div className="mb-6">
@@ -176,10 +199,10 @@ export default function ProductPage() {
                 <div className="w-full bg-[#222] h-2 rounded-full overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-[#D4AF37]/50 to-[#D4AF37] h-full rounded-full"
-                    style={{ width: `${product.thcContent * 100}%` }}
+                    style={{ width: `${(product.thcContent || 0) * 100}%` }}
                   ></div>
                 </div>
-                <span className="ml-4 text-[#D4AF37] font-medium">{(product.thcContent * 100).toFixed(0)}%</span>
+                <span className="ml-4 text-[#D4AF37] font-medium">{((product.thcContent || 0) * 100).toFixed(0)}%</span>
               </div>
             </div>
 
@@ -212,7 +235,7 @@ export default function ProductPage() {
               <Button
                 onClick={handleAddToCart}
                 disabled={!product.inStock}
-                className="bg-[#D4AF37] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none flex-1"
+            className=" bg-[#D4AF37] hover:bg-[#B8860B]/10 text-black hover:text-[#D4AF37] hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000"
               >
                 <ShoppingCart className="mr-2" size={20} />
                 Add to Cart
@@ -221,7 +244,7 @@ export default function ProductPage() {
               <Button
                 onClick={toggleFavorite}
                 variant="outline"
-                className={`border-[#333] hover:border-[#D4AF37] rounded-none ${isFavorite ? "text-[#D4AF37]" : "text-white"}`}
+                className={`border-[#333] hover:border-[#D4AF37] hover:cursor-pointer rounded-none ${isFavorite ? "text-[#D4AF37]" : "text-white"}`}
               >
                 <Heart className={`${isFavorite ? "fill-[#D4AF37]" : ""}`} size={20} />
               </Button>
@@ -258,7 +281,7 @@ export default function ProductPage() {
                 value="reviews"
                 className="text-lg py-4 rounded-none data-[state=active]:text-[#D4AF37] data-[state=active]:border-b-2 data-[state=active]:border-[#D4AF37]"
               >
-                Reviews ({product.reviewCount})
+                Reviews ({product.reviewCount || 0})
               </TabsTrigger>
             </TabsList>
 
@@ -284,15 +307,15 @@ export default function ProductPage() {
                     </li>
                     <li className="flex justify-between border-b border-[#333] pb-2">
                       <span>THC Content:</span>
-                      <span className="font-medium">{(product.thcContent * 100).toFixed(0)}%</span>
+                      <span className="font-medium">{((product.thcContent || 0) * 100).toFixed(0)}%</span>
                     </li>
                     <li className="flex justify-between border-b border-[#333] pb-2">
                       <span>CBD Content:</span>
-                      <span className="font-medium">{(product.cbdContent * 100).toFixed(1)}%</span>
+                      <span className="font-medium">{((product.cbdContent || 0) * 100).toFixed(1)}%</span>
                     </li>
                     <li className="flex justify-between border-b border-[#333] pb-2">
                       <span>Weight:</span>
-                      <span className="font-medium">{product.weight}g</span>
+                      <span className="font-medium">{product.weight || 0}g</span>
                     </li>
                     <li className="flex justify-between border-b border-[#333] pb-2">
                       <span>Origin:</span>
@@ -315,13 +338,18 @@ export default function ProductPage() {
                         </div>
                       </div>
                     ))}
+                    {(!product.effects || product.effects.length === 0) && (
+                      <div className="col-span-2 text-center py-4 text-beige">
+                        No effects data available for this product
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </TabsContent>
 
             <TabsContent value="reviews" className="pt-8">
-              <ProductReviews productId={product.id} />
+              <ProductReviews productId={product._id || product.id} />
             </TabsContent>
           </Tabs>
         </div>
@@ -329,7 +357,7 @@ export default function ProductPage() {
         {/* Related Products */}
         <div className="mt-20">
           <h2 className="text-3xl font-bold mb-8 gold-text">You May Also Like</h2>
-          <RelatedProducts currentProductId={product.id} category={product.category} />
+          <RelatedProducts currentProductId={product._id || product.id} category={product.category} />
         </div>
       </div>
     </div>

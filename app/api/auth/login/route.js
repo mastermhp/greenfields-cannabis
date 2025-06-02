@@ -1,69 +1,75 @@
+// Fix the login API to ensure it returns a proper JWT token
+
 import { NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
+import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
-import { connectToDatabase } from "@/lib/mongodb"
+import { UserOperations } from "@/lib/database-operations"
+import { cookies } from "next/headers"
 
 export async function POST(request) {
   try {
-    const { email, password, rememberMe } = await request.json()
+    const body = await request.json()
+    const { email, password, rememberMe } = body
 
+    // Validate input
     if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Email and password are required" }, { status: 400 })
     }
 
-    const { db } = await connectToDatabase()
-    const user = await db.collection("users").findOne({ email })
-
+    // Find user by email
+    const user = await UserOperations.getUserByEmail(email)
     if (!user) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+      return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 })
     }
 
-    // Block admin accounts from regular login
-    if (user.role === "admin") {
-      return NextResponse.json({ error: "Admin accounts cannot login through the regular login page" }, { status: 403 })
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, user.password)
+    if (!passwordMatch) {
+      return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 })
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password)
-    if (!isPasswordValid) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
-    }
+    // Create JWT tokens
+    const accessToken = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role || "customer" },
+      process.env.JWT_SECRET,
+      { expiresIn: rememberMe ? "7d" : "24h" },
+    )
 
-    // Generate tokens
-    const accessTokenExpiry = rememberMe ? "7d" : "1h"
-    const refreshTokenExpiry = rememberMe ? "30d" : "7d"
+    const refreshToken = jwt.sign(
+      { userId: user.id, tokenVersion: user.tokenVersion || 0 },
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      { expiresIn: "30d" },
+    )
 
-    const accessToken = jwt.sign({ userId: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: accessTokenExpiry,
-    })
-
-    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: refreshTokenExpiry,
-    })
-
-    // Set refresh token as HTTP-only cookie
-    const response = NextResponse.json({
-      message: "Login successful",
-      accessToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    })
-
-    const cookieMaxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60 // 30 days or 7 days
-
-    response.cookies.set("refreshToken", refreshToken, {
+    // Set refresh token in HTTP-only cookie
+    const cookieStore = cookies()
+    cookieStore.set("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: cookieMaxAge,
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: "/",
     })
 
-    return response
+    // Update user's last login
+    await UserOperations.updateUser(user.id, {
+      lastLogin: new Date(),
+      loginAttempts: 0,
+    })
+
+    // Remove password from response
+    const { password: _, ...userResponse } = user
+
+    console.log("Login successful for:", email)
+    console.log("Generated access token:", accessToken.substring(0, 20) + "...")
+
+    return NextResponse.json({
+      success: true,
+      user: userResponse,
+      accessToken,
+    })
   } catch (error) {
     console.error("Login error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Login failed" }, { status: 500 })
   }
 }

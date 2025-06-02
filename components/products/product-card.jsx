@@ -45,7 +45,7 @@ const ProductCard = ({ product }) => {
       whileHover={{ y: -10 }}
       transition={{ duration: 0.3 }}
     >
-      <Link href={`/products/${product.id}`} className="block">
+      <Link href={`/products/${product._id}`} className="block">
         <div className="relative aspect-square overflow-hidden">
           <Image
             src={product.images[0] || "/placeholder.svg?height=400&width=400"}

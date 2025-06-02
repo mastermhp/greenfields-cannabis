@@ -23,6 +23,10 @@ import {
   AlertCircle,
   Gift,
   Clock,
+  Camera,
+  Upload,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
@@ -65,6 +69,7 @@ export default function AccountPage() {
   const [loadingPayments, setLoadingPayments] = useState(false)
   const [loadingLoyalty, setLoadingLoyalty] = useState(false)
   const [loadingProfile, setLoadingProfile] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   // Dialog states
   const [addressDialog, setAddressDialog] = useState(false)
@@ -72,6 +77,7 @@ export default function AccountPage() {
   const [profileDialog, setProfileDialog] = useState(false)
   const [passwordDialog, setPasswordDialog] = useState(false)
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false)
+  const [avatarDialog, setAvatarDialog] = useState(false)
 
   // Form states
   const [addressForm, setAddressForm] = useState({
@@ -97,10 +103,10 @@ export default function AccountPage() {
   })
 
   const [profileForm, setProfileForm] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
     phone: "",
+    bio: "",
   })
 
   const [passwordForm, setPasswordForm] = useState({
@@ -108,6 +114,10 @@ export default function AccountPage() {
     newPassword: "",
     confirmPassword: "",
   })
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const [communicationPrefs, setCommunicationPrefs] = useState({
     orderUpdates: true,
@@ -120,6 +130,10 @@ export default function AccountPage() {
   const [paymentError, setPaymentError] = useState("")
   const [profileError, setProfileError] = useState("")
   const [passwordError, setPasswordError] = useState("")
+
+  // Avatar upload states
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState("")
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -151,19 +165,23 @@ export default function AccountPage() {
     }
   }, [activeTab, user?.id])
 
+  // Update the fetchUserOrders function
   const fetchUserOrders = async (silent = false) => {
     if (!user?.id) return
 
     if (!silent) setLoadingOrders(true)
     try {
       console.log(`Fetching orders for user: ${user.id}`)
+      console.log("Using access token:", accessToken)
+
       const response = await fetch(`/api/orders/user/${user.id}`, {
-        cache: "no-store",
         headers: {
-          "Cache-Control": "no-cache",
           Authorization: `Bearer ${accessToken}`,
+          "Cache-Control": "no-cache",
         },
       })
+
+      console.log("Orders response status:", response.status)
       const data = await response.json()
 
       console.log("User orders response:", data)
@@ -174,10 +192,11 @@ export default function AccountPage() {
           console.log(`Loaded ${data.data.length} orders for user`)
         }
       } else {
+        console.error("Failed to fetch orders:", data.error)
         if (!silent) {
           toast({
             title: "Error",
-            description: "Failed to fetch orders",
+            description: data.error || "Failed to fetch orders",
             variant: "destructive",
           })
         }
@@ -196,19 +215,25 @@ export default function AccountPage() {
     }
   }
 
+  // Update all other fetch functions to use the same pattern
+  // For example, update fetchWishlist:
   const fetchWishlist = async () => {
     if (!user?.id) return
 
     setLoadingWishlist(true)
     try {
+      console.log("Fetching wishlist with token:", accessToken)
       const response = await fetch(`/api/user/wishlist`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       })
 
+      console.log("Wishlist response status:", response.status)
+
       if (!response.ok) {
-        throw new Error("Failed to fetch wishlist")
+        console.error("Wishlist fetch failed with status:", response.status)
+        throw new Error(`Failed to fetch wishlist: ${response.status}`)
       }
 
       const data = await response.json()
@@ -376,12 +401,11 @@ export default function AccountPage() {
 
         // Initialize profile form
         if (data.data) {
-          const nameParts = data.data.name ? data.data.name.split(" ") : ["", ""]
           setProfileForm({
-            firstName: nameParts[0] || "",
-            lastName: nameParts.slice(1).join(" ") || "",
+            name: data.data.name || "",
             email: data.data.email || "",
             phone: data.data.phone || "",
+            bio: data.data.bio || "",
           })
 
           setCommunicationPrefs({
@@ -397,6 +421,140 @@ export default function AccountPage() {
       console.error("Error fetching user profile:", error)
     } finally {
       setLoadingProfile(false)
+    }
+  }
+
+  // Avatar upload functions
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Invalid File",
+          description: "Please select an image file",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please select an image smaller than 5MB",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setSelectedFile(file)
+
+      // Create preview URL
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setPreviewUrl(e.target.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const uploadAvatar = async () => {
+    if (!selectedFile) return
+
+    setUploadingAvatar(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", selectedFile)
+
+      const response = await fetch("/api/user/upload-avatar", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Update user profile state
+        setUserProfile((prev) => ({
+          ...prev,
+          profilePicture: data.url,
+          profilePictureId: data.public_id,
+        }))
+
+        setAvatarDialog(false)
+        setSelectedFile(null)
+        setPreviewUrl("")
+
+        toast({
+          title: "Success",
+          description: "Profile picture updated successfully",
+        })
+
+        // Refresh user profile
+        fetchUserProfile()
+      } else {
+        toast({
+          title: "Upload Failed",
+          description: data.error || "Failed to upload profile picture",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error uploading avatar:", error)
+      toast({
+        title: "Upload Error",
+        description: "An error occurred while uploading your profile picture",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const removeAvatar = async () => {
+    try {
+      const response = await fetch("/api/user/upload-avatar", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Update user profile state
+        setUserProfile((prev) => ({
+          ...prev,
+          profilePicture: "",
+          profilePictureId: "",
+        }))
+
+        toast({
+          title: "Success",
+          description: "Profile picture removed successfully",
+        })
+
+        // Refresh user profile
+        fetchUserProfile()
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to remove profile picture",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error removing avatar:", error)
+      toast({
+        title: "Error",
+        description: "An error occurred while removing your profile picture",
+        variant: "destructive",
+      })
     }
   }
 
@@ -755,12 +913,11 @@ export default function AccountPage() {
 
   // Profile operations
   const openProfileDialog = () => {
-    const nameParts = user?.name ? user.name.split(" ") : ["", ""]
     setProfileForm({
-      firstName: nameParts[0] || "",
-      lastName: nameParts.slice(1).join(" ") || "",
-      email: user?.email || "",
+      name: userProfile?.name || "",
+      email: userProfile?.email || "",
       phone: userProfile?.phone || "",
+      bio: userProfile?.bio || "",
     })
     setProfileError("")
     setProfileDialog(true)
@@ -768,8 +925,8 @@ export default function AccountPage() {
 
   const saveProfile = async () => {
     // Validate form
-    if (!profileForm.firstName || !profileForm.email) {
-      setProfileError("Please fill in all required fields")
+    if (!profileForm.name || !profileForm.email) {
+      setProfileError("Name and email are required")
       return
     }
 
@@ -780,11 +937,7 @@ export default function AccountPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          name: `${profileForm.firstName} ${profileForm.lastName}`.trim(),
-          email: profileForm.email,
-          phone: profileForm.phone,
-        }),
+        body: JSON.stringify(profileForm),
       })
 
       const data = await response.json()
@@ -794,10 +947,10 @@ export default function AccountPage() {
         setProfileDialog(false)
         toast({
           title: "Profile Updated",
-          description: "Your profile has been updated",
+          description: "Your profile has been updated successfully",
         })
       } else {
-        setProfileError(data.message || "Failed to update profile")
+        setProfileError(data.error || "Failed to update profile")
       }
     } catch (error) {
       console.error("Error updating profile:", error)
@@ -833,6 +986,13 @@ export default function AccountPage() {
       return
     }
 
+    // Validate password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+    if (!passwordRegex.test(passwordForm.newPassword)) {
+      setPasswordError("Password must contain uppercase, lowercase, number, and special character")
+      return
+    }
+
     try {
       const response = await fetch(`/api/user/change-password`, {
         method: "PUT",
@@ -855,7 +1015,7 @@ export default function AccountPage() {
           description: "Your password has been updated successfully",
         })
       } else {
-        setPasswordError(data.message || "Failed to change password")
+        setPasswordError(data.error || "Failed to change password")
       }
     } catch (error) {
       console.error("Error changing password:", error)
@@ -926,7 +1086,7 @@ export default function AccountPage() {
       } else {
         toast({
           title: "Error",
-          description: data.message || "Failed to delete account",
+          description: data.error || "Failed to delete account",
           variant: "destructive",
         })
       }
@@ -1023,18 +1183,29 @@ export default function AccountPage() {
           >
             <div className="bg-[#111] border border-[#333] p-6 mb-6">
               <div className="flex items-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-[#222] overflow-hidden mr-4">
-                  <Image
-                    src={user?.avatar || "/placeholder.svg?height=100&width=100"}
-                    alt={user?.name || "User"}
-                    width={64}
-                    height={64}
-                    className="object-cover"
-                  />
+                <div className="relative w-16 h-16 rounded-full bg-[#222] overflow-hidden mr-4">
+                  {userProfile?.profilePicture ? (
+                    <Image
+                      src={userProfile.profilePicture || "/placeholder.svg"}
+                      alt={userProfile?.name || "User"}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User className="text-[#666]" size={24} />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setAvatarDialog(true)}
+                    className="absolute bottom-0 right-0 bg-[#D4AF37] text-black rounded-full p-1 hover:bg-[#B8860B] transition-colors"
+                  >
+                    <Camera size={12} />
+                  </button>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">{user?.name || "User"}</h2>
-                  <p className="text-beige text-sm">{user?.email || "user@example.com"}</p>
+                  <h2 className="text-xl font-bold">{userProfile?.name || "User"}</h2>
+                  <p className="text-beige text-sm">{userProfile?.email || "user@example.com"}</p>
                 </div>
               </div>
 
@@ -1218,7 +1389,7 @@ export default function AccountPage() {
                       <LoyaltyCard
                         tier={loyaltyInfo.tier}
                         points={loyaltyInfo.points}
-                        name={user?.name || "Member"}
+                        name={userProfile?.name || "Member"}
                         since="2023"
                         memberID={user?.id || "000000"}
                       />
@@ -1433,7 +1604,10 @@ export default function AccountPage() {
                                 size="sm"
                                 className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
                               >
-                                View Details
+                                <Link href={`/account/orders/${order.id}`}>
+                                  View Details
+                                </Link>
+                                
                               </Button>
                             </div>
                           </div>
@@ -1708,7 +1882,7 @@ export default function AccountPage() {
                     <LoyaltyCard
                       tier={loyaltyInfo.tier}
                       points={loyaltyInfo.points}
-                      name={user?.name || "Member"}
+                      name={userProfile?.name || "Member"}
                       since="2023"
                       memberID={user?.id || "000000"}
                     />
@@ -1794,30 +1968,38 @@ export default function AccountPage() {
                       <div className="bg-[#222] border border-[#333] p-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
-                            <label className="block text-sm text-beige mb-1">First Name</label>
+                            <label className="block text-sm text-beige mb-1">Name</label>
                             <input
                               type="text"
-                              value={user?.name?.split(" ")[0] || ""}
+                              value={userProfile?.name || ""}
                               className="w-full bg-black border border-[#333] p-2 text-white"
                               readOnly
                             />
                           </div>
                           <div>
-                            <label className="block text-sm text-beige mb-1">Last Name</label>
+                            <label className="block text-sm text-beige mb-1">Email</label>
                             <input
-                              type="text"
-                              value={user?.name?.split(" ")[1] || ""}
+                              type="email"
+                              value={userProfile?.email || ""}
                               className="w-full bg-black border border-[#333] p-2 text-white"
                               readOnly
                             />
                           </div>
                         </div>
                         <div className="mb-4">
-                          <label className="block text-sm text-beige mb-1">Email</label>
+                          <label className="block text-sm text-beige mb-1">Phone</label>
                           <input
-                            type="email"
-                            value={user?.email || ""}
+                            type="tel"
+                            value={userProfile?.phone || ""}
                             className="w-full bg-black border border-[#333] p-2 text-white"
+                            readOnly
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="block text-sm text-beige mb-1">Bio</label>
+                          <textarea
+                            value={userProfile?.bio || ""}
+                            className="w-full bg-black border border-[#333] p-2 text-white h-20"
                             readOnly
                           />
                         </div>
@@ -1915,6 +2097,84 @@ export default function AccountPage() {
             </Tabs>
           </motion.div>
         </div>
+
+        {/* Avatar Upload Dialog */}
+        <Dialog open={avatarDialog} onOpenChange={setAvatarDialog}>
+          <DialogContent className="bg-[#111] border border-[#333] text-white">
+            <DialogHeader>
+              <DialogTitle>Update Profile Picture</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <div className="relative w-32 h-32 rounded-full bg-[#222] overflow-hidden">
+                  {previewUrl ? (
+                    <Image src={previewUrl || "/placeholder.svg"} alt="Preview" fill className="object-cover" />
+                  ) : userProfile?.profilePicture ? (
+                    <Image
+                      src={userProfile.profilePicture || "/placeholder.svg"}
+                      alt="Current"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User className="text-[#666]" size={48} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="avatar-upload">Choose Image</Label>
+                  <Input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="bg-[#222] border-[#333] text-white"
+                  />
+                  <p className="text-sm text-beige mt-1">Maximum file size: 5MB</p>
+                </div>
+
+                <div className="flex justify-between space-x-2">
+                  <div className="space-x-2">
+                    <Button variant="outline" onClick={() => setAvatarDialog(false)}>
+                      Cancel
+                    </Button>
+                    {userProfile?.profilePicture && (
+                      <Button
+                        variant="outline"
+                        className="border-red-500 text-red-500 hover:bg-red-500/10"
+                        onClick={removeAvatar}
+                      >
+                        Remove Current
+                      </Button>
+                    )}
+                  </div>
+                  <Button
+                    className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                    onClick={uploadAvatar}
+                    disabled={!selectedFile || uploadingAvatar}
+                  >
+                    {uploadingAvatar ? (
+                      <>
+                        <RefreshCw className="animate-spin mr-2" size={16} />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2" size={16} />
+                        Upload
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Address Dialog */}
         <Dialog open={addressDialog} onOpenChange={setAddressDialog}>
@@ -2166,33 +2426,21 @@ export default function AccountPage() {
             )}
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="first-name">First Name</Label>
-                  <Input
-                    id="first-name"
-                    placeholder="First Name"
-                    className="bg-[#222] border-[#333] text-white"
-                    value={profileForm.firstName}
-                    onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="last-name">Last Name</Label>
-                  <Input
-                    id="last-name"
-                    placeholder="Last Name"
-                    className="bg-[#222] border-[#333] text-white"
-                    value={profileForm.lastName}
-                    onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
-                  />
-                </div>
+              <div>
+                <Label htmlFor="profile-name">Full Name</Label>
+                <Input
+                  id="profile-name"
+                  placeholder="John Doe"
+                  className="bg-[#222] border-[#333] text-white"
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                />
               </div>
 
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="profile-email">Email</Label>
                 <Input
-                  id="email"
+                  id="profile-email"
                   type="email"
                   placeholder="email@example.com"
                   className="bg-[#222] border-[#333] text-white"
@@ -2202,13 +2450,24 @@ export default function AccountPage() {
               </div>
 
               <div>
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="profile-phone">Phone Number</Label>
                 <Input
-                  id="phone"
+                  id="profile-phone"
                   placeholder="+1 (555) 123-4567"
                   className="bg-[#222] border-[#333] text-white"
                   value={profileForm.phone}
                   onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="profile-bio">Bio</Label>
+                <Textarea
+                  id="profile-bio"
+                  placeholder="Tell us about yourself..."
+                  className="bg-[#222] border-[#333] text-white"
+                  value={profileForm.bio}
+                  onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
                 />
               </div>
 
@@ -2241,38 +2500,68 @@ export default function AccountPage() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="current-password">Current Password</Label>
-                <Input
-                  id="current-password"
-                  type="password"
-                  placeholder="Enter current password"
-                  className="bg-[#222] border-[#333] text-white"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                />
+                <div className="relative">
+                  <Input
+                    id="current-password"
+                    type={showCurrentPassword ? "text" : "password"}
+                    placeholder="Enter current password"
+                    className="bg-[#222] border-[#333] text-white pr-10"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <Label htmlFor="new-password">New Password</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  placeholder="Enter new password"
-                  className="bg-[#222] border-[#333] text-white"
-                  value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                />
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="Enter new password"
+                    className="bg-[#222] border-[#333] text-white pr-10"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <p className="text-sm text-beige mt-1">
+                  Password must be at least 8 characters with uppercase, lowercase, number, and special character
+                </p>
               </div>
 
               <div>
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="Confirm new password"
-                  className="bg-[#222] border-[#333] text-white"
-                  value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                />
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    className="bg-[#222] border-[#333] text-white pr-10"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-end space-x-2">

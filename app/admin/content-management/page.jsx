@@ -663,7 +663,7 @@ export default function ContentManagementPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="about" className="flex items-center gap-2">
               <FileText size={16} />
               About Page
@@ -672,10 +672,10 @@ export default function ContentManagementPage() {
               <Globe size={16} />
               Contact Page
             </TabsTrigger>
-            <TabsTrigger value="home" className="flex items-center gap-2">
+            {/* <TabsTrigger value="home" className="flex items-center gap-2">
               <ImageIcon size={16} />
               Home Page
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger value="policies" className="flex items-center gap-2">
               <FileText size={16} />
               Policies
@@ -1538,7 +1538,7 @@ export default function ContentManagementPage() {
                 </div>
 
                 {/* Other Policies (as simple textareas) */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label
                     htmlFor="returnPolicy"
                     className="text-gray-300 text-xl gold-text"
@@ -1557,8 +1557,10 @@ export default function ContentManagementPage() {
                     className="bg-[#222] border-[#444] text-white min-h-[150px]"
                     rows={6}
                   />
-                </div>
-                <div className="space-y-2">
+                </div> */}
+
+
+                {/* <div className="space-y-2">
                   <Label
                     htmlFor="privacyPolicy"
                     className="text-gray-300 text-xl gold-text"
@@ -1577,7 +1579,9 @@ export default function ContentManagementPage() {
                     className="bg-[#222] border-[#444] text-white min-h-[150px]"
                     rows={6}
                   />
-                </div>
+                </div> */}
+
+
                 {/* Terms & Conditions Section */}
                 <div className="space-y-6 border border-[#444] p-6 rounded-lg">
                   <h3 className="text-2xl font-semibold gold-text border-b border-[#333] pb-3 mb-6">

@@ -337,7 +337,7 @@ const AdminUsers = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  {/* <div className="flex items-center space-x-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="border-[#333]">
@@ -382,7 +382,7 @@ const AdminUsers = () => {
                         <DropdownMenuItem>Send Message</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>

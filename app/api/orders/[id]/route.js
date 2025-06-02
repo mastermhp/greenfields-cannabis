@@ -1,48 +1,83 @@
 import { NextResponse } from "next/server"
 import { OrderOperations } from "@/lib/database-operations"
+import { verifyAuth } from "@/lib/auth"
 
 export async function GET(request, { params }) {
   try {
-    const { id } = params
+    console.log("GET /api/orders/[id] - Starting request")
+
+    const authResult = await verifyAuth(request)
+    console.log("Auth result:", authResult)
+
+    if (!authResult.auth) {
+      console.log("Authentication failed:", authResult.error)
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { id } = await params
+    console.log("Order ID from params:", id)
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Order ID is required" }, { status: 400 })
+    }
+
+    console.log(`Fetching order details for ID: ${id}`)
+
     const order = await OrderOperations.getOrderById(id)
+    console.log("Order found:", order ? "Yes" : "No")
 
     if (!order) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Order not found",
-        },
-        { status: 404 },
-      )
+      return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 })
     }
+
+    // Check if the authenticated user owns this order or is an admin
+    const userId = authResult.auth.userId || authResult.auth.id
+    const userRole = authResult.auth.role
+
+    console.log("User ID:", userId, "User Role:", userRole)
+    console.log("Order customer ID:", order.customer?.id)
+
+    if (userRole !== "admin" && order.customer?.id !== userId) {
+      console.log("Access denied - user doesn't own this order")
+      return NextResponse.json({ success: false, error: "Access denied" }, { status: 403 })
+    }
+
+    console.log("Order details fetched successfully")
 
     return NextResponse.json({
       success: true,
       data: order,
     })
   } catch (error) {
-    console.error("Get Order Error:", error)
+    console.error("Get order details error:", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch order",
-        message: error.message,
+        error: "Internal server error",
+        details: error.message,
       },
       { status: 500 },
     )
   }
 }
 
-export async function PATCH(request, { params }) {
+export async function PUT(request, { params }) {
   try {
-    const { id } = params
+    const authResult = await verifyAuth(request)
+    if (!authResult.success || authResult.user.role !== "admin") {
+      return NextResponse.json({ success: false, error: "Admin access required" }, { status: 401 })
+    }
+
+    const { id } = await params
     const body = await request.json()
 
-    console.log(`Updating order ${id} with data:`, body)
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Order ID is required" }, { status: 400 })
+    }
 
-    const updatedOrder = await OrderOperations.updateOrderStatus(id, body.status, body.trackingNumber)
+    console.log(`Updating order ${id} with:`, body)
 
-    console.log("Order updated successfully:", updatedOrder)
+    const updatedOrder = await OrderOperations.updateOrder(id, body)
 
     return NextResponse.json({
       success: true,
@@ -50,14 +85,7 @@ export async function PATCH(request, { params }) {
       message: "Order updated successfully",
     })
   } catch (error) {
-    console.error("Update Order Error:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to update order",
-        message: error.message,
-      },
-      { status: 500 },
-    )
+    console.error("Update order error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

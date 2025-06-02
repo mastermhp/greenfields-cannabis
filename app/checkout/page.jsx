@@ -103,7 +103,7 @@ const PaymentForm = ({ clientSecret, orderData, onSuccess, onError, loading, set
         <CardElement options={cardElementOptions} />
       </div>
 
-      <Button type="submit" disabled={!stripe || loading} className="w-full bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+      <Button type="submit" disabled={!stripe || loading} className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all duration-1000 cursor-pointer text-black text-lg py-6 rounded-none">
         {loading ? (
           <span className="flex items-center">
             <svg
@@ -900,7 +900,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                    <Button type="submit" className="bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all duration-1000 cursor-pointer text-black text-lg py-6 rounded-none">
                       Continue to Delivery <ChevronRight className="ml-2" size={16} />
                     </Button>
                   </div>
@@ -1047,7 +1047,7 @@ export default function CheckoutPage() {
                       <div
                         className={`border ${
                           deliveryTime === "evening" ? "border-[#D4AF37]" : "border-[#333]"
-                        } p-4 cursor-pointer hover:border-[#D4AF37] transition-colors`}
+                        } p-4 cursor-pointer hover:border-[#D4AF37] hover:bg-[#D4AF37]/20 transition-colors`}
                       >
                         <div className="flex items-center">
                           <RadioGroupItem value="evening" id="evening" className="border-[#333] text-[#D4AF37]" />
@@ -1153,7 +1153,7 @@ export default function CheckoutPage() {
                       Back to Shipping
                     </Button>
 
-                    <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                    <Button type="submit" className="bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all duration-1000 cursor-pointer text-black text-lg py-6 rounded-none">
                       Continue to Payment <ChevronRight className="ml-2" size={16} />
                     </Button>
                   </div>
