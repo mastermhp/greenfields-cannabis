@@ -327,7 +327,7 @@ export default function AboutPage() {
       </section>
 
       {/* Team Section */}
-      <section className="py-20 bg-black">
+      {/* <section className="py-20 bg-black">
         <div className="container mx-auto px-4">
           <motion.div
             className="text-center mb-16"
@@ -348,7 +348,7 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* History Timeline */}
       <section className="py-20 bg-gradient-to-b from-black to-[#111]">
