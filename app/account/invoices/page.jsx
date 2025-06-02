@@ -1,21 +1,50 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
-import { Download, Search, FileText, Calendar, DollarSign } from "lucide-react"
+import {
+  Search,
+  FileText,
+  Calendar,
+  DollarSign,
+  Eye,
+  EyeOff,
+  Package,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  ArrowLeft,
+} from "lucide-react"
 import { format } from "date-fns"
+import { useRouter } from "next/navigation"
+
+const formatSafeDate = (dateValue) => {
+  if (!dateValue) return "N/A"
+
+  try {
+    const date = new Date(dateValue)
+    if (isNaN(date.getTime())) return "Invalid Date"
+    return format(date, "MMM dd, yyyy")
+  } catch (error) {
+    console.error("Date formatting error:", error)
+    return "Invalid Date"
+  }
+}
 
 export default function UserInvoicesPage() {
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
+  const [expandedInvoice, setExpandedInvoice] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getToken } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     if (user) {
@@ -26,7 +55,7 @@ export default function UserInvoicesPage() {
   const fetchInvoices = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem("token")
+      const token = getToken()
 
       const response = await fetch(`/api/user/invoices`, {
         headers: {
@@ -54,41 +83,16 @@ export default function UserInvoicesPage() {
     }
   }
 
-  const downloadInvoice = async (invoiceId) => {
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch(`/api/invoices/${invoiceId}/download`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+  const toggleInvoiceDetails = (invoiceId) => {
+    setExpandedInvoice(expandedInvoice === invoiceId ? null : invoiceId)
+  }
 
-      if (!response.ok) {
-        throw new Error("Failed to download invoice")
-      }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.style.display = "none"
-      a.href = url
-      a.download = `invoice-${invoiceId}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      toast({
-        title: "Success",
-        description: "Invoice downloaded successfully",
-      })
-    } catch (error) {
-      console.error("Error downloading invoice:", error)
-      toast({
-        title: "Error",
-        description: "Failed to download invoice",
-        variant: "destructive",
-      })
+  const handleBack = () => {
+    // Try to go back in history first, if no history go to account page
+    if (window.history.length > 1) {
+      router.back()
+    } else {
+      router.push("/account")
     }
   }
 
@@ -115,7 +119,7 @@ export default function UserInvoicesPage() {
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-40">
         <Card>
           <CardContent className="p-8 text-center">
             <p>Please log in to view your invoices.</p>
@@ -126,10 +130,19 @@ export default function UserInvoicesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-40">
+      {/* Back Button and Header */}
       <div className="mb-8">
+        <Button
+          onClick={handleBack}
+          variant="ghost"
+          className="mb-4 p-0 h-auto font-normal text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Account
+        </Button>
         <h1 className="text-3xl font-bold mb-2">My Invoices</h1>
-        <p className="text-gray-600">View and download your purchase invoices</p>
+        <p className="text-gray-600">View detailed information about your purchase invoices</p>
       </div>
 
       {/* Search */}
@@ -182,7 +195,9 @@ export default function UserInvoicesPage() {
                     <h3 className="text-lg font-semibold mb-1">Invoice #{invoice.invoiceNumber}</h3>
                     <p className="text-sm text-gray-600">Order #{invoice.orderId}</p>
                   </div>
-                  <Badge className={getStatusColor(invoice.status)}>{invoice.status}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getStatusColor(invoice.status)}>{invoice.status}</Badge>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -190,7 +205,7 @@ export default function UserInvoicesPage() {
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Invoice Date</p>
-                      <p className="font-medium">{format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}</p>
+                      <p className="font-medium">{formatSafeDate(invoice.invoiceDate)}</p>
                     </div>
                   </div>
 
@@ -198,7 +213,7 @@ export default function UserInvoicesPage() {
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Due Date</p>
-                      <p className="font-medium">{format(new Date(invoice.dueDate), "MMM dd, yyyy")}</p>
+                      <p className="font-medium">{formatSafeDate(invoice.dueDate)}</p>
                     </div>
                   </div>
 
@@ -206,7 +221,7 @@ export default function UserInvoicesPage() {
                     <DollarSign className="h-4 w-4 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Total Amount</p>
-                      <p className="font-medium">${invoice.totals.total.toFixed(2)}</p>
+                      <p className="font-medium">${invoice.totals?.total?.toFixed(2) || "0.00"}</p>
                     </div>
                   </div>
                 </div>
@@ -214,14 +229,166 @@ export default function UserInvoicesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">
-                      {invoice.items.length} item{invoice.items.length !== 1 ? "s" : ""}
+                      {invoice.items?.length || 0} item{(invoice.items?.length || 0) !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <Button onClick={() => downloadInvoice(invoice._id)} variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
+                  <Button onClick={() => toggleInvoiceDetails(invoice._id)} variant="outline" size="sm">
+                    {expandedInvoice === invoice._id ? (
+                      <>
+                        <EyeOff className="h-4 w-4 mr-2" />
+                        Hide Details
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </>
+                    )}
                   </Button>
                 </div>
+
+                {/* Expanded Invoice Details */}
+                {expandedInvoice === invoice._id && (
+                  <div className="mt-6 border-t pt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Customer Information */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <User className="h-5 w-5" />
+                            Customer Information
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium">{invoice.customerInfo?.name || "N/A"}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-gray-400" />
+                            <span>{invoice.customerInfo?.email || "N/A"}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-gray-400" />
+                            <span>{invoice.customerInfo?.phone || "N/A"}</span>
+                          </div>
+                          {invoice.shippingAddress && (
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-gray-400 mt-1" />
+                              <div>
+                                <p className="font-medium">Shipping Address:</p>
+                                <p className="text-sm text-gray-600">
+                                  {invoice.shippingAddress.street}
+                                  <br />
+                                  {invoice.shippingAddress.city}, {invoice.shippingAddress.state}{" "}
+                                  {invoice.shippingAddress.zipCode}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Invoice Summary */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <DollarSign className="h-5 w-5" />
+                            Invoice Summary
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>${invoice.totals?.subtotal?.toFixed(2) || "0.00"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Tax:</span>
+                            <span>${invoice.totals?.tax?.toFixed(2) || "0.00"}</span>
+                          </div>
+                          {invoice.totals?.shipping && (
+                            <div className="flex justify-between">
+                              <span>Shipping:</span>
+                              <span>${invoice.totals.shipping.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {invoice.totals?.discount && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Discount:</span>
+                              <span>-${invoice.totals.discount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="border-t pt-2">
+                            <div className="flex justify-between font-bold text-lg">
+                              <span>Total:</span>
+                              <span>${invoice.totals?.total?.toFixed(2) || "0.00"}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Items List */}
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Package className="h-5 w-5" />
+                          Items ({invoice.items?.length || 0})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {invoice.items?.map((item, index) => (
+                            <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex-1">
+                                <h4 className="font-medium">{item.name}</h4>
+                                <p className="text-sm text-gray-600">{item.description || "No description"}</p>
+                                <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                                  <span>Quantity: {item.quantity}</span>
+                                  <span>Unit Price: ${item.price?.toFixed(2) || "0.00"}</span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">${(item.quantity * (item.price || 0)).toFixed(2)}</p>
+                              </div>
+                            </div>
+                          )) || <p className="text-gray-500 text-center py-4">No items found</p>}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Payment Information */}
+                    {invoice.paymentInfo && (
+                      <Card className="mt-6">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Payment Information</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm text-gray-600">Payment Method:</p>
+                              <p className="font-medium">{invoice.paymentInfo.method || "N/A"}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600">Transaction ID:</p>
+                              <p className="font-medium">{invoice.paymentInfo.transactionId || "N/A"}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600">Payment Date:</p>
+                              <p className="font-medium">{formatSafeDate(invoice.paymentInfo.date)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600">Payment Status:</p>
+                              <Badge className={getStatusColor(invoice.paymentInfo.status || invoice.status)}>
+                                {invoice.paymentInfo.status || invoice.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

@@ -1602,6 +1602,16 @@ export default function AccountPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="border-[#333] text-white hover:bg-[#333]"
+                                asChild
+                              >
+                                <Link href={`/account/invoices?order=${order.id}`}>
+                                  Invoice
+                                </Link>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
                               >
                                 <Link href={`/account/orders/${order.id}`}>

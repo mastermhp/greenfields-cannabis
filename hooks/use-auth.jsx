@@ -27,6 +27,11 @@ export const AuthProvider = ({ children }) => {
     checkAuth()
   }, [])
 
+  // Get token function
+  const getToken = () => {
+    return accessToken || localStorage.getItem("accessToken")
+  }
+
   // Update the checkAuth function to properly handle the token
   const checkAuth = async () => {
     try {
@@ -216,6 +221,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     loading,
     accessToken,
+    getToken,
     login,
     register,
     logout,
