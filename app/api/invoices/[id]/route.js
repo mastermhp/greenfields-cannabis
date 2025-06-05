@@ -30,7 +30,22 @@ export async function PUT(request, { params }) {
     const { db } = await connectToDatabase()
 
     // Get the invoice first to find the associated order
-    const invoice = await db.collection("invoices").findOne({ _id: new ObjectId(id) })
+    console.log("Looking for invoice with ID:", id)
+    let invoice = await db.collection("invoices").findOne({ _id: new ObjectId(id) })
+    console.log("Found invoice:", invoice ? "Yes" : "No")
+
+    if (!invoice) {
+      // Try to find by string ID field if _id doesn't work
+      const invoiceByStringId = await db.collection("invoices").findOne({ id: id })
+      console.log("Found invoice by string ID:", invoiceByStringId ? "Yes" : "No")
+
+      if (!invoiceByStringId) {
+        return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 })
+      }
+
+      // Use the found invoice
+      invoice = invoiceByStringId
+    }
 
     if (!invoice) {
       return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 })
@@ -45,7 +60,21 @@ export async function PUT(request, { params }) {
     if (notes !== undefined) updateData.notes = notes
     if (dueDate !== undefined) updateData.dueDate = dueDate
 
-    const result = await db.collection("invoices").updateOne({ _id: new ObjectId(id) }, { $set: updateData })
+    // Update the invoice - try both _id and id fields
+    let result
+    try {
+      result = await db.collection("invoices").updateOne({ _id: new ObjectId(id) }, { $set: updateData })
+
+      if (result.matchedCount === 0) {
+        // Try with string ID
+        result = await db.collection("invoices").updateOne({ id: id }, { $set: updateData })
+      }
+    } catch (error) {
+      console.error("Error with ObjectId, trying string ID:", error)
+      result = await db.collection("invoices").updateOne({ id: id }, { $set: updateData })
+    }
+
+    console.log("Update result:", result)
 
     if (result.matchedCount === 0) {
       return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 })

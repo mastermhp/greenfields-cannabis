@@ -234,7 +234,7 @@ const AdminProducts = () => {
                   <tr key={product._id || product.id} className="border-b border-[#333] hover:bg-[#1a1a1a]">
                     <td className="p-4">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 rounded bg-[#222] mr-3 overflow-hidden">
+                        <div className="h-28 w-28 rounded bg-[#222] mr-3 overflow-hidden">
                           <img
                             src={product.images?.[0] || "/placeholder.svg?height=40&width=40"}
                             alt={product.name}

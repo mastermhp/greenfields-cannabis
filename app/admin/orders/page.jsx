@@ -1093,13 +1093,13 @@ const AdminOrders = () => {
       <Dialog open={viewOrderDialog} onOpenChange={setViewOrderDialog}>
         <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl flex items-center">
+            <DialogTitle className="text-lg flex items-center">
               <ShoppingBag className="mr-2" size={20} />
               Order Details
-              <Badge className="ml-3">{selectedOrder?.id}</Badge>
+              <Badge className="ml-3 text-green-500">{selectedOrder?.id}</Badge>
             </DialogTitle>
             <DialogDescription className="text-beige">
-              Created on {selectedOrder && formatDate(selectedOrder.createdAt)}
+              <span className="text-xs">Created on</span> <span className="text-red-400">{selectedOrder && formatDate(selectedOrder.createdAt)}</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -1154,9 +1154,9 @@ const AdminOrders = () => {
 
                   {/* Items */}
                   <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3 flex items-center">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center">
                       <ShoppingBag size={16} className="mr-2" />
-                      Order Items ({selectedOrder.items?.length || 0})
+                      Order Items <span className="text-[#D4AF37]"> ({selectedOrder.items?.length || 0})</span>
                     </h3>
                     <div className="border border-[#333] rounded">
                       <table className="w-full">
@@ -1190,8 +1190,8 @@ const AdminOrders = () => {
 
                   {/* Order Totals */}
                   <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3 flex items-center">
-                      <DollarSign size={16} className="mr-2" />
+                    <h3 className="font-semibold text-lg mb-3 flex items-center">
+                      <DollarSign size={16} className="mr-2 text-[#D4AF37]" />
                       Order Summary
                     </h3>
                     <div className="space-y-2">
@@ -1232,36 +1232,36 @@ const AdminOrders = () => {
                 </TabsContent>
 
                 <TabsContent value="customer" className="mt-4 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {/* Customer Information */}
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3 flex items-center">
-                        <User size={16} className="mr-2" />
-                        Customer Information
+                      <h3 className="font-semibold text-lg mb-3 flex items-center">
+                        <User size={20} className="mr-2 text-[#D4AF37]" />
+                        Customer Info
                       </h3>
                       <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-beige">Name:</span>
-                          <span>{selectedOrder.customer?.name || "N/A"}</span>
+                        <div className="flex justify-center gap-2">
+                          <span className="text-beige">Name: </span>
+                          <span> {selectedOrder.customer?.name || "N/A"}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-beige">Email:</span>
-                          <span>{selectedOrder.customer?.email || "N/A"}</span>
+                        <div className="flex justify-center gap-2">
+                          <span className="text-sm">Email:</span>
+                          <span className="text-xs bg-purple-700 p-1 rounded-[20px]">{selectedOrder.customer?.email || "N/A"}</span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-center gap-2">
                           <span className="text-beige">Phone:</span>
                           <span>{selectedOrder.customer?.phone || "N/A"}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-beige">Customer ID:</span>
-                          <span className="font-mono text-xs">{selectedOrder.customer?.id || "N/A"}</span>
+                        <div className="flex justify-center gap-2">
+                          <span className="text-sm">Customer ID:</span>
+                          <span className="font-mono text-xs bg-green-700 p-1 rounded-[20px]">{selectedOrder.customer?.id || "N/A"}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Customer Notes */}
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3">Customer Notes</h3>
+                      <h3 className="font-semibold text-lg mb-3">Customer Notes</h3>
                       <p className="text-beige italic">
                         {selectedOrder.customerNotes || "No notes provided by customer"}
                       </p>
@@ -1269,7 +1269,7 @@ const AdminOrders = () => {
                   </div>
 
                   {/* Customer Order History */}
-                  <div className="bg-[#222] p-4 rounded-lg">
+                  {/* <div className="bg-[#222] p-4 rounded-lg">
                     <h3 className="font-semibold mb-3">Customer Order History</h3>
                     <p className="text-beige text-sm">
                       This is the customer's order. View their profile for complete order history.
@@ -1288,15 +1288,15 @@ const AdminOrders = () => {
                     >
                       View Customer Profile
                     </Button>
-                  </div>
+                  </div> */}
                 </TabsContent>
 
                 <TabsContent value="shipping" className="mt-4 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Shipping Address */}
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3 flex items-center">
-                        <MapPin size={16} className="mr-2" />
+                      <h3 className="font-semibold text-lg mb-3 flex items-center">
+                        <MapPin size={20} className="mr-2 text-green-600" />
                         Shipping Address
                       </h3>
                       {selectedOrder.shippingAddress ? (
@@ -1311,14 +1311,14 @@ const AdminOrders = () => {
                           {selectedOrder.shippingAddress.phone && <p>Phone: {selectedOrder.shippingAddress.phone}</p>}
                         </div>
                       ) : (
-                        <p className="text-beige">No shipping address provided</p>
+                        <p className="text-sm">No shipping address provided</p>
                       )}
                     </div>
 
                     {/* Billing Address */}
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3 flex items-center">
-                        <CreditCard size={16} className="mr-2" />
+                      <h3 className="font-semibold text-lg mb-3 flex items-center">
+                        <CreditCard size={20} className="mr-2 text-red-600" />
                         Billing Address
                       </h3>
                       {selectedOrder.billingAddress ? (
@@ -1353,8 +1353,8 @@ const AdminOrders = () => {
 
                   {/* Payment Information */}
                   <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3 flex items-center">
-                      <DollarSign size={16} className="mr-2" />
+                    <h3 className="font-semibold text-lg mb-3 flex items-center">
+                      <DollarSign size={20} className="mr-2 text-[#D4AF37]" />
                       Payment Information
                     </h3>
                     <div className="space-y-2">
@@ -1383,8 +1383,8 @@ const AdminOrders = () => {
 
                   {/* Shipping Method */}
                   <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3 flex items-center">
-                      <Truck size={16} className="mr-2" />
+                    <h3 className="font-semibold text-lg mb-3 flex items-center">
+                      <Truck size={20} className="mr-2 text-[#D4AF37]" />
                       Shipping Method
                     </h3>
                     <div className="space-y-2">
@@ -1409,8 +1409,8 @@ const AdminOrders = () => {
                 <TabsContent value="history" className="mt-4 space-y-4">
                   {/* Order Timeline */}
                   <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3 flex items-center">
-                      <Calendar size={16} className="mr-2" />
+                    <h3 className="font-semibold text-lg mb-3 flex items-center">
+                      <Calendar size={20} className="mr-2 text-red-400" />
                       Order Timeline
                     </h3>
                     <div className="space-y-4">
@@ -1501,7 +1501,7 @@ const AdminOrders = () => {
                   </div>
 
                   {/* Admin Notes */}
-                  <div className="bg-[#222] p-4 rounded-lg">
+                  {/* <div className="bg-[#222] p-4 rounded-lg">
                     <h3 className="font-semibold mb-3">Admin Notes</h3>
                     <div className="space-y-2">
                       {selectedOrder.adminNotes ? (
@@ -1524,7 +1524,7 @@ const AdminOrders = () => {
                         Add/Edit Notes
                       </Button>
                     </div>
-                  </div>
+                  </div> */}
                 </TabsContent>
               </Tabs>
             </div>
@@ -1676,7 +1676,7 @@ const AdminOrders = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Shipping Address */}
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3">Shipping Address</h3>
+                      <h3 className="font-semibold text-lg mb-3">Shipping Address</h3>
                       <div className="space-y-3">
                         <div>
                           <Label htmlFor="shipping-name">Full Name</Label>
@@ -1789,7 +1789,7 @@ const AdminOrders = () => {
 
                     {/* Billing Address */}
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3">Billing Address</h3>
+                      <h3 className="font-semibold text-lg mb-3">Billing Address</h3>
                       <div className="space-y-3">
                         <div>
                           <Label htmlFor="billing-name">Full Name</Label>
@@ -1906,7 +1906,7 @@ const AdminOrders = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Order Status */}
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3">Order Status</h3>
+                      <h3 className="font-semibold text-lg mb-3">Order Status</h3>
                       <div className="space-y-3">
                         <div>
                           <Label htmlFor="order-status">Status</Label>
@@ -1973,7 +1973,7 @@ const AdminOrders = () => {
 
                     {/* Shipping & Costs */}
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3">Shipping & Costs</h3>
+                      <h3 className="font-semibold text-lg mb-3">Shipping & Costs</h3>
                       <div className="space-y-3">
                         <div>
                           <Label htmlFor="shipping-method">Shipping Method</Label>
@@ -2038,7 +2038,7 @@ const AdminOrders = () => {
 
                   {/* Notes */}
                   <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3">Order Notes</h3>
+                    <h3 className="font-semibold text-lg mb-3">Order Notes</h3>
                     <div className="space-y-3">
                       <div>
                         <Label htmlFor="customer-notes">Customer Notes</Label>

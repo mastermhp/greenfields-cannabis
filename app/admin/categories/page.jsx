@@ -293,7 +293,7 @@ const CategoriesPage = () => {
                       </div>
 
                       {imagePreview && (
-                        <div className="relative mt-2 w-full h-40 bg-[#222] rounded-md overflow-hidden">
+                        <div className="relative mt-2 w-full h-44 bg-[#222] rounded-md overflow-hidden">
                           <Image
                             src={imagePreview || "/placeholder.svg"}
                             alt="Category preview"
@@ -311,11 +311,13 @@ const CategoriesPage = () => {
                             }}
                             className="absolute top-2 right-2 bg-black/70 p-1 rounded-full"
                           >
-                            <X size={16} className="text-white" />
+                            <X size={16} className="text-red-500" />
                           </button>
                         </div>
                       )}
                     </div>
+                                  <p className="text-xs text-red-600">Image Size should be square shape like: 1024 x 1024</p>
+
                   </div>
                 </div>
                 <div>

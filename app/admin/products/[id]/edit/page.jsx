@@ -707,7 +707,7 @@ const EditProduct = ({ params }) => {
                       <img
                         src={image.url || "/placeholder.svg"}
                         alt="Product"
-                        className="w-full h-24 object-cover rounded-lg"
+                        className="w-full h-40 object-cover rounded-lg"
                       />
                       <Button
                         type="button"
@@ -716,12 +716,15 @@ const EditProduct = ({ params }) => {
                         className="absolute top-1 right-1 w-6 h-6 p-0"
                         onClick={() => removeImage(image.id)}
                       >
-                        <X size={12} />
+                        <X size={12} className="text-red-900"/>
                       </Button>
                     </div>
                   ))}
+
+                  
                 </div>
               )}
+              <p className="text-xs text-red-600">Image Size should be square shape like: 1024 x 1024</p>
             </CardContent>
           </Card>
 

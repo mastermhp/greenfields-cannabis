@@ -203,17 +203,17 @@ export default function LoginForm() {
         </div>
       </form>
 
-      <div className="mt-8">
+      <div className="mt-32">
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-[#333]"></div>
           </div>
-          <div className="relative flex justify-center text-sm">
+          {/* <div className="relative flex justify-center text-sm">
             <span className="px-4 bg-black text-beige">Or continue with</span>
-          </div>
+          </div> */}
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        {/* <div className="mt-6 grid grid-cols-2 gap-4">
           <button className="flex justify-center items-center py-3 px-4 border border-[#333] hover:border-[#D4AF37] bg-[#111] text-beige">
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path
@@ -245,7 +245,7 @@ export default function LoginForm() {
             </svg>
             GitHub
           </button>
-        </div>
+        </div> */}
       </div>
     </motion.div>
   )

@@ -588,7 +588,7 @@ const AdminUsers = () => {
                       View Details
                     </Button>
 
-                    {user.status !== "banned" && (
+                    {/* {user.status !== "banned" && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -610,7 +610,7 @@ const AdminUsers = () => {
                         <CheckCircle size={16} className="mr-2" />
                         Unban User
                       </Button>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </CardContent>
@@ -709,10 +709,10 @@ const AdminUsers = () => {
                   </div>
 
                   {/* Contact Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3 flex items-center">
-                        <Mail size={16} className="mr-2" />
+                      <h3 className="font-semibold text-lg mb-3 flex items-center">
+                        <Mail size={20} className="mr-2 text-red-400" />
                         Contact Information
                       </h3>
                       <div className="space-y-2">
@@ -734,8 +734,8 @@ const AdminUsers = () => {
                     </div>
 
                     <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold mb-3 flex items-center">
-                        <MapPin size={16} className="mr-2" />
+                      <h3 className="font-semibold text-lg mb-3 flex items-center">
+                        <MapPin size={20} className="mr-2 text-green-400" />
                         Location
                       </h3>
                       <div className="space-y-2">
@@ -761,8 +761,8 @@ const AdminUsers = () => {
 
                   {/* Account Information */}
                   <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3 flex items-center">
-                      <Calendar size={16} className="mr-2" />
+                    <h3 className="font-semibold text-lg mb-3 flex items-center">
+                      <Calendar size={20} className="mr-2 text-purple-400" />
                       Account Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -837,16 +837,15 @@ const AdminUsers = () => {
                                   <p className="text-beige">Items</p>
                                   <p className="text-white">{order.items?.length || 0} item(s)</p>
                                 </div>
-                                <div>
-                                  <p className="text-beige">Total</p>
-                                </div>
-                                <div>
+                                
+                                <div className="flex gap-3">
+                                  <p className="text-beige">Total:</p>
                                   <p className="text-[#D4AF37] font-medium">${order.total?.toFixed(2)}</p>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex space-x-2">
+                            {/* <div className="flex space-x-2">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -862,7 +861,7 @@ const AdminUsers = () => {
                                 <Eye size={16} className="mr-2" />
                                 View Order
                               </Button>
-                            </div>
+                            </div> */}
                           </div>
 
                           {/* Order Items Preview */}
@@ -904,7 +903,7 @@ const AdminUsers = () => {
                   ) : userStats ? (
                     <div className="space-y-4">
                       {/* Order Statistics */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                         <div className="bg-[#222] p-4 rounded-lg text-center">
                           <ShoppingBag className="mx-auto mb-2 text-blue-400" size={24} />
                           <p className="text-2xl font-bold text-white">{userStats.totalOrders}</p>
@@ -940,8 +939,8 @@ const AdminUsers = () => {
 
                       {/* Order Status Breakdown */}
                       <div className="bg-[#222] p-4 rounded-lg">
-                        <h3 className="font-semibold mb-3">Order Status Breakdown</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <h3 className="font-semibold text-lg mb-3">Order Status Breakdown</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
                             <div className="flex items-center">
                               <CheckCircle size={20} className="text-green-400 mr-2" />
@@ -1079,7 +1078,7 @@ const AdminUsers = () => {
                   Close
                 </Button>
 
-                {selectedUser.status !== "banned" ? (
+                {/* {selectedUser.status !== "banned" ? (
                   <Button
                     variant="destructive"
                     onClick={() => {
@@ -1103,12 +1102,12 @@ const AdminUsers = () => {
                     <CheckCircle size={16} className="mr-2" />
                     Unban User
                   </Button>
-                )}
+                )} */}
 
-                <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                {/* <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
                   <Mail size={16} className="mr-2" />
                   Contact User
-                </Button>
+                </Button> */}
               </div>
             </div>
           )}

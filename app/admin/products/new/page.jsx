@@ -461,7 +461,7 @@ const NewProduct = () => {
               <CardTitle className="text-white">Cannabis Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="thcContent" className="text-beige">
                     THC Content (%)
@@ -498,7 +498,7 @@ const NewProduct = () => {
                   />
                 </div>
 
-                <div>
+                {/* <div>
                   <Label htmlFor="origin" className="text-beige">
                     Origin
                   </Label>
@@ -510,7 +510,7 @@ const NewProduct = () => {
                     placeholder="e.g., California, USA"
                     className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
                   />
-                </div>
+                </div> */}
               </div>
 
               <div>
