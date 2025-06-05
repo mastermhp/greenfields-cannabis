@@ -1,22 +1,25 @@
 import { NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
-import { verifyToken } from "@/lib/auth"
+import { verifyAuth } from "@/lib/auth"
 
 export async function PUT(request, { params }) {
   try {
     // Verify authentication
-    const authResult = await verifyToken(request)
-    if (!authResult.success) {
+    const authResult = await verifyAuth(request)
+    if (authResult.error || !authResult.auth) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    const { user } = authResult
+    const user = authResult.auth
     if (user.role !== "admin" && !user.isAdmin) {
       return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 })
     }
 
-    const { id } = params
+    // Await params before accessing properties
+    const resolvedParams = await params
+    const id = resolvedParams.id
+
     const body = await request.json()
     const { status, notes, dueDate } = body
 
@@ -93,17 +96,19 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     // Verify authentication
-    const authResult = await verifyToken(request)
-    if (!authResult.success) {
+    const authResult = await verifyAuth(request)
+    if (authResult.error || !authResult.auth) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    const { user } = authResult
+    const user = authResult.auth
     if (user.role !== "admin" && !user.isAdmin) {
       return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 })
     }
 
-    const { id } = params
+    // Await params before accessing properties
+    const resolvedParams = await params
+    const id = resolvedParams.id
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ success: false, error: "Invalid invoice ID" }, { status: 400 })
