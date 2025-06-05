@@ -110,7 +110,7 @@ export default function Home() {
           >
             <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Explore Our Categories</h2>
             <p className="text-beige max-w-2xl mx-auto">
-              Discover our wide range of premium cannabis products, carefully curated for your needs
+              Discover our wide range of premium cannabis products
             </p>
           </motion.div>
 

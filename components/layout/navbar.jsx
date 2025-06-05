@@ -68,14 +68,11 @@ const ParticleEffect = () => {
 }
 
 // Animated nav link component
-const NavLink = ({ href, name, isActive, icon: Icon }) => {
+const NavLink = ({ href, name, isActive}) => {
   return (
     <Link href={href} className="group relative">
       <div className="flex items-center space-x-1.5 px-1 py-1">
-        <Icon
-          size={18}
-          className={`transition-all duration-1000 ${isActive ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"}`}
-        />
+      
         <span
           className={`relative font-medium transition-all duration-1000 ${isActive ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"}`}
         >
@@ -177,13 +174,12 @@ const Navbar = () => {
   const searchInputRef = useRef(null)
   const controls = useAnimation()
 
-  // Enhanced nav links with icons
+  // Enhanced nav links
   const navLinks = [
-    { name: "Home", href: "/", icon: Home },
+    { name: "Home", href: "/" },
     {
       name: "Products",
       href: "/products",
-      icon: Package,
       dropdown: [
         { name: "All Products", href: "/products" },
         { name: "Flower", href: "/products?category=flower" },
@@ -195,12 +191,11 @@ const Navbar = () => {
         { name: "Apparel", href: "/products?category=apparel" },
       ],
     },
-    { name: "About", href: "/about", icon: Info },
-    { name: "Contact", href: "/contact", icon: Phone },
+    { name: "About", href: "/about" },
+    { name: "Contact", href: "/contact" },
     {
       name: "Information",
       href: "#",
-      icon: FileText,
       dropdown: [
         { name: "FAQs", href: "/faqs" },
         { name: "Track Order", href: "/track-order" },
@@ -402,12 +397,6 @@ const Navbar = () => {
                           className="flex items-center space-x-1.5 px-1 py-1 group"
                           onClick={() => isMobile && toggleDropdown(index)}
                         >
-                          <link.icon
-                            size={18}
-                            className={`transition-all duration-1000 ${
-                              activeDropdown === index ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"
-                            }`}
-                          />
                           <span
                             className={`relative font-medium transition-all duration-1000 ${
                               activeDropdown === index ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"
@@ -435,7 +424,7 @@ const Navbar = () => {
                         />
                       </div>
                     ) : (
-                      <NavLink href={link.href} name={link.name} icon={link.icon} isActive={pathname === link.href} />
+                      <NavLink href={link.href} name={link.name} isActive={pathname === link.href} />
                     )}
                   </div>
                 ))}
@@ -736,7 +725,7 @@ const Navbar = () => {
                     {link.dropdown ? (
                       <div className="mb-2">
                         <button
-                          className="flex items-center justify-between w-full p-3 text-xl font-medium text-white hover:bg-[#D4AF37]/10 rounded-lg transition-colors duration-200"
+                          className="flex items-center justify-between w-full p-3 text-xl font-medium text-white hover:bg-[#D4AF37]/10 rounded-lg transition-colors duration-200 hover:cursor-pointer"
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
@@ -744,10 +733,7 @@ const Navbar = () => {
                           }}
                         >
                           <div className="flex items-center space-x-3">
-                            <link.icon
-                              size={22}
-                              className={activeDropdown === index ? "text-[#D4AF37]" : "text-white"}
-                            />
+                            
                             <span className={activeDropdown === index ? "text-[#D4AF37]" : "text-white"}>
                               {link.name}
                             </span>
@@ -809,7 +795,6 @@ const Navbar = () => {
                           closeMenu()
                         }}
                       >
-                        <link.icon size={22} />
                         <span>{link.name}</span>
                       </Link>
                     )}

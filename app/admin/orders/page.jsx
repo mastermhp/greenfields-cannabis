@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Search, Eye, Package, Truck, CheckCircle, Clock, AlertCircle, MoreHorizontal, Download } from "lucide-react"
+import { Search, Eye, Package, Truck, CheckCircle, Clock, AlertCircle, Download, Edit, X, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 const AdminOrders = () => {
   const { toast } = useToast()
@@ -18,6 +19,9 @@ const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState("all")
   const [loading, setLoading] = useState(true)
   const [updatingOrder, setUpdatingOrder] = useState(null)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [viewOrderDialog, setViewOrderDialog] = useState(false)
+  const [editOrderDialog, setEditOrderDialog] = useState(false)
 
   // Fetch orders from API
   const fetchOrders = async () => {
@@ -79,7 +83,8 @@ const AdminOrders = () => {
         (order) =>
           order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.customer.email.toLowerCase().includes(searchQuery.toLowerCase()),
+          order.customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          order.customer.id?.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     }
 
@@ -200,6 +205,87 @@ const AdminOrders = () => {
     }
   }
 
+  const cancelOrder = async (orderId) => {
+    if (window.confirm("Are you sure you want to cancel this order?")) {
+      await updateOrderStatus(orderId, "cancelled")
+    }
+  }
+
+  const viewOrder = (order) => {
+    setSelectedOrder(order)
+    setViewOrderDialog(true)
+  }
+
+  const editOrder = (order) => {
+    setSelectedOrder(order)
+    setEditOrderDialog(true)
+  }
+
+  const printInvoice = (order) => {
+    // Create a printable invoice
+    const printWindow = window.open("", "_blank")
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice - ${order.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .order-info { margin-bottom: 20px; }
+            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .items-table th { background-color: #f2f2f2; }
+            .total { text-align: right; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Greenfields Cannabis</h1>
+            <h2>Invoice</h2>
+          </div>
+          <div class="order-info">
+            <p><strong>Order ID:</strong> ${order.id}</p>
+            <p><strong>Customer:</strong> ${order.customer.name}</p>
+            <p><strong>Email:</strong> ${order.customer.email}</p>
+            <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+            <p><strong>Status:</strong> ${order.status}</p>
+          </div>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                order.items
+                  ?.map(
+                    (item) => `
+                <tr>
+                  <td>${item.name}</td>
+                  <td>${item.quantity}</td>
+                  <td>$${item.price?.toFixed(2)}</td>
+                  <td>$${(item.price * item.quantity)?.toFixed(2)}</td>
+                </tr>
+              `,
+                  )
+                  .join("") || ""
+              }
+            </tbody>
+          </table>
+          <div class="total">
+            <p><strong>Total: $${order.total?.toFixed(2)}</strong></p>
+          </div>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.print()
+  }
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -251,14 +337,14 @@ const AdminOrders = () => {
             variant="outline"
             onClick={fetchOrders}
             disabled={loading}
-            className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-white transition-all duration-500 hover:cursor-pointer"
+            className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
           >
             Refresh Orders
           </Button>
-          {/* <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+          <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
             <Download size={16} className="mr-2" />
             Export Orders
-          </Button> */}
+          </Button>
         </div>
       </div>
 
@@ -299,7 +385,7 @@ const AdminOrders = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <Input
-                placeholder="Search orders, customers..."
+                placeholder="Search orders, customers, customer ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-black border-[#333] focus:border-[#D4AF37]"
@@ -308,7 +394,7 @@ const AdminOrders = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-black border border-[#333] rounded-md text-white focus:border-[#D4AF37] hover:cursor-pointer"
+              className="px-4 py-2 bg-black border border-[#333] rounded-md text-white focus:border-[#D4AF37]"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -347,7 +433,7 @@ const AdminOrders = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-beige">Customer</p>
                         <p className="text-white font-medium">{order.customer.name}</p>
@@ -355,15 +441,21 @@ const AdminOrders = () => {
                       </div>
 
                       <div>
-                        <p className="text-beige">Order Date</p>
-                        <p className="text-white">{formatDate(order.createdAt)}</p>
-                        <p className="text-gray-400">Updated: {formatDate(order.updatedAt)}</p>
+                        <p className="text-beige">Customer ID</p>
+                        <p className="text-white font-mono text-xs">{order.customer.id || "N/A"}</p>
+                        <p className="text-gray-400">Order Date: {formatDate(order.createdAt)}</p>
                       </div>
 
                       <div>
-                        <p className="text-beige">Items</p>
+                        <p className="text-beige">Order Details</p>
                         <p className="text-white">{order.items?.length || 0} item(s)</p>
                         <p className="text-gray-400">Total: ${order.total?.toFixed(2)}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-beige">Last Updated</p>
+                        <p className="text-white">{formatDate(order.updatedAt)}</p>
+                        {order.trackingNumber && <p className="text-gray-400 text-xs">Track: {order.trackingNumber}</p>}
                       </div>
                     </div>
 
@@ -381,13 +473,13 @@ const AdminOrders = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-[#333] hover:cursor-pointer"
+                          className="border-[#333]"
                           disabled={updatingOrder === order.id}
                         >
                           {updatingOrder === order.id ? "Updating..." : "Update Status"}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-[#111] border-[#333] hover:cursor-pointer">
+                      <DropdownMenuContent className="bg-[#111] border-[#333]">
                         <DropdownMenuItem
                           onClick={() => updateOrderStatus(order.id, "pending")}
                           disabled={order.status === "pending"}
@@ -427,23 +519,35 @@ const AdminOrders = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* <DropdownMenu>
+                    <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal size={16} />
+                        <Button variant="outline" size="sm" className="border-[#333]">
+                          Actions
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="bg-[#111] border-[#333]">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => viewOrder(order)}>
                           <Eye size={16} className="mr-2" />
-                          View Details
+                          View Order
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download size={16} className="mr-2" />
-                          Download Invoice
+                        <DropdownMenuItem onClick={() => editOrder(order)}>
+                          <Edit size={16} className="mr-2" />
+                          Edit Order
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => printInvoice(order)}>
+                          <Printer size={16} className="mr-2" />
+                          Print Invoice
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => cancelOrder(order.id)}
+                          disabled={order.status === "cancelled" || order.status === "delivered"}
+                          className="text-red-400"
+                        >
+                          <X size={16} className="mr-2" />
+                          Cancel Order
                         </DropdownMenuItem>
                       </DropdownMenuContent>
-                    </DropdownMenu> */}
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardContent>
@@ -461,6 +565,128 @@ const AdminOrders = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* View Order Dialog */}
+      <Dialog open={viewOrderDialog} onOpenChange={setViewOrderDialog}>
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Order Details - {selectedOrder?.id}</DialogTitle>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="space-y-6">
+              {/* Order Header */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold mb-2">Order Information</h3>
+                  <div className="space-y-1 text-sm">
+                    <p>
+                      <span className="text-beige">Order ID:</span> {selectedOrder.id}
+                    </p>
+                    <p>
+                      <span className="text-beige">Status:</span> {getStatusBadge(selectedOrder.status)}
+                    </p>
+                    <p>
+                      <span className="text-beige">Payment Status:</span>
+                      <Badge
+                        className={`ml-2 ${selectedOrder.paymentStatus === "paid" ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"} border-0`}
+                      >
+                        {selectedOrder.paymentStatus}
+                      </Badge>
+                    </p>
+                    <p>
+                      <span className="text-beige">Created:</span> {formatDate(selectedOrder.createdAt)}
+                    </p>
+                    <p>
+                      <span className="text-beige">Updated:</span> {formatDate(selectedOrder.updatedAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-2">Customer Information</h3>
+                  <div className="space-y-1 text-sm">
+                    <p>
+                      <span className="text-beige">Name:</span> {selectedOrder.customer.name}
+                    </p>
+                    <p>
+                      <span className="text-beige">Email:</span> {selectedOrder.customer.email}
+                    </p>
+                    <p>
+                      <span className="text-beige">Customer ID:</span> {selectedOrder.customer.id || "N/A"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items */}
+              <div>
+                <h3 className="font-semibold mb-2">Order Items</h3>
+                <div className="border border-[#333] rounded">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[#333] bg-[#222]">
+                        <th className="text-left p-3">Item</th>
+                        <th className="text-right p-3">Qty</th>
+                        <th className="text-right p-3">Price</th>
+                        <th className="text-right p-3">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedOrder.items?.map((item, index) => (
+                        <tr key={index} className="border-b border-[#333]">
+                          <td className="p-3">{item.name}</td>
+                          <td className="p-3 text-right">{item.quantity}</td>
+                          <td className="p-3 text-right">${item.price?.toFixed(2)}</td>
+                          <td className="p-3 text-right">${(item.price * item.quantity)?.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="flex justify-end">
+                <div className="w-64">
+                  <div className="flex justify-between font-bold text-lg border-t border-[#333] pt-2">
+                    <span>Total:</span>
+                    <span className="text-[#D4AF37]">${selectedOrder.total?.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tracking */}
+              {selectedOrder.trackingNumber && (
+                <div>
+                  <h3 className="font-semibold mb-2">Tracking Information</h3>
+                  <p className="text-beige">
+                    Tracking Number: <span className="text-white font-mono">{selectedOrder.trackingNumber}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Order Dialog */}
+      <Dialog open={editOrderDialog} onOpenChange={setEditOrderDialog}>
+        <DialogContent className="bg-[#111] border border-[#333] text-white">
+          <DialogHeader>
+            <DialogTitle>Edit Order - {selectedOrder?.id}</DialogTitle>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="space-y-4">
+              <p className="text-beige">Order editing functionality can be implemented here.</p>
+              <p className="text-sm text-gray-400">
+                This would include updating order items, quantities, shipping address, etc.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

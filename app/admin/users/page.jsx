@@ -2,74 +2,81 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import {
-  Search,
-  UserPlus,
-  Edit,
-  Trash2,
-  Ban,
-  CheckCircle,
-  MoreHorizontal,
-  Mail,
-  Phone,
-  Calendar,
-  Award,
-} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "@/hooks/use-toast"
+import {
+  Loader2,
+  Search,
+  Users,
+  UserCheck,
+  UserX,
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  CreditCard,
+  ShoppingBag,
+  Calendar,
+  Mail,
+  User,
+} from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-const AdminUsers = () => {
-  const { toast } = useToast()
+export default function UsersPage() {
+  const { getToken } = useAuth()
   const [users, setUsers] = useState([])
-  const [filteredUsers, setFilteredUsers] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filteredUsers, setFilteredUsers] = useState([])
+  const [expandedUsers, setExpandedUsers] = useState(new Set())
 
   useEffect(() => {
     fetchUsers()
   }, [])
 
   useEffect(() => {
-    let filtered = users
-
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (user) =>
-          user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.phone?.includes(searchQuery),
-      )
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((user) => user.status === statusFilter)
-    }
-
+    // Filter users based on search term
+    const filtered = users.filter(
+      (user) =>
+        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user._id?.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
     setFilteredUsers(filtered)
-  }, [searchQuery, statusFilter, users])
+  }, [users, searchTerm])
 
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/users")
-      const data = await response.json()
+      const token = getToken()
 
-      if (response.ok) {
+      const response = await fetch("/api/users", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch users")
+      }
+
+      const data = await response.json()
+      if (data.success) {
         setUsers(data.data || [])
-        setFilteredUsers(data.data || [])
       } else {
         throw new Error(data.error || "Failed to fetch users")
       }
     } catch (error) {
+      console.error("Error fetching users:", error)
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to load users. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -77,330 +84,368 @@ const AdminUsers = () => {
     }
   }
 
-  const updateUserStatus = async (userId, newStatus) => {
-    try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setUsers(users.map((user) => (user._id === userId ? { ...user, status: newStatus } : user)))
-        toast({
-          title: "User Updated",
-          description: `User status updated to ${newStatus}`,
-        })
-      } else {
-        throw new Error(data.error || "Failed to update user")
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      })
+  const toggleUserExpansion = (userId) => {
+    const newExpanded = new Set(expandedUsers)
+    if (newExpanded.has(userId)) {
+      newExpanded.delete(userId)
+    } else {
+      newExpanded.add(userId)
     }
+    setExpandedUsers(newExpanded)
   }
 
-  const deleteUser = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      try {
-        const response = await fetch(`/api/users/${userId}`, {
-          method: "DELETE",
-        })
+  const formatDate = (date) => {
+    if (!date) return "N/A"
+    return new Date(date).toLocaleDateString()
+  }
 
-        const data = await response.json()
-
-        if (response.ok) {
-          setUsers(users.filter((user) => user._id !== userId))
-          toast({
-            title: "User Deleted",
-            description: "User has been successfully deleted.",
-          })
-        } else {
-          throw new Error(data.error || "Failed to delete user")
-        }
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        })
-      }
-    }
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0)
   }
 
   const getStatusBadge = (status) => {
-    const variants = {
-      active: "bg-green-500/20 text-green-400",
-      inactive: "bg-gray-500/20 text-gray-400",
-      suspended: "bg-red-500/20 text-red-400",
+    switch (status?.toLowerCase()) {
+      case "active":
+        return <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+      case "inactive":
+        return <Badge className="bg-red-500/20 text-red-400">Inactive</Badge>
+      case "suspended":
+        return <Badge className="bg-yellow-500/20 text-yellow-400">Suspended</Badge>
+      default:
+        return <Badge className="bg-gray-500/20 text-gray-400">Unknown</Badge>
     }
-
-    return (
-      <Badge className={`${variants[status]} border-0`}>
-        {status === "active" && <CheckCircle size={12} className="mr-1" />}
-        {status === "suspended" && <Ban size={12} className="mr-1" />}
-        <span className="capitalize">{status}</span>
-      </Badge>
-    )
   }
 
-  const getLoyaltyBadge = (tier) => {
-    const variants = {
-      silver: "bg-gray-300/20 text-gray-300",
-      gold: "bg-yellow-500/20 text-yellow-400",
-      diamond: "bg-blue-500/20 text-blue-400",
+  const getRoleBadge = (role, isAdmin) => {
+    if (isAdmin || role === "admin") {
+      return <Badge className="bg-purple-500/20 text-purple-400">Admin</Badge>
     }
-
-    return (
-      <Badge className={`${variants[tier]} border-0`}>
-        <Award size={12} className="mr-1" />
-        <span className="capitalize">{tier}</span>
-      </Badge>
-    )
-  }
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
+    return <Badge className="bg-blue-500/20 text-blue-400">Customer</Badge>
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="h-8 bg-[#333] rounded w-48 animate-pulse"></div>
-            <div className="h-4 bg-[#333] rounded w-64 mt-2 animate-pulse"></div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="bg-[#111] border border-[#333] rounded-lg p-6 animate-pulse">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-[#333] rounded-full"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-[#333] rounded w-1/4"></div>
-                  <div className="h-3 bg-[#333] rounded w-1/3"></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Loading users...</span>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
         <div>
-          <h1 className="text-3xl font-bold gold-text">Users Management</h1>
-          <p className="text-beige mt-2">Manage customer accounts and permissions</p>
+          <h1 className="text-3xl font-bold gold-text">User Management</h1>
+          <p className="text-beige mt-2">Manage customer accounts and information</p>
         </div>
-        <Button className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
-          <UserPlus size={16} className="mr-2" />
-          Add User
-        </Button>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          { title: "Total Users", value: users.length, color: "text-blue-400" },
-          { title: "Active Users", value: users.filter((u) => u.status === "active").length, color: "text-green-400" },
-          { title: "Suspended", value: users.filter((u) => u.status === "suspended").length, color: "text-red-400" },
-          { title: "Admins", value: users.filter((u) => u.role === "admin").length, color: "text-purple-400" },
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Card className="bg-[#111] border-[#333]">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <p className="text-beige text-sm">{stat.title}</p>
-                  <p className={`text-3xl font-bold mt-2 ${stat.color}`}>{stat.value}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+        <Card className="bg-[#111] border-[#333]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-beige text-sm font-medium">Total Users</p>
+                <p className="text-2xl font-bold text-white">{users.length}</p>
+              </div>
+              <Users className="h-8 w-8 text-blue-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#111] border-[#333]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-beige text-sm font-medium">Active Users</p>
+                <p className="text-2xl font-bold text-white">
+                  {users.filter((user) => user.status === "active").length}
+                </p>
+              </div>
+              <UserCheck className="h-8 w-8 text-green-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#111] border-[#333]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-beige text-sm font-medium">Admins</p>
+                <p className="text-2xl font-bold text-white">
+                  {users.filter((user) => user.role === "admin" || user.isAdmin).length}
+                </p>
+              </div>
+              <Shield className="h-8 w-8 text-purple-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#111] border-[#333]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-beige text-sm font-medium">New This Month</p>
+                <p className="text-2xl font-bold text-white">
+                  {
+                    users.filter((user) => {
+                      const userDate = new Date(user.createdAt)
+                      const now = new Date()
+                      return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear()
+                    }).length
+                  }
+                </p>
+              </div>
+              <UserX className="h-8 w-8 text-[#D4AF37]" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Filters */}
+      {/* Search */}
       <Card className="bg-[#111] border-[#333]">
         <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <Input
-                placeholder="Search users..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-black border border-[#333] rounded-md text-white focus:border-[#D4AF37]"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search users by name, email, or ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-[#222] border-[#444] text-white"
+            />
           </div>
         </CardContent>
       </Card>
 
       {/* Users List */}
-      <div className="space-y-4">
-        {filteredUsers.map((user, index) => (
-          <motion.div
-            key={user._id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Card className="bg-[#111] border-[#333] hover:border-[#D4AF37]/50 transition-colors">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-                  <div className="flex items-center space-x-4">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                      <AvatarFallback className="bg-[#D4AF37] text-black">
-                        {user.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-white">{user.name}</h3>
-                        {getStatusBadge(user.status)}
-                        {user.role === "admin" && (
-                          <Badge className="bg-purple-500/20 text-purple-400 border-0">Admin</Badge>
-                        )}
-                        {user.role === "customer" && user.loyaltyTier && getLoyaltyBadge(user.loyaltyTier)}
+      <Card className="bg-[#111] border-[#333]">
+        <CardHeader>
+          <CardTitle className="text-white">All Users ({filteredUsers.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredUsers.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-400">
+                {users.length === 0 ? "No users found." : "No users match your search criteria."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredUsers.map((user) => (
+                <Collapsible key={user._id} open={expandedUsers.has(user._id)}>
+                  <div className="border border-[#333] rounded-lg p-4 hover:bg-[#222] transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-[#D4AF37] rounded-full flex items-center justify-center">
+                          <User className="h-5 w-5 text-black" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white">{user.name || "N/A"}</h3>
+                          <p className="text-sm text-beige">{user.email}</p>
+                          <p className="text-xs text-gray-400">ID: {user._id}</p>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                        <div className="flex items-center space-x-2">
-                          <Mail size={14} className="text-gray-400" />
-                          <span className="text-beige">{user.email}</span>
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <div className="flex space-x-2 mb-1">
+                            {getStatusBadge(user.status)}
+                            {getRoleBadge(user.role, user.isAdmin)}
+                          </div>
+                          <p className="text-xs text-beige">Joined: {formatDate(user.createdAt)}</p>
                         </div>
 
-                        {user.phone && (
-                          <div className="flex items-center space-x-2">
-                            <Phone size={14} className="text-gray-400" />
-                            <span className="text-beige">{user.phone}</span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center space-x-2">
-                          <Calendar size={14} className="text-gray-400" />
-                          <span className="text-beige">Joined {formatDate(user.createdAt)}</span>
-                        </div>
-
-                        {user.role === "customer" && (
-                          <div className="text-beige">
-                            {user.totalOrders || 0} orders • ${(user.totalSpent || 0).toFixed(2)} spent
-                          </div>
-                        )}
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleUserExpansion(user._id)}
+                            className="border-[#333]"
+                          >
+                            {expandedUsers.has(user._id) ? (
+                              <>
+                                <ChevronUp className="h-4 w-4 mr-1" />
+                                Hide Details
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-4 w-4 mr-1" />
+                                View Details
+                              </>
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
                       </div>
-
-                      {user.role === "customer" && (
-                        <div className="mt-3 p-3 bg-[#222] rounded-lg">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-beige">Loyalty Points</span>
-                            <span className="text-[#D4AF37] font-medium">{user.loyaltyPoints || 0} pts</span>
-                          </div>
-                        </div>
-                      )}
                     </div>
+
+                    <CollapsibleContent className="mt-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4 border-t border-[#333]">
+                        {/* Contact Information */}
+                        <div>
+                          <h4 className="font-semibold text-white mb-3 flex items-center">
+                            <Mail className="h-4 w-4 mr-2" />
+                            Contact Information
+                          </h4>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-beige">Email:</span>
+                              <span className="text-white">{user.email}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-beige">Phone:</span>
+                              <span className="text-white">{user.phone || "N/A"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-beige">Email Verified:</span>
+                              <span className="text-white">{user.emailVerified ? "Yes" : "No"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Addresses */}
+                        <div>
+                          <h4 className="font-semibold text-white mb-3 flex items-center">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            Addresses ({user.addresses?.length || 0})
+                          </h4>
+                          <div className="space-y-2 max-h-32 overflow-y-auto">
+                            {user.addresses && user.addresses.length > 0 ? (
+                              user.addresses.map((address, index) => (
+                                <div key={index} className="text-xs bg-[#222] p-2 rounded border border-[#333]">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium text-white">{address.type || "Address"}</span>
+                                    {address.isDefault && (
+                                      <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] text-xs">Default</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-beige">
+                                    {address.street}, {address.city}
+                                  </p>
+                                  <p className="text-beige">
+                                    {address.state} {address.zip}, {address.country}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-gray-400 text-sm">No addresses saved</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Payment Methods */}
+                        <div>
+                          <h4 className="font-semibold text-white mb-3 flex items-center">
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Payment Methods ({user.paymentMethods?.length || 0})
+                          </h4>
+                          <div className="space-y-2 max-h-32 overflow-y-auto">
+                            {user.paymentMethods && user.paymentMethods.length > 0 ? (
+                              user.paymentMethods.map((payment, index) => (
+                                <div key={index} className="text-xs bg-[#222] p-2 rounded border border-[#333]">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium text-white">
+                                      {payment.type === "card" ? `**** ${payment.last4}` : payment.type}
+                                    </span>
+                                    {payment.isDefault && (
+                                      <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] text-xs">Default</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-beige">
+                                    {payment.brand} {payment.type === "card" ? "Card" : ""}
+                                  </p>
+                                  {payment.expiryMonth && payment.expiryYear && (
+                                    <p className="text-beige">
+                                      Expires: {payment.expiryMonth}/{payment.expiryYear}
+                                    </p>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-gray-400 text-sm">No payment methods saved</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Order Statistics */}
+                        <div>
+                          <h4 className="font-semibold text-white mb-3 flex items-center">
+                            <ShoppingBag className="h-4 w-4 mr-2" />
+                            Order Statistics
+                          </h4>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-beige">Total Orders:</span>
+                              <span className="text-white">{user.orderStats?.totalOrders || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-beige">Total Spent:</span>
+                              <span className="text-[#D4AF37]">{formatCurrency(user.orderStats?.totalSpent || 0)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-beige">Avg Order:</span>
+                              <span className="text-white">{formatCurrency(user.orderStats?.averageOrder || 0)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-beige">Last Order:</span>
+                              <span className="text-white">{formatDate(user.orderStats?.lastOrderDate)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Recent Orders */}
+                        <div className="lg:col-span-2">
+                          <h4 className="font-semibold text-white mb-3 flex items-center">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            Recent Orders ({user.recentOrders?.length || 0})
+                          </h4>
+                          <div className="space-y-2 max-h-32 overflow-y-auto">
+                            {user.recentOrders && user.recentOrders.length > 0 ? (
+                              user.recentOrders.map((order, index) => (
+                                <div key={index} className="text-xs bg-[#222] p-2 rounded border border-[#333]">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium text-white">Order #{order.orderId}</span>
+                                    <Badge
+                                      className={
+                                        order.status === "completed"
+                                          ? "bg-green-500/20 text-green-400"
+                                          : order.status === "pending"
+                                            ? "bg-yellow-500/20 text-yellow-400"
+                                            : "bg-red-500/20 text-red-400"
+                                      }
+                                    >
+                                      {order.status}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-beige">{formatDate(order.createdAt)}</span>
+                                    <span className="text-[#D4AF37]">{formatCurrency(order.total)}</span>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-gray-400 text-sm">No recent orders</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
                   </div>
-
-                  {/* <div className="flex items-center space-x-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-[#333]">
-                          Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-[#111] border-[#333]">
-                        <DropdownMenuItem>
-                          <Edit size={16} className="mr-2" />
-                          Edit User
-                        </DropdownMenuItem>
-                        {user.status === "active" ? (
-                          <DropdownMenuItem onClick={() => updateUserStatus(user._id, "suspended")}>
-                            <Ban size={16} className="mr-2" />
-                            Suspend User
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem onClick={() => updateUserStatus(user._id, "active")}>
-                            <CheckCircle size={16} className="mr-2" />
-                            Activate User
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => deleteUser(user._id)}
-                          className="text-red-400 focus:text-red-400"
-                        >
-                          <Trash2 size={16} className="mr-2" />
-                          Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal size={16} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-[#111] border-[#333]">
-                        <DropdownMenuItem>View Profile</DropdownMenuItem>
-                        <DropdownMenuItem>View Orders</DropdownMenuItem>
-                        <DropdownMenuItem>Send Message</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div> */}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {filteredUsers.length === 0 && (
-        <Card className="bg-[#111] border-[#333]">
-          <CardContent className="p-12 text-center">
-            <UserPlus size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No users found</h3>
-            <p className="text-beige">Try adjusting your search or filter criteria</p>
-          </CardContent>
-        </Card>
-      )}
+                </Collapsible>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
-
-export default AdminUsers
