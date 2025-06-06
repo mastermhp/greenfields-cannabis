@@ -121,7 +121,10 @@ const AdminDashboard = () => {
           <p className="text-beige mt-2">Welcome back! Here's what's happening with your store.</p>
         </div>
         <div className="flex space-x-3">
-          <Button asChild className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
+          <Button
+            asChild
+            className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
+          >
             <Link href="/admin/products/new">
               <Plus size={16} className="mr-2" />
               Add Product
@@ -190,24 +193,49 @@ const AdminDashboard = () => {
               <div className="space-y-4">
                 {stats.recentOrders.length > 0 ? (
                   stats.recentOrders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-3 bg-[#222] rounded-lg">
-                      <div>
-                        <p className="font-medium text-white">{order.id}</p>
-                        <p className="text-sm text-beige">{order.customer?.name || "Guest"}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-[#D4AF37]">${order.total?.toFixed(2)}</p>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            order.status === "delivered"
-                              ? "bg-green-500/20 text-green-400"
-                              : order.status === "shipped"
-                                ? "bg-blue-500/20 text-blue-400"
-                                : "bg-yellow-500/20 text-yellow-400"
-                          }`}
-                        >
-                          {order.status}
-                        </span>
+                    <div key={order.id} className="flex items-center justify-between p-4 bg-[#222] rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium text-white">{order.id}</p>
+                          <div className="text-right">
+                            <p className="font-medium text-[#D4AF37]">${order.total?.toFixed(2)}</p>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${
+                                order.status === "delivered"
+                                  ? "bg-green-500/20 text-green-400"
+                                  : order.status === "shipped"
+                                    ? "bg-blue-500/20 text-blue-400"
+                                    : "bg-yellow-500/20 text-yellow-400"
+                              }`}
+                            >
+                              {order.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-beige">
+                          <div>
+                            <span className="font-medium text-white">Customer:</span>
+                            <br />
+                            {order.customer?.name || "Guest"}
+                          </div>
+                          <div>
+                            <span className="font-medium text-white">Phone:</span>
+                            <br />
+                            {order.customer?.phone || order.shippingAddress?.phone || "N/A"}
+                          </div>
+                          <div>
+                            <span className="font-medium text-white">Address:</span>
+                            <br />
+                            {order.shippingAddress ? (
+                              <span className="text-xs">
+                                {order.shippingAddress.street}, {order.shippingAddress.city},{" "}
+                                {order.shippingAddress.state} {order.shippingAddress.zip}
+                              </span>
+                            ) : (
+                              "N/A"
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))

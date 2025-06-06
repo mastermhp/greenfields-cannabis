@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { AuthToken, PasswordHash, RateLimiter, Validator } from "@/lib/auth"
 import { connectToDatabase } from "@/lib/mongodb"
 import { initializeDatabase } from "@/lib/database-operations"
+import bcrypt from "bcryptjs"
 
 // Initialize database on first request
 let initialized = false
@@ -83,22 +84,44 @@ export async function POST(request) {
     }
 
     console.log("Admin user found, verifying password...")
+    console.log("Stored password type:", typeof adminUser.password)
+    console.log("Stored password length:", adminUser.password?.length)
+    console.log("Input password:", password)
 
-    // Verify password
+    // Verify password with multiple methods
     let passwordValid = false
 
     if (adminUser.password) {
-      // Check if it's a hashed password
-      if (adminUser.password.length > 50) {
-        passwordValid = await PasswordHash.verify(password, adminUser.password)
-      } else {
-        // Plain text password (for development)
+      // Method 1: Try bcrypt verification (for properly hashed passwords)
+      try {
+        console.log("Trying bcrypt verification...")
+        passwordValid = await bcrypt.compare(password, adminUser.password)
+        console.log("Bcrypt verification result:", passwordValid)
+      } catch (bcryptError) {
+        console.log("Bcrypt verification failed:", bcryptError.message)
+      }
+
+      // Method 2: Try our custom PasswordHash verification
+      if (!passwordValid) {
+        try {
+          console.log("Trying custom PasswordHash verification...")
+          passwordValid = await PasswordHash.verify(password, adminUser.password)
+          console.log("Custom PasswordHash verification result:", passwordValid)
+        } catch (customError) {
+          console.log("Custom PasswordHash verification failed:", customError.message)
+        }
+      }
+
+      // Method 3: Direct comparison (for plain text passwords in development)
+      if (!passwordValid) {
+        console.log("Trying direct password comparison...")
         passwordValid = password === adminUser.password
+        console.log("Direct comparison result:", passwordValid)
       }
     }
 
     if (!passwordValid) {
-      console.log("Password verification failed")
+      console.log("All password verification methods failed")
       RateLimiter.recordAttempt(identifier, false)
       return NextResponse.json(
         {

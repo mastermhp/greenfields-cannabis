@@ -13,16 +13,12 @@ import {
   Menu,
   X,
   Sparkles,
-  Home,
   Package,
-  Info,
-  Phone,
-  FileText,
   ShoppingCart,
   Gift,
   LogOut,
   Settings,
-  ShieldUser,
+  ShieldIcon as ShieldUser,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,11 +64,10 @@ const ParticleEffect = () => {
 }
 
 // Animated nav link component
-const NavLink = ({ href, name, isActive}) => {
+const NavLink = ({ href, name, isActive }) => {
   return (
     <Link href={href} className="group relative">
       <div className="flex items-center space-x-1.5 px-1 py-1">
-      
         <span
           className={`relative font-medium transition-all duration-1000 ${isActive ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"}`}
         >
@@ -176,9 +171,9 @@ const Navbar = () => {
 
   // Enhanced nav links
   const navLinks = [
-    { name: "Home", href: "/" },
+    { name: "HOME", href: "/" },
     {
-      name: "Products",
+      name: "PRODUCTS",
       href: "/products",
       dropdown: [
         { name: "All Products", href: "/products" },
@@ -191,10 +186,10 @@ const Navbar = () => {
         { name: "Apparel", href: "/products?category=apparel" },
       ],
     },
-    { name: "About", href: "/about" },
-    { name: "Contact", href: "/contact" },
+    { name: "ABOUT", href: "/about" },
+    { name: "CONTACT", href: "/contact" },
     {
-      name: "Information",
+      name: "INFORMATION",
       href: "#",
       dropdown: [
         { name: "FAQs", href: "/faqs" },
@@ -372,7 +367,7 @@ const Navbar = () => {
                       ease: "linear",
                     }}
                   />
-                  <Image src="/logo.png" alt="Greenfields Logo" width={150} height={80} className="object-cover" />
+                  <Image src="/logo.png" alt="Greenfields Logo" width={100} height={100} className="object-cover w-28 h-28" />
                 </div>
               </motion.div>
             </Link>
@@ -469,7 +464,10 @@ const Navbar = () => {
                 <Link href={getAccountLink()} className="relative cursor-pointer" aria-label="Account">
                   <div className="absolute -inset-2 rounded-full bg-[#D4AF37]/40 opacity-0 hover:opacity-100 transition-opacity duration-1000" />
                   {user?.role === "admin" ? (
-                    <ShieldUser size={24} className="bg-[#D4AF37]/90 h-full w-full rounded-full text-white hover:text-[#D4AF37] transition-colors duration-1000" />
+                    <ShieldUser
+                      size={24}
+                      className="bg-[#D4AF37]/90 h-full w-full rounded-full text-white hover:text-[#D4AF37] transition-colors duration-1000"
+                    />
                   ) : (
                     <User size={24} className="text-white hover:text-[#D4AF37] transition-all duration-700" />
                   )}
@@ -733,7 +731,6 @@ const Navbar = () => {
                           }}
                         >
                           <div className="flex items-center space-x-3">
-                            
                             <span className={activeDropdown === index ? "text-[#D4AF37]" : "text-white"}>
                               {link.name}
                             </span>

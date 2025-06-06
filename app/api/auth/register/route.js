@@ -1,17 +1,70 @@
 import { NextResponse } from "next/server"
 import { UserOperations } from "@/lib/database-operations"
 import bcrypt from "bcryptjs"
+import jwt from "jsonwebtoken"
 
 export async function POST(request) {
   try {
-    const { name, email, password, confirmPassword } = await request.json()
+    const { name, email, password, confirmPassword, role, phone, city, state, country, status, adminCreated } =
+      await request.json()
+
+    // Check if this is an admin creating a user
+    let isAdminRequest = false
+    if (adminCreated) {
+      const authHeader = request.headers.get("authorization")
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Authentication required for admin user creation",
+          },
+          { status: 401 },
+        )
+      }
+
+      const token = authHeader.substring(7)
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET)
+        const adminUser = await UserOperations.getUserById(decoded.userId)
+
+        if (!adminUser || (adminUser.role !== "admin" && !adminUser.isAdmin)) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Admin privileges required",
+            },
+            { status: 403 },
+          )
+        }
+        isAdminRequest = true
+      } catch (error) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Invalid authentication token",
+          },
+          { status: 401 },
+        )
+      }
+    }
 
     // Input validation
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !password) {
       return NextResponse.json(
         {
           success: false,
-          error: "All fields are required",
+          error: "Name, email, and password are required",
+        },
+        { status: 400 },
+      )
+    }
+
+    // For non-admin requests, require confirmPassword
+    if (!isAdminRequest && !confirmPassword) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Password confirmation is required",
         },
         { status: 400 },
       )
@@ -29,19 +82,33 @@ export async function POST(request) {
       )
     }
 
-    // Validate password strength
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
-    if (!passwordRegex.test(password)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Password must be at least 8 characters with uppercase, lowercase, number, and special character",
-        },
-        { status: 400 },
-      )
+    // Validate password strength for non-admin requests
+    if (!isAdminRequest) {
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+      if (!passwordRegex.test(password)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Password must be at least 8 characters with uppercase, lowercase, number, and special character",
+          },
+          { status: 400 },
+        )
+      }
+    } else {
+      // For admin requests, just check minimum length
+      if (password.length < 6) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Password must be at least 6 characters long",
+          },
+          { status: 400 },
+        )
+      }
     }
 
-    if (password !== confirmPassword) {
+    // Check password confirmation for non-admin requests
+    if (!isAdminRequest && password !== confirmPassword) {
       return NextResponse.json(
         {
           success: false,
@@ -66,25 +133,38 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user
-    const user = await UserOperations.createUser({
+    // Prepare user data
+    const userData = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
-      role: "customer",
-      isAdmin: false,
-      status: "active",
+      role: isAdminRequest ? role || "customer" : "customer",
+      isAdmin: isAdminRequest ? role === "admin" : false,
+      status: isAdminRequest ? status || "active" : "active",
       loyaltyTier: "bronze",
       loyaltyPoints: 100, // Welcome bonus
-    })
+    }
+
+    // Add optional fields if provided
+    if (phone) userData.phone = phone.trim()
+    if (city) userData.city = city.trim()
+    if (state) userData.state = state.trim()
+    if (country) userData.country = country.trim()
+
+    // Create user
+    const user = await UserOperations.createUser(userData)
 
     // Remove password from response
     const { password: _, ...userResponse } = user
 
+    const message = isAdminRequest
+      ? `User ${name} has been created successfully by admin`
+      : "Account created successfully! You can now log in."
+
     return NextResponse.json(
       {
         success: true,
-        message: "Account created successfully! You can now log in.",
+        message,
         user: userResponse,
       },
       { status: 201 },

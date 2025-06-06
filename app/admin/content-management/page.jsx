@@ -1,31 +1,16 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
-import {
-  Loader2,
-  Save,
-  FileText,
-  ImageIcon,
-  Globe,
-  Upload,
-  X,
-  Info,
-} from "lucide-react";
-import Image from "next/image";
+import { useState, useEffect } from "react"
+import { motion } from "framer-motion"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/hooks/use-toast"
+import { Loader2, Save, FileText, ImageIcon, Globe, Upload, X, Info } from "lucide-react"
+import Image from "next/image"
 
 const initialShippingPolicyStructure = {
   heroSubtitle: "",
@@ -67,7 +52,7 @@ const initialShippingPolicyStructure = {
       },
     },
   },
-};
+}
 
 const initialTermsConditionsStructure = {
   heroSubtitle: "Please read these terms carefully before using our services",
@@ -156,14 +141,14 @@ const initialTermsConditionsStructure = {
     buttonText: "Contact Us",
     buttonLink: "/contact",
   },
-};
+}
 
 const initialPolicyContentState = {
   shippingPolicy: initialShippingPolicyStructure,
   returnPolicy: "",
   privacyPolicy: "",
   termsConditions: initialTermsConditionsStructure,
-};
+}
 
 // Initial content structures for new enhanced pages
 const initialHomeContentState = {
@@ -183,8 +168,7 @@ const initialHomeContentState = {
     items: [
       {
         title: "Premium Quality",
-        description:
-          "Sourced from the finest growers with strict quality control",
+        description: "Sourced from the finest growers with strict quality control",
         icon: "TrendingUp",
       },
       {
@@ -194,8 +178,7 @@ const initialHomeContentState = {
       },
       {
         title: "Lab Tested",
-        description:
-          "All products are rigorously tested for purity and potency",
+        description: "All products are rigorously tested for purity and potency",
         icon: "Shield",
       },
       {
@@ -207,18 +190,16 @@ const initialHomeContentState = {
   },
   newsletter: {
     title: "Join Our Community",
-    subtitle:
-      "Subscribe to our newsletter for exclusive offers, new product alerts, and cannabis education",
+    subtitle: "Subscribe to our newsletter for exclusive offers, new product alerts, and cannabis education",
     backgroundImage: "/community.jpg",
     backgroundImageId: "",
   },
-};
+}
 
 const initialAboutContentState = {
   hero: {
     title: "Our Story",
-    subtitle:
-      "Redefining the cannabis experience by blending luxury, quality, and authenticity",
+    subtitle: "Redefining the cannabis experience by blending luxury, quality, and authenticity",
     backgroundImage: "/about.jpeg",
     backgroundImageId: "",
   },
@@ -256,8 +237,7 @@ const initialAboutContentState = {
   },
   journey: {
     title: "Our Journey",
-    subtitle:
-      "The evolution of Greenfields from a small startup to an industry leader",
+    subtitle: "The evolution of Greenfields from a small startup to an industry leader",
   },
   experience: {
     title: "Experience Greenfields",
@@ -266,13 +246,12 @@ const initialAboutContentState = {
     backgroundImage: "/experiencebg.jpeg",
     backgroundImageId: "",
   },
-};
+}
 
 const initialContactContentState = {
   hero: {
     title: "Contact Us",
-    subtitle:
-      "We're here to help with any questions or concerns about our premium cannabis products",
+    subtitle: "We're here to help with any questions or concerns about our premium cannabis products",
     backgroundImage: "/contact1.jpeg",
     backgroundImageId: "",
   },
@@ -280,117 +259,114 @@ const initialContactContentState = {
     address: "123 Cannabis Boulevard\nLos Angeles, CA 90210",
     phone: "+1 (800) 420-6969",
     email: "info@greenfields.com",
-    businessHours:
-      "Monday - Friday: 9:00 AM - 8:00 PM\nSaturday - Sunday: 10:00 AM - 6:00 PM",
+    businessHours: "Monday - Friday: 9:00 AM - 8:00 PM\nSaturday - Sunday: 10:00 AM - 6:00 PM",
   },
   map: {
     backgroundImage: "",
     backgroundImageId: "",
   },
-};
+}
 
 export default function ContentManagementPage() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState("home");
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [activeTab, setActiveTab] = useState("home")
 
   // Content states for different pages
-  const [homeContent, setHomeContent] = useState(initialHomeContentState);
-  const [aboutContent, setAboutContent] = useState(initialAboutContentState);
-  const [contactContent, setContactContent] = useState(
-    initialContactContentState
-  );
-  const [policyContent, setPolicyContent] = useState(initialPolicyContentState);
+  const [homeContent, setHomeContent] = useState(initialHomeContentState)
+  const [aboutContent, setAboutContent] = useState(initialAboutContentState)
+  const [contactContent, setContactContent] = useState(initialContactContentState)
+  const [policyContent, setPolicyContent] = useState(initialPolicyContentState)
 
   // Fetch content on component mount
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        setLoading(true);
+        setLoading(true)
 
         const [homeRes, aboutRes, contactRes, policyRes] = await Promise.all([
           fetch("/api/content-management?page=home"),
           fetch("/api/content-management?page=about"),
           fetch("/api/content-management?page=contact"),
           fetch("/api/content-management?page=policies"),
-        ]);
+        ])
 
-        const [homeData, aboutData, contactData, policyData] =
-          await Promise.all([
-            homeRes.json(),
-            aboutRes.json(),
-            contactRes.json(),
-            policyRes.json(),
-          ]);
+        const [homeData, aboutData, contactData, policyData] = await Promise.all([
+          homeRes.json(),
+          aboutRes.json(),
+          contactRes.json(),
+          policyRes.json(),
+        ])
 
         if (homeData.success && homeData.data) {
-          setHomeContent((prev) => ({ ...prev, ...homeData.data }));
+          setHomeContent((prev) => ({ ...prev, ...homeData.data }))
         }
         if (aboutData.success && aboutData.data) {
-          setAboutContent((prev) => ({ ...prev, ...aboutData.data }));
+          setAboutContent((prev) => ({ ...prev, ...aboutData.data }))
         }
         if (contactData.success && contactData.data) {
-          setContactContent((prev) => ({ ...prev, ...contactData.data }));
+          setContactContent((prev) => ({ ...prev, ...contactData.data }))
         }
         if (policyData.success && policyData.data) {
-          const fetchedPolicies = policyData.data;
+          const fetchedPolicies = policyData.data
           const mergedShippingPolicy = {
             ...initialShippingPolicyStructure,
-            ...(typeof fetchedPolicies.shippingPolicy === "object" &&
-            fetchedPolicies.shippingPolicy !== null
+            ...(typeof fetchedPolicies.shippingPolicy === "object" && fetchedPolicies.shippingPolicy !== null
               ? fetchedPolicies.shippingPolicy
               : {}),
-          };
+          }
 
           const mergedTermsConditions = {
             ...initialTermsConditionsStructure,
-            ...(typeof fetchedPolicies.termsConditions === "object" &&
-            fetchedPolicies.termsConditions !== null
+            ...(typeof fetchedPolicies.termsConditions === "object" && fetchedPolicies.termsConditions !== null
               ? fetchedPolicies.termsConditions
               : {}),
-          };
+          }
 
           setPolicyContent((prev) => ({
             ...initialPolicyContentState,
             ...fetchedPolicies,
             shippingPolicy: mergedShippingPolicy,
             termsConditions: mergedTermsConditions,
-          }));
+          }))
         }
       } catch (error) {
-        console.error("Error fetching content:", error);
+        console.error("Error fetching content:", error)
         toast({
           title: "Error",
           description: "Failed to load content. Please try again.",
           variant: "destructive",
-        });
+        })
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchContent();
-  }, []);
+    fetchContent()
+  }, [])
 
   // Image upload function
   const uploadImage = async (file, section, field) => {
     try {
-      setUploading(true);
+      setUploading(true)
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", "greenfields_content"); // You'll need to create this preset in Cloudinary
+      // Create a FormData object to send the file
+      const formData = new FormData()
+      formData.append("file", file)
 
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      // Instead of using a preset, we'll use the API directly with our backend
+      // This avoids exposing Cloudinary credentials in the frontend
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`)
+      }
+
+      const data = await response.json()
 
       if (data.secure_url) {
         // Update the appropriate content state
@@ -402,7 +378,7 @@ export default function ContentManagementPage() {
               [field]: data.secure_url,
               [`${field}Id`]: data.public_id,
             },
-          }));
+          }))
         } else if (activeTab === "about") {
           setAboutContent((prev) => ({
             ...prev,
@@ -411,7 +387,7 @@ export default function ContentManagementPage() {
               [field]: data.secure_url,
               [`${field}Id`]: data.public_id,
             },
-          }));
+          }))
         } else if (activeTab === "contact") {
           setContactContent((prev) => ({
             ...prev,
@@ -420,97 +396,94 @@ export default function ContentManagementPage() {
               [field]: data.secure_url,
               [`${field}Id`]: data.public_id,
             },
-          }));
+          }))
         }
 
         toast({
           title: "Success",
           description: "Image uploaded successfully",
-        });
+        })
+      } else {
+        throw new Error("Upload response missing secure_url")
       }
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Error uploading image:", error)
       toast({
         title: "Error",
-        description: "Failed to upload image. Please try again.",
+        description: `Failed to upload image: ${error.message}`,
         variant: "destructive",
-      });
+      })
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   // Handle policy changes
   const handlePolicyChange = (path, value) => {
     setPolicyContent((prev) => {
-      const newPolicyContent = JSON.parse(JSON.stringify(prev));
-      const keys = path.split(".");
-      let currentTarget = newPolicyContent;
+      const newPolicyContent = JSON.parse(JSON.stringify(prev))
+      const keys = path.split(".")
+      let currentTarget = newPolicyContent
 
       for (let i = 0; i < keys.length - 1; i++) {
-        if (
-          currentTarget[keys[i]] === undefined ||
-          typeof currentTarget[keys[i]] !== "object"
-        ) {
-          currentTarget[keys[i]] = {};
+        if (currentTarget[keys[i]] === undefined || typeof currentTarget[keys[i]] !== "object") {
+          currentTarget[keys[i]] = {}
         }
-        currentTarget = currentTarget[keys[i]];
+        currentTarget = currentTarget[keys[i]]
       }
 
-      currentTarget[keys[keys.length - 1]] = value;
-      return newPolicyContent;
-    });
-  };
+      currentTarget[keys[keys.length - 1]] = value
+      return newPolicyContent
+    })
+  }
 
   // Save content function
   const saveContent = async (page, content) => {
     try {
-      setSaving(true);
+      setSaving(true)
 
-      const requestBody = { page, section: "main", content };
+      const requestBody = { page, section: "main", content }
 
       const response = await fetch("/api/content-management", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
-      });
+      })
 
-      const responseText = await response.text();
+      const responseText = await response.text()
 
       if (!response.ok) {
-        let errorMessage = `API Error: Status ${response.status}.`;
+        let errorMessage = `API Error: Status ${response.status}.`
         try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.message || errorData.error || errorMessage;
+          const errorData = JSON.parse(responseText)
+          errorMessage = errorData.message || errorData.error || errorMessage
         } catch (e) {
-          errorMessage = responseText || errorMessage;
+          errorMessage = responseText || errorMessage
         }
-        throw new Error(errorMessage);
+        throw new Error(errorMessage)
       }
 
-      const data = JSON.parse(responseText);
+      const data = JSON.parse(responseText)
 
       if (data.success) {
         toast({
           title: "Success",
-          description: `${
-            page.charAt(0).toUpperCase() + page.slice(1)
-          } content updated successfully`,
-        });
+          description: `${page.charAt(0).toUpperCase() + page.slice(1)} content updated successfully`,
+        })
       } else {
-        throw new Error(data.message || "Failed to update content");
+        throw new Error(data.message || "Failed to update content")
       }
     } catch (error) {
-      console.error(`Error saving ${page} content:`, error);
+      console.error(`Error saving ${page} content:`, error)
       toast({
         title: "Error",
         description: error.message || `Failed to save ${page} content`,
         variant: "destructive",
-      });
+      })
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   // Helper to create input fields to reduce repetition - could be further componentized
   const renderInputField = (id, label, path) => (
@@ -525,7 +498,7 @@ export default function ContentManagementPage() {
         className="bg-[#222] border-[#444] text-white"
       />
     </div>
-  );
+  )
 
   const renderTextareaField = (id, label, path, rows = 3) => (
     <div className="space-y-2">
@@ -540,18 +513,10 @@ export default function ContentManagementPage() {
         rows={rows}
       />
     </div>
-  );
-
+  )
 
   // Helper components
-  const ImageUploadField = ({
-    label,
-    currentImage,
-    section,
-    field,
-    note,
-    aspectRatio = "16:9",
-  }) => (
+  const ImageUploadField = ({ label, currentImage, section, field, note, aspectRatio = "16:9" }) => (
     <div className="space-y-3">
       <Label className="text-gray-300 flex items-center gap-2">
         <ImageIcon size={16} />
@@ -566,12 +531,7 @@ export default function ContentManagementPage() {
 
       {currentImage && (
         <div className="relative w-full h-32 border border-[#444] rounded-lg overflow-hidden">
-          <Image
-            src={currentImage || "/placeholder.svg"}
-            alt={label}
-            fill
-            className="object-cover"
-          />
+          <Image src={currentImage || "/placeholder.svg"} alt={label} fill className="object-cover" />
           <button
             onClick={() => {
               if (activeTab === "home") {
@@ -582,7 +542,7 @@ export default function ContentManagementPage() {
                     [field]: "",
                     [`${field}Id`]: "",
                   },
-                }));
+                }))
               } else if (activeTab === "about") {
                 setAboutContent((prev) => ({
                   ...prev,
@@ -591,7 +551,7 @@ export default function ContentManagementPage() {
                     [field]: "",
                     [`${field}Id`]: "",
                   },
-                }));
+                }))
               } else if (activeTab === "contact") {
                 setContactContent((prev) => ({
                   ...prev,
@@ -600,7 +560,7 @@ export default function ContentManagementPage() {
                     [field]: "",
                     [`${field}Id`]: "",
                   },
-                }));
+                }))
               }
             }}
             className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full"
@@ -615,9 +575,9 @@ export default function ContentManagementPage() {
           type="file"
           accept="image/*"
           onChange={(e) => {
-            const file = e.target.files[0];
+            const file = e.target.files[0]
             if (file) {
-              uploadImage(file, section, field);
+              uploadImage(file, section, field)
             }
           }}
           className="hidden"
@@ -630,12 +590,10 @@ export default function ContentManagementPage() {
           <Upload size={16} />
           {uploading ? "Uploading..." : "Upload Image"}
         </label>
-        <span className="text-xs text-gray-400">
-          Recommended: {aspectRatio} aspect ratio
-        </span>
+        <span className="text-xs text-gray-400">Recommended: {aspectRatio} aspect ratio</span>
       </div>
     </div>
-  );
+  )
 
   const TextInputField = ({ label, value, onChange, placeholder = "" }) => (
     <div className="space-y-2">
@@ -647,15 +605,9 @@ export default function ContentManagementPage() {
         className="bg-[#222] border-[#444] text-white"
       />
     </div>
-  );
+  )
 
-  const TextareaField = ({
-    label,
-    value,
-    onChange,
-    placeholder = "",
-    rows = 3,
-  }) => (
+  const TextareaField = ({ label, value, onChange, placeholder = "", rows = 3 }) => (
     <div className="space-y-2">
       <Label className="text-gray-300">{label}</Label>
       <Textarea
@@ -666,7 +618,7 @@ export default function ContentManagementPage() {
         rows={rows}
       />
     </div>
-  );
+  )
 
   if (loading) {
     return (
@@ -674,23 +626,15 @@ export default function ContentManagementPage() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2 text-lg">Loading content...</span>
       </div>
-    );
+    )
   }
 
   return (
     <div className="container mx-auto py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold gold-text mb-2">
-            Content Management
-          </h1>
-          <p className="text-beige">
-            Manage website content, images, and layouts for different pages
-          </p>
+          <h1 className="text-3xl font-bold gold-text mb-2">Content Management</h1>
+          <p className="text-beige">Manage website content, images, and layouts for different pages</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -735,9 +679,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     Hero Section
                   </CardTitle>
-                  <CardDescription>
-                    Main banner section with background image and call-to-action
-                  </CardDescription>
+                  <CardDescription>Main banner section with background image and call-to-action</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ImageUploadField
@@ -749,7 +691,7 @@ export default function ContentManagementPage() {
                     aspectRatio="16:9"
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <TextInputField
                       label="Hero Title"
                       value={homeContent.hero?.title || ""}
@@ -797,7 +739,7 @@ export default function ContentManagementPage() {
                       }
                       placeholder="e.g., Learn More"
                     />
-                  </div>
+                  </div> */}
                 </CardContent>
               </Card>
 
@@ -808,9 +750,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     Benefits Section
                   </CardTitle>
-                  <CardDescription>
-                    Why choose us section with benefits and optional background
-                  </CardDescription>
+                  <CardDescription>Why choose us section with benefits and optional background</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ImageUploadField
@@ -850,48 +790,41 @@ export default function ContentManagementPage() {
 
                   {/* Benefits Items */}
                   <div className="space-y-4">
-                    <h4 className="text-lg font-medium text-gray-200">
-                      Benefit Items
-                    </h4>
+                    <h4 className="text-lg font-medium text-gray-200">Benefit Items</h4>
                     {homeContent.benefits?.items?.map((item, index) => (
-                      <div
-                        key={index}
-                        className="p-4 border border-[#444] rounded-lg space-y-3"
-                      >
+                      <div key={index} className="p-4 border border-[#444] rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
-                          <h5 className="text-white font-medium">
-                            Benefit {index + 1}
-                          </h5>
+                          <h5 className="text-white font-medium">Benefit {index + 1}</h5>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextInputField
                             label="Title"
                             value={item.title}
                             onChange={(value) => {
-                              const newItems = [...homeContent.benefits.items];
+                              const newItems = [...homeContent.benefits.items]
                               newItems[index] = {
                                 ...newItems[index],
                                 title: value,
-                              };
+                              }
                               setHomeContent((prev) => ({
                                 ...prev,
                                 benefits: { ...prev.benefits, items: newItems },
-                              }));
+                              }))
                             }}
                           />
                           <TextareaField
                             label="Description"
                             value={item.description}
                             onChange={(value) => {
-                              const newItems = [...homeContent.benefits.items];
+                              const newItems = [...homeContent.benefits.items]
                               newItems[index] = {
                                 ...newItems[index],
                                 description: value,
-                              };
+                              }
                               setHomeContent((prev) => ({
                                 ...prev,
                                 benefits: { ...prev.benefits, items: newItems },
-                              }));
+                              }))
                             }}
                             rows={2}
                           />
@@ -909,9 +842,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     Newsletter Section
                   </CardTitle>
-                  <CardDescription>
-                    Newsletter signup section with background image
-                  </CardDescription>
+                  <CardDescription>Newsletter signup section with background image</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ImageUploadField
@@ -982,9 +913,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     About Hero Section
                   </CardTitle>
-                  <CardDescription>
-                    Main banner for the about page
-                  </CardDescription>
+                  <CardDescription>Main banner for the about page</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ImageUploadField
@@ -1030,9 +959,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     Mission Section
                   </CardTitle>
-                  <CardDescription>
-                    Mission statement with supporting images
-                  </CardDescription>
+                  <CardDescription>Mission statement with supporting images</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1087,9 +1014,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     Values Section
                   </CardTitle>
-                  <CardDescription>
-                    Company values and product line information
-                  </CardDescription>
+                  <CardDescription>Company values and product line information</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ImageUploadField
@@ -1135,9 +1060,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     Experience Section
                   </CardTitle>
-                  <CardDescription>
-                    Call-to-action section with background
-                  </CardDescription>
+                  <CardDescription>Call-to-action section with background</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ImageUploadField
@@ -1179,12 +1102,8 @@ export default function ContentManagementPage() {
               {/* Text-only sections */}
               <Card className="bg-[#111] border-[#333]">
                 <CardHeader>
-                  <CardTitle className="text-white">
-                    Text Content Sections
-                  </CardTitle>
-                  <CardDescription>
-                    Additional text content for the about page
-                  </CardDescription>
+                  <CardTitle className="text-white">Text Content Sections</CardTitle>
+                  <CardDescription>Additional text content for the about page</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1337,9 +1256,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     Contact Hero Section
                   </CardTitle>
-                  <CardDescription>
-                    Main banner for the contact page
-                  </CardDescription>
+                  <CardDescription>Main banner for the contact page</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ImageUploadField
@@ -1381,12 +1298,8 @@ export default function ContentManagementPage() {
               {/* Contact Information */}
               <Card className="bg-[#111] border-[#333]">
                 <CardHeader>
-                  <CardTitle className="text-white">
-                    Contact Information
-                  </CardTitle>
-                  <CardDescription>
-                    Business contact details and hours
-                  </CardDescription>
+                  <CardTitle className="text-white">Contact Information</CardTitle>
+                  <CardDescription>Business contact details and hours</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1450,9 +1363,7 @@ export default function ContentManagementPage() {
                     <ImageIcon size={20} />
                     Map Section
                   </CardTitle>
-                  <CardDescription>
-                    Map background or location image
-                  </CardDescription>
+                  <CardDescription>Map background or location image</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ImageUploadField
@@ -1490,12 +1401,8 @@ export default function ContentManagementPage() {
           <TabsContent value="policies">
             <Card className="bg-[#111] border-[#333]">
               <CardHeader>
-                <CardTitle className="text-white">
-                  Policy Pages Content
-                </CardTitle>
-                <CardDescription>
-                  Manage content for policy and information pages
-                </CardDescription>
+                <CardTitle className="text-white">Policy Pages Content</CardTitle>
+                <CardDescription>Manage content for policy and information pages</CardDescription>
               </CardHeader>
               <CardContent className="space-y-10">
                 {/* Shipping Policy Section */}
@@ -1504,33 +1411,21 @@ export default function ContentManagementPage() {
                     Shipping Policy Page Content
                   </h3>
 
-                  {renderInputField(
-                    "shippingHeroSubtitle",
-                    "Hero Subtitle",
-                    "shippingPolicy.heroSubtitle"
-                  )}
+                  {renderInputField("shippingHeroSubtitle", "Hero Subtitle", "shippingPolicy.heroSubtitle")}
 
                   {/* Shipping Methods Subsection */}
                   <div className="space-y-4 border-t border-[#333] pt-6">
-                    <h4 className="text-xl font-medium text-gray-200 mb-1">
-                      Shipping Methods Section
-                    </h4>
-                    {renderInputField(
-                      "smMainTitle",
-                      "Main Title",
-                      "shippingPolicy.sections.shippingMethods.mainTitle"
-                    )}
+                    <h4 className="text-xl font-medium text-gray-200 mb-1">Shipping Methods Section</h4>
+                    {renderInputField("smMainTitle", "Main Title", "shippingPolicy.sections.shippingMethods.mainTitle")}
 
                     <div className="grid md:grid-cols-3 gap-4 p-4 border border-[#2a2a2a] rounded">
                       <div className="md:col-span-1 space-y-2">
                         {" "}
-                        <Label className="text-gray-400">
-                          Standard Shipping
-                        </Label>
+                        <Label className="text-gray-400">Standard Shipping</Label>
                         {renderInputField(
                           "smStdTitle",
                           "Title",
-                          "shippingPolicy.sections.shippingMethods.standard.title"
+                          "shippingPolicy.sections.shippingMethods.standard.title",
                         )}
                       </div>
                       <div className="md:col-span-2 space-y-2">
@@ -1538,13 +1433,13 @@ export default function ContentManagementPage() {
                           "smStdDesc",
                           "Description",
                           "shippingPolicy.sections.shippingMethods.standard.description",
-                          4
+                          4,
                         )}
                         {renderTextareaField(
                           "smStdDetails",
                           "Details (one item per line)",
                           "shippingPolicy.sections.shippingMethods.standard.details",
-                          4
+                          4,
                         )}
                       </div>
                     </div>
@@ -1611,90 +1506,86 @@ export default function ContentManagementPage() {
 
                   {/* Delivery Information Subsection */}
                   <div className="space-y-4 border-t border-[#333] pt-6">
-                    <h4 className="text-xl font-medium text-gray-200 mb-1">
-                      Delivery Information Section
-                    </h4>
+                    <h4 className="text-xl font-medium text-gray-200 mb-1">Delivery Information Section</h4>
                     {renderInputField(
                       "diMainTitle",
                       "Main Title",
-                      "shippingPolicy.sections.deliveryInformation.mainTitle"
+                      "shippingPolicy.sections.deliveryInformation.mainTitle",
                     )}
                     {renderInputField(
                       "diProcTitle",
                       "Delivery Process Title",
-                      "shippingPolicy.sections.deliveryInformation.deliveryProcess.title"
+                      "shippingPolicy.sections.deliveryInformation.deliveryProcess.title",
                     )}
                     {renderTextareaField(
                       "diProcText",
                       "Delivery Process Text",
-                      "shippingPolicy.sections.deliveryInformation.deliveryProcess.text"
+                      "shippingPolicy.sections.deliveryInformation.deliveryProcess.text",
                     )}
                     {renderInputField(
                       "diTrackTitle",
                       "Tracking Order Title",
-                      "shippingPolicy.sections.deliveryInformation.trackingYourOrder.title"
+                      "shippingPolicy.sections.deliveryInformation.trackingYourOrder.title",
                     )}
                     {renderTextareaField(
                       "diTrackText",
                       "Tracking Order Text",
-                      "shippingPolicy.sections.deliveryInformation.trackingYourOrder.text"
+                      "shippingPolicy.sections.deliveryInformation.trackingYourOrder.text",
                     )}
                     {renderInputField(
                       "diAreasTitle",
                       "Delivery Areas Title",
-                      "shippingPolicy.sections.deliveryInformation.deliveryAreas.title"
+                      "shippingPolicy.sections.deliveryInformation.deliveryAreas.title",
                     )}
                     {renderTextareaField(
                       "diAreasText",
                       "Delivery Areas Text",
-                      "shippingPolicy.sections.deliveryInformation.deliveryAreas.text"
+                      "shippingPolicy.sections.deliveryInformation.deliveryAreas.text",
                     )}
                     {renderTextareaField(
                       "diWarnText",
                       "Legal Warning Text",
-                      "shippingPolicy.sections.deliveryInformation.legalWarning.text"
+                      "shippingPolicy.sections.deliveryInformation.legalWarning.text",
                     )}
                   </div>
 
                   {/* Packaging & Discretion Subsection */}
                   <div className="space-y-4 border-t border-[#333] pt-6">
-                    <h4 className="text-xl font-medium text-gray-200 mb-1">
-                      Packaging & Discretion Section
-                    </h4>
+                    <h4 className="text-xl font-medium text-gray-200 mb-1">Packaging & Discretion Section</h4>
                     {renderInputField(
                       "pdMainTitle",
                       "Main Title",
-                      "shippingPolicy.sections.packagingAndDiscretion.mainTitle"
+                      "shippingPolicy.sections.packagingAndDiscretion.mainTitle",
                     )}
                     {renderInputField(
                       "pdDiscTitle",
                       "Discreet Packaging Title",
-                      "shippingPolicy.sections.packagingAndDiscretion.discreetPackaging.title"
+                      "shippingPolicy.sections.packagingAndDiscretion.discreetPackaging.title",
                     )}
                     {renderTextareaField(
                       "pdDiscText",
                       "Discreet Packaging Text",
-                      "shippingPolicy.sections.packagingAndDiscretion.discreetPackaging.text"
+                      "shippingPolicy.sections.packagingAndDiscretion.discreetPackaging.text",
                     )}
                     {renderInputField(
                       "pdSecTitle",
                       "Secure Packaging Title",
-                      "shippingPolicy.sections.packagingAndDiscretion.securePackaging.title"
+                      "shippingPolicy.sections.packagingAndDiscretion.securePackaging.title",
                     )}
                     {renderTextareaField(
                       "pdSecText",
                       "Secure Packaging Text",
-                      "shippingPolicy.sections.packagingAndDiscretion.securePackaging.text"
+                      "shippingPolicy.sections.packagingAndDiscretion.securePackaging.text",
                     )}
                     {renderInputField(
                       "pdEcoTitle",
                       "Eco-Friendly Title",
-                      "shippingPolicy.sections.packagingAndDiscretion.ecoFriendlyApproach.title"
+                      "shippingPolicy.sections.packagingAndDiscretion.ecoFriendlyApproach.title",
                     )}
                     {renderTextareaField(
                       "pdEcoText",
                       "Eco-Friendly Text",
-                      "shippingPolicy.sections.packagingAndDiscretion.ecoFriendlyApproach.text"
+                      "shippingPolicy.sections.packagingAndDiscretion.ecoFriendlyApproach.text",
                     )}
                   </div>
 
@@ -1706,47 +1597,47 @@ export default function ContentManagementPage() {
                     {renderInputField(
                       "rrMainTitle",
                       "Main Title",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.mainTitle"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.mainTitle",
                     )}
                     {renderInputField(
                       "rrRetPolTitle",
                       "Return Policy Title",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.returnPolicyInfo.title"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.returnPolicyInfo.title",
                     )}
                     {renderTextareaField(
                       "rrRetPolText",
                       "Return Policy Text",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.returnPolicyInfo.text"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.returnPolicyInfo.text",
                     )}
                     {renderInputField(
                       "rrRefProcTitle",
                       "Refund Process Title",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.refundProcess.title"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.refundProcess.title",
                     )}
                     {renderTextareaField(
                       "rrRefProcText",
                       "Refund Process Text",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.refundProcess.text"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.refundProcess.text",
                     )}
                     {renderInputField(
                       "rrDamTitle",
                       "Damaged/Missing Items Title",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.damagedOrMissingItems.title"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.damagedOrMissingItems.title",
                     )}
                     {renderTextareaField(
                       "rrDamText",
                       "Damaged/Missing Items Text",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.damagedOrMissingItems.text"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.damagedOrMissingItems.text",
                     )}
                     {renderInputField(
                       "rrContactTitle",
                       "Contact Service Title",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.contactCustomerService.title"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.contactCustomerService.title",
                     )}
                     {renderTextareaField(
                       "rrContactText",
                       "Contact Service Text",
-                      "shippingPolicy.sections.returnsAndRefundsPolicy.contactCustomerService.text"
+                      "shippingPolicy.sections.returnsAndRefundsPolicy.contactCustomerService.text",
                     )}
                   </div>
                 </div>
@@ -1800,113 +1691,61 @@ export default function ContentManagementPage() {
                     Terms & Conditions Page Content
                   </h3>
 
-                  {renderInputField(
-                    "tcHeroSubtitle",
-                    "Hero Subtitle",
-                    "termsConditions.heroSubtitle"
-                  )}
+                  {renderInputField("tcHeroSubtitle", "Hero Subtitle", "termsConditions.heroSubtitle")}
 
                   {/* Age Verification Warning */}
                   <div className="space-y-2 border-t border-[#333] pt-6">
-                    <h4 className="text-xl font-medium text-gray-200 mb-1">
-                      Age Verification Warning
-                    </h4>
-                    {renderInputField(
-                      "tcAgeWarnTitle",
-                      "Title",
-                      "termsConditions.ageVerificationWarning.title"
-                    )}
-                    {renderTextareaField(
-                      "tcAgeWarnText",
-                      "Text",
-                      "termsConditions.ageVerificationWarning.text"
-                    )}
+                    <h4 className="text-xl font-medium text-gray-200 mb-1">Age Verification Warning</h4>
+                    {renderInputField("tcAgeWarnTitle", "Title", "termsConditions.ageVerificationWarning.title")}
+                    {renderTextareaField("tcAgeWarnText", "Text", "termsConditions.ageVerificationWarning.text")}
                   </div>
 
                   {/* Introduction */}
                   <div className="space-y-2 border-t border-[#333] pt-6">
-                    <h4 className="text-xl font-medium text-gray-200 mb-1">
-                      Introduction
-                    </h4>
-                    {renderTextareaField(
-                      "tcIntroP1",
-                      "Paragraph 1",
-                      "termsConditions.introduction.paragraph1"
-                    )}
-                    {renderTextareaField(
-                      "tcIntroP2",
-                      "Paragraph 2",
-                      "termsConditions.introduction.paragraph2"
-                    )}
+                    <h4 className="text-xl font-medium text-gray-200 mb-1">Introduction</h4>
+                    {renderTextareaField("tcIntroP1", "Paragraph 1", "termsConditions.introduction.paragraph1")}
+                    {renderTextareaField("tcIntroP2", "Paragraph 2", "termsConditions.introduction.paragraph2")}
                   </div>
 
                   {/* Dynamic Sections */}
                   <div className="space-y-8 border-t border-[#333] pt-6">
-                    <h4 className="text-xl font-medium text-gray-200 mb-4">
-                      Content Sections
-                    </h4>
+                    <h4 className="text-xl font-medium text-gray-200 mb-4">Content Sections</h4>
                     {policyContent.termsConditions.sections &&
-                      policyContent.termsConditions.sections.map(
-                        (section, index) => (
-                          <div
-                            key={index}
-                            className="bg-[#1a1a1a] p-4 rounded-lg border border-[#2a2a2a] space-y-3"
-                          >
-                            <h5 className="text-lg font-semibold text-white">
-                              Section {index + 1}
-                            </h5>
-                            {renderInputField(
-                              `tcSec${index}Title`,
-                              "Section Title",
-                              `termsConditions.sections.${index}.title`
-                            )}
-                            {section.paragraphs &&
-                              section.paragraphs.map((paragraph, pIndex) => (
-                                <div key={`${index}-${pIndex}`}>
-                                  {renderTextareaField(
-                                    `tcSec${index}P${pIndex}`,
-                                    `Paragraph ${pIndex + 1}`,
-                                    `termsConditions.sections.${index}.paragraphs.${pIndex}`
-                                  )}
-                                </div>
-                              ))}
-                            {/* You could add buttons here to add/remove paragraphs or sections if needed */}
-                          </div>
-                        )
-                      )}
+                      policyContent.termsConditions.sections.map((section, index) => (
+                        <div key={index} className="bg-[#1a1a1a] p-4 rounded-lg border border-[#2a2a2a] space-y-3">
+                          <h5 className="text-lg font-semibold text-white">Section {index + 1}</h5>
+                          {renderInputField(
+                            `tcSec${index}Title`,
+                            "Section Title",
+                            `termsConditions.sections.${index}.title`,
+                          )}
+                          {section.paragraphs &&
+                            section.paragraphs.map((paragraph, pIndex) => (
+                              <div key={`${index}-${pIndex}`}>
+                                {renderTextareaField(
+                                  `tcSec${index}P${pIndex}`,
+                                  `Paragraph ${pIndex + 1}`,
+                                  `termsConditions.sections.${index}.paragraphs.${pIndex}`,
+                                )}
+                              </div>
+                            ))}
+                          {/* You could add buttons here to add/remove paragraphs or sections if needed */}
+                        </div>
+                      ))}
                     {/* For now, adding/removing sections would be manual in code or require a more complex UI */}
                     <p className="text-sm text-gray-500">
-                      Note: To add or remove sections/paragraphs, you might need
-                      to adjust the default structure in the component code for
-                      now.
+                      Note: To add or remove sections/paragraphs, you might need to adjust the default structure in the
+                      component code for now.
                     </p>
                   </div>
 
                   {/* Contact Section */}
                   <div className="space-y-2 border-t border-[#333] pt-6">
-                    <h4 className="text-xl font-medium text-gray-200 mb-1">
-                      Contact Section
-                    </h4>
-                    {renderInputField(
-                      "tcContactTitle",
-                      "Title",
-                      "termsConditions.contactSection.title"
-                    )}
-                    {renderTextareaField(
-                      "tcContactText",
-                      "Text",
-                      "termsConditions.contactSection.text"
-                    )}
-                    {renderInputField(
-                      "tcContactBtnText",
-                      "Button Text",
-                      "termsConditions.contactSection.buttonText"
-                    )}
-                    {renderInputField(
-                      "tcContactBtnLink",
-                      "Button Link",
-                      "termsConditions.contactSection.buttonLink"
-                    )}
+                    <h4 className="text-xl font-medium text-gray-200 mb-1">Contact Section</h4>
+                    {renderInputField("tcContactTitle", "Title", "termsConditions.contactSection.title")}
+                    {renderTextareaField("tcContactText", "Text", "termsConditions.contactSection.text")}
+                    {renderInputField("tcContactBtnText", "Button Text", "termsConditions.contactSection.buttonText")}
+                    {renderInputField("tcContactBtnLink", "Button Link", "termsConditions.contactSection.buttonLink")}
                   </div>
                 </div>
 
@@ -1933,5 +1772,5 @@ export default function ContentManagementPage() {
         </Tabs>
       </motion.div>
     </div>
-  );
+  )
 }

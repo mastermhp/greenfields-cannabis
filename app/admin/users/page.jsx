@@ -19,7 +19,6 @@ import {
   Package,
   Truck,
   RefreshCw,
-  Download,
   UserCheck,
   UserX,
   Crown,
@@ -50,6 +49,21 @@ const AdminUsers = () => {
   const [userStats, setUserStats] = useState(null)
   const [loadingUserData, setLoadingUserData] = useState(false)
   const [activeTab, setActiveTab] = useState("profile")
+
+  const [addUserDialog, setAddUserDialog] = useState(false)
+  const [addUserForm, setAddUserForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "customer",
+    phone: "",
+    city: "",
+    state: "",
+    country: "",
+    status: "active",
+  })
+  const [addingUser, setAddingUser] = useState(false)
 
   // Fetch users from API
   const fetchUsers = async () => {
@@ -317,6 +331,134 @@ const AdminUsers = () => {
     }
   }
 
+  const addUser = async () => {
+    try {
+      // Validation
+      if (!addUserForm.name || !addUserForm.email || !addUserForm.password) {
+        toast({
+          title: "Error",
+          description: "Name, email, and password are required",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (addUserForm.password !== addUserForm.confirmPassword) {
+        toast({
+          title: "Error",
+          description: "Passwords do not match",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (addUserForm.password.length < 6) {
+        toast({
+          title: "Error",
+          description: "Password must be at least 6 characters long",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(addUserForm.email)) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setAddingUser(true)
+
+      // Get the access token from localStorage
+      const accessToken = localStorage.getItem("accessToken")
+
+      if (!accessToken) {
+        toast({
+          title: "Error",
+          description: "Authentication required. Please log in again.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          name: addUserForm.name,
+          email: addUserForm.email.toLowerCase(),
+          password: addUserForm.password,
+          role: addUserForm.role,
+          phone: addUserForm.phone,
+          city: addUserForm.city,
+          state: addUserForm.state,
+          country: addUserForm.country,
+          status: addUserForm.status,
+          adminCreated: true,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "User Added",
+          description: `User ${addUserForm.name} has been created successfully`,
+        })
+
+        // Reset form
+        setAddUserForm({
+          name: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          role: "customer",
+          phone: "",
+          city: "",
+          state: "",
+          country: "",
+          status: "active",
+        })
+
+        // Close dialog
+        setAddUserDialog(false)
+
+        // Refresh users list
+        await fetchUsers()
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to create user",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error adding user:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive",
+      })
+    } finally {
+      setAddingUser(false)
+    }
+  }
+
+  const handleAddUserFormChange = (field, value) => {
+    setAddUserForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A"
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -408,9 +550,9 @@ const AdminUsers = () => {
             <RefreshCw size={16} className="mr-2" />
             Refresh Users
           </Button>
-          <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+          <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black" onClick={() => setAddUserDialog(true)}>
             <PlusCircle size={16} className="mr-2" />
-            Add Users
+            Add User
           </Button>
         </div>
       </div>
@@ -630,6 +772,186 @@ const AdminUsers = () => {
         </Card>
       )}
 
+      {/* Add User Dialog */}
+      <Dialog open={addUserDialog} onOpenChange={setAddUserDialog}>
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center">
+              <PlusCircle className="mr-2" size={20} />
+              Add New User
+            </DialogTitle>
+            <DialogDescription className="text-beige">Create a new user account manually</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Basic Information</h3>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">Full Name *</label>
+                  <Input
+                    value={addUserForm.name}
+                    onChange={(e) => handleAddUserFormChange("name", e.target.value)}
+                    placeholder="Enter full name"
+                    className="bg-black border-[#333] focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">Email Address *</label>
+                  <Input
+                    type="email"
+                    value={addUserForm.email}
+                    onChange={(e) => handleAddUserFormChange("email", e.target.value)}
+                    placeholder="Enter email address"
+                    className="bg-black border-[#333] focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">Phone Number</label>
+                  <Input
+                    value={addUserForm.phone}
+                    onChange={(e) => handleAddUserFormChange("phone", e.target.value)}
+                    placeholder="Enter phone number"
+                    className="bg-black border-[#333] focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">Role</label>
+                  <Select value={addUserForm.role} onValueChange={(value) => handleAddUserFormChange("role", value)}>
+                    <SelectTrigger className="bg-black border-[#333]">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#111] border-[#333]">
+                      <SelectItem value="customer">Customer</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="moderator">Moderator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">Status</label>
+                  <Select
+                    value={addUserForm.status}
+                    onValueChange={(value) => handleAddUserFormChange("status", value)}
+                  >
+                    <SelectTrigger className="bg-black border-[#333]">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#111] border-[#333]">
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="banned">Banned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Security & Location */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Security & Location</h3>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">Password *</label>
+                  <Input
+                    type="password"
+                    value={addUserForm.password}
+                    onChange={(e) => handleAddUserFormChange("password", e.target.value)}
+                    placeholder="Enter password (min 6 characters)"
+                    className="bg-black border-[#333] focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">Confirm Password *</label>
+                  <Input
+                    type="password"
+                    value={addUserForm.confirmPassword}
+                    onChange={(e) => handleAddUserFormChange("confirmPassword", e.target.value)}
+                    placeholder="Confirm password"
+                    className="bg-black border-[#333] focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">City</label>
+                  <Input
+                    value={addUserForm.city}
+                    onChange={(e) => handleAddUserFormChange("city", e.target.value)}
+                    placeholder="Enter city"
+                    className="bg-black border-[#333] focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-beige mb-2">State</label>
+                  <Input
+                    value={addUserForm.state}
+                    onChange={(e) => handleAddUserFormChange("state", e.target.value)}
+                    placeholder="Enter state"
+                    className="bg-black border-[#333] focus:border-[#D4AF37]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Password Requirements */}
+            <div className="bg-[#222] p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-beige mb-2">Password Requirements:</h4>
+              <ul className="text-xs text-gray-400 space-y-1">
+                <li>• Minimum 6 characters long</li>
+                <li>• Must match confirmation password</li>
+                <li>• User will be able to change password after first login</li>
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-[#333]">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAddUserDialog(false)
+                  setAddUserForm({
+                    name: "",
+                    email: "",
+                    password: "",
+                    confirmPassword: "",
+                    role: "customer",
+                    phone: "",
+                    city: "",
+                    state: "",
+                    country: "",
+                    status: "active",
+                  })
+                }}
+                className="border-[#333]"
+                disabled={addingUser}
+              >
+                Cancel
+              </Button>
+              <Button onClick={addUser} disabled={addingUser} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+                {addingUser ? (
+                  <>
+                    <RefreshCw size={16} className="mr-2 animate-spin" />
+                    Creating User...
+                  </>
+                ) : (
+                  <>
+                    <UserCheck size={16} className="mr-2" />
+                    Create User
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* View User Dialog */}
       <Dialog open={viewUserDialog} onOpenChange={setViewUserDialog}>
         <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -838,7 +1160,7 @@ const AdminUsers = () => {
                                   <p className="text-beige">Items</p>
                                   <p className="text-white">{order.items?.length || 0} item(s)</p>
                                 </div>
-                                
+
                                 <div className="flex gap-3">
                                   <p className="text-beige">Total:</p>
                                   <p className="text-[#D4AF37] font-medium">${order.total?.toFixed(2)}</p>

@@ -23,6 +23,7 @@ const CategoriesPage = () => {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -32,16 +33,46 @@ const CategoriesPage = () => {
   const loadCategories = async () => {
     try {
       setLoading(true)
+      setError(null)
+      console.log("Categories Page: Loading categories...")
+
       const response = await fetch("/api/categories")
+      console.log("Categories Page: Response status:", response.status)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch categories: ${response.status} ${response.statusText}`)
+      }
+
       const data = await response.json()
+      console.log("Categories Page: API Response:", data)
+
       if (data.success) {
-        setCategories(data.data)
+        // Handle the data.data format from the API
+        const categoriesData = data.data || []
+        console.log("Categories Page: Categories data:", categoriesData)
+
+        if (Array.isArray(categoriesData)) {
+          setCategories(categoriesData)
+          console.log("Categories Page: Set categories:", categoriesData.length, "items")
+        } else {
+          console.error("Categories Page: Categories data is not an array:", categoriesData)
+          setCategories([])
+          toast({
+            title: "Warning",
+            description: "Received invalid categories data format",
+            variant: "destructive",
+          })
+        }
+      } else {
+        throw new Error(data.error || "Failed to load categories")
       }
     } catch (error) {
-      console.error("Failed to load categories:", error)
+      console.error("Categories Page: Failed to load categories:", error)
+      setError(error.message)
+      setCategories([]) // Ensure categories is always an array
       toast({
         title: "Error",
-        description: "Failed to load categories",
+        description: `Failed to load categories: ${error.message}`,
         variant: "destructive",
       })
     } finally {
@@ -123,12 +154,14 @@ const CategoriesPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    console.log("Categories Page: Submitting form...")
 
     try {
       // First upload image if there's a new one
       let imageUrl = formData.image
 
       if (imageFile) {
+        console.log("Categories Page: Uploading image...")
         imageUrl = await uploadImage()
         if (!imageUrl) {
           toast({
@@ -138,6 +171,7 @@ const CategoriesPage = () => {
           })
           return
         }
+        console.log("Categories Page: Image uploaded:", imageUrl)
       }
 
       const url = editingId ? `/api/categories/${editingId}` : "/api/categories"
@@ -148,6 +182,8 @@ const CategoriesPage = () => {
         image: imageUrl,
       }
 
+      console.log("Categories Page: Sending request:", { url, method, categoryData })
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -156,7 +192,9 @@ const CategoriesPage = () => {
         body: JSON.stringify(categoryData),
       })
 
+      console.log("Categories Page: Response status:", response.status)
       const data = await response.json()
+      console.log("Categories Page: Response data:", data)
 
       if (data.success) {
         toast({
@@ -166,9 +204,10 @@ const CategoriesPage = () => {
         loadCategories()
         resetForm()
       } else {
-        throw new Error(data.error)
+        throw new Error(data.error || "Operation failed")
       }
     } catch (error) {
+      console.error("Categories Page: Submit error:", error)
       toast({
         title: "Error",
         description: error.message,
@@ -180,23 +219,27 @@ const CategoriesPage = () => {
   const handleEdit = (category) => {
     setFormData({
       name: category.name,
-      description: category.description,
-      image: category.image,
+      description: category.description || "",
+      image: category.image || "",
     })
-    setImagePreview(category.image)
-    setEditingId(category.id)
+    setImagePreview(category.image || "")
+    setEditingId(category.id || category._id)
     setShowAddForm(true)
   }
 
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this category?")) return
 
+    console.log("Categories Page: Deleting category:", id)
+
     try {
       const response = await fetch(`/api/categories/${id}`, {
         method: "DELETE",
       })
 
+      console.log("Categories Page: Delete response status:", response.status)
       const data = await response.json()
+      console.log("Categories Page: Delete response data:", data)
 
       if (data.success) {
         toast({
@@ -205,9 +248,10 @@ const CategoriesPage = () => {
         })
         loadCategories()
       } else {
-        throw new Error(data.error)
+        throw new Error(data.error || "Failed to delete category")
       }
     } catch (error) {
+      console.error("Categories Page: Delete error:", error)
       toast({
         title: "Error",
         description: error.message,
@@ -255,11 +299,30 @@ const CategoriesPage = () => {
           <h1 className="text-3xl font-bold gold-text">Categories Management</h1>
           <p className="text-beige mt-2">Manage your product categories</p>
         </div>
-        <Button onClick={() => setShowAddForm(true)} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
+        <Button
+          onClick={() => setShowAddForm(true)}
+          className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
+        >
           <Plus size={16} className="mr-2" />
           Add Category
         </Button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-900/20 border border-red-900 text-red-500 p-4 rounded-md mb-4">
+          <h3 className="font-semibold mb-1">Error Loading Categories</h3>
+          <p>{error}</p>
+          <Button
+            onClick={loadCategories}
+            variant="outline"
+            size="sm"
+            className="mt-2 border-red-900 text-red-500 hover:bg-red-900/10"
+          >
+            Try Again
+          </Button>
+        </div>
+      )}
 
       {/* Add/Edit Form */}
       {showAddForm && (
@@ -316,8 +379,7 @@ const CategoriesPage = () => {
                         </div>
                       )}
                     </div>
-                                  <p className="text-xs text-red-600">Image Size should be square shape like: 1024 x 1024</p>
-
+                    <p className="text-xs text-red-600">Image Size should be square shape like: 1024 x 1024</p>
                   </div>
                 </div>
                 <div>
@@ -357,71 +419,74 @@ const CategoriesPage = () => {
 
       {/* Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {categories.map((category, index) => (
-          <motion.div
-            key={category.id || category._id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Card className="bg-[#111] border-[#333] hover:border-[#D4AF37]/50 transition-colors">
-              <CardContent className="p-6">
-                <div className="aspect-video bg-[#222] rounded-lg mb-4 overflow-hidden">
-                  {category.image ? (
-                    <Image
-                      src={category.image || "/placeholder.svg"}
-                      alt={category.name}
-                      width={300}
-                      height={200}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package size={48} className="text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{category.name}</h3>
-                <p className="text-beige text-sm mb-4 line-clamp-2">{category.description}</p>
-                <div className="flex space-x-2">
-                  <Button
-                    onClick={() => handleEdit(category)}
-                    variant="outline"
-                    size="sm"
-                    className="border-[#333] flex-1 bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37]"
-                  >
-                    <Edit size={16} className="mr-2" />
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={() => handleDelete(category.id || category._id)}
-                    variant="destructive"
-                    size="sm"
-                    className="flex-1 bg-[#D4AF37]/10 border-2 border-red-900 text-red-600 hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37]"
-                  >
-                    <Trash2 size={16} className="mr-2" />
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+        {Array.isArray(categories) && categories.length > 0 ? (
+          categories.map((category, index) => (
+            <motion.div
+              key={category?.id || category?._id || `category-${index}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              <Card className="bg-[#111] border-[#333] hover:border-[#D4AF37]/50 transition-colors">
+                <CardContent className="p-6">
+                  <div className="aspect-video bg-[#222] rounded-lg mb-4 overflow-hidden">
+                    {category?.image ? (
+                      <Image
+                        src={category.image || "/placeholder.svg"}
+                        alt={category.name || "Category"}
+                        width={300}
+                        height={200}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package size={48} className="text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">{category?.name || "Unnamed Category"}</h3>
+                  <p className="text-beige text-sm mb-4 line-clamp-2">{category?.description || "No description"}</p>
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={() => handleEdit(category)}
+                      variant="outline"
+                      size="sm"
+                      className="border-[#333] flex-1 bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37]"
+                    >
+                      <Edit size={16} className="mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(category?.id || category?._id)}
+                      variant="destructive"
+                      size="sm"
+                      className="flex-1 bg-[#D4AF37]/10 border-2 border-red-900 text-red-600 hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37]"
+                    >
+                      <Trash2 size={16} className="mr-2" />
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))
+        ) : (
+          <Card className="bg-[#111] border-[#333] col-span-1 md:col-span-2 lg:col-span-3">
+            <CardContent className="p-12 text-center">
+              <Package size={48} className="mx-auto text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">No categories found</h3>
+              <p className="text-beige mb-4">Create your first category to get started</p>
+              <Button
+                onClick={() => setShowAddForm(true)}
+                className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
+              >
+                <Plus size={16} className="mr-2" />
+                Add Category
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
-
-      {categories.length === 0 && (
-        <Card className="bg-[#111] border-[#333]">
-          <CardContent className="p-12 text-center">
-            <Package size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No categories found</h3>
-            <p className="text-beige mb-4">Create your first category to get started</p>
-            <Button onClick={() => setShowAddForm(true)} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
-              <Plus size={16} className="mr-2" />
-              Add Category
-            </Button>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

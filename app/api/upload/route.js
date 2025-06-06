@@ -1,3 +1,69 @@
+// // Make sure the upload API route is properly configured
+// import { NextResponse } from "next/server"
+// import { v2 as cloudinary } from "cloudinary"
+// import { verifyAuth } from "@/lib/auth"
+
+// // Configure Cloudinary
+// cloudinary.config({
+//   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+//   api_key: process.env.CLOUDINARY_API_KEY,
+//   api_secret: process.env.CLOUDINARY_API_SECRET,
+// })
+
+// export async function POST(request) {
+//   try {
+//     // Verify authentication (optional, but recommended)
+//     const { authenticated, user } = await verifyAuth(request)
+
+//     // You can add role-based checks here if needed
+//     // if (!authenticated || user.role !== "admin") {
+//     //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     // }
+
+//     // Parse the form data
+//     const formData = await request.formData()
+//     const file = formData.get("file")
+
+//     if (!file) {
+//       return NextResponse.json({ error: "No file provided" }, { status: 400 })
+//     }
+
+//     // Convert the file to a buffer
+//     const arrayBuffer = await file.arrayBuffer()
+//     const buffer = Buffer.from(arrayBuffer)
+
+//     // Convert buffer to base64 string for Cloudinary
+//     const base64String = buffer.toString("base64")
+//     const dataURI = `data:${file.type};base64,${base64String}`
+
+//     // Upload to Cloudinary
+//     const result = await new Promise((resolve, reject) => {
+//       cloudinary.uploader.upload(
+//         dataURI,
+//         {
+//           folder: "greenfields_content",
+//           resource_type: "auto",
+//         },
+//         (error, result) => {
+//           if (error) reject(error)
+//           else resolve(result)
+//         },
+//       )
+//     })
+
+//     return NextResponse.json({
+//       success: true,
+//       secure_url: result.secure_url,
+//       public_id: result.public_id,
+//     })
+//   } catch (error) {
+//     console.error("Error uploading to Cloudinary:", error)
+//     return NextResponse.json({ error: "Failed to upload image" }, { status: 500 })
+//   }
+// }
+
+
+
 import { NextResponse } from "next/server"
 import { uploadImage, deleteImage } from "@/lib/cloudinary"
 
