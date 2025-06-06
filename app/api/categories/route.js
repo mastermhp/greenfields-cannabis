@@ -1,19 +1,27 @@
 import { NextResponse } from "next/server"
 import { connectToDatabase, collections } from "@/lib/mongodb"
-import { ObjectId } from "mongodb"
+import { verifyAuth } from "@/lib/auth"
 
-export async function GET() {
+export async function GET(request) {
   try {
+    // Connect to the database
     const { db } = await connectToDatabase()
 
-    const categories = await db.collection(collections.categories).find({}).sort({ createdAt: -1 }).toArray()
+    // Fetch all categories
+    const categories = await db.collection(collections.categories).find({}).toArray()
+
+    // Transform to the format expected by the frontend
+    const formattedCategories = categories.map((category) => ({
+      value: category.slug || category._id.toString(),
+      label: category.name,
+    }))
 
     return NextResponse.json({
       success: true,
-      data: categories,
+      categories: formattedCategories,
     })
   } catch (error) {
-    console.error("Categories API Error:", error)
+    console.error("Error fetching categories:", error)
     return NextResponse.json(
       {
         success: false,
@@ -26,30 +34,66 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { db } = await connectToDatabase()
-    const body = await request.json()
-
-    const category = {
-      id: new ObjectId().toString(),
-      name: body.name,
-      description: body.description || "",
-      image: body.image || "/placeholder.svg?height=200&width=300",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    // Verify authentication
+    const authResult = await verifyAuth(request)
+    if (!authResult.isAuthenticated || !authResult.user.isAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+        },
+        { status: 401 },
+      )
     }
 
-    const result = await db.collection(collections.categories).insertOne(category)
+    // Get request body
+    const data = await request.json()
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: { ...category, _id: result.insertedId },
-        message: "Category created successfully",
-      },
-      { status: 201 },
-    )
+    if (!data.name) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Category name is required",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Connect to the database
+    const { db } = await connectToDatabase()
+
+    // Create slug from name
+    const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+
+    // Check if category with this slug already exists
+    const existingCategory = await db.collection(collections.categories).findOne({ slug })
+    if (existingCategory) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "A category with this name already exists",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Insert new category
+    const result = await db.collection(collections.categories).insertOne({
+      name: data.name,
+      slug,
+      description: data.description || "",
+      image: data.image || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    return NextResponse.json({
+      success: true,
+      categoryId: result.insertedId,
+      message: "Category created successfully",
+    })
   } catch (error) {
-    console.error("Create Category Error:", error)
+    console.error("Error creating category:", error)
     return NextResponse.json(
       {
         success: false,

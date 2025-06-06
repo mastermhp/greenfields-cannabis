@@ -24,6 +24,7 @@ import {
   UserX,
   Crown,
   Shield,
+  PlusCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -408,8 +409,8 @@ const AdminUsers = () => {
             Refresh Users
           </Button>
           <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
-            <Download size={16} className="mr-2" />
-            Export Users
+            <PlusCircle size={16} className="mr-2" />
+            Add Users
           </Button>
         </div>
       </div>

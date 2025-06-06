@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -15,6 +15,49 @@ import { categories } from "@/lib/data"
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("all")
+  const [content, setContent] = useState({
+    hero: {
+      title: "GREENFIELDS",
+      subtitle: "Premium Quality Cannabis Products for Connoisseurs",
+      backgroundImage: "/greenfieldsbg.jpeg",
+      ctaText: "Shop Now",
+      ctaSecondaryText: "Learn More",
+    },
+    benefits: {
+      title: "Why Choose Greenfields",
+      subtitle: "Experience the difference with our premium cannabis products",
+      backgroundImage: "",
+      items: [
+        {
+          title: "Premium Quality",
+          description: "Sourced from the finest growers with strict quality control",
+          icon: "TrendingUp",
+        },
+        {
+          title: "Award Winning",
+          description: "Multiple cannabis cup winner for our exclusive strains",
+          icon: "Award",
+        },
+        {
+          title: "Lab Tested",
+          description: "All products are rigorously tested for purity and potency",
+          icon: "Shield",
+        },
+        {
+          title: "Fast Delivery",
+          description: "Discreet packaging with fast and reliable shipping",
+          icon: "Truck",
+        },
+      ],
+    },
+    newsletter: {
+      title: "Join Our Community",
+      subtitle: "Subscribe to our newsletter for exclusive offers, new product alerts, and cannabis education",
+      backgroundImage: "/community.jpg",
+    },
+  })
+  const [loading, setLoading] = useState(true)
+
   const heroRef = useRef(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -24,8 +67,26 @@ export default function Home() {
   const y = useTransform(scrollYProgress, [0, 1], [0, 300])
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
 
+  // Fetch content on component mount
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const response = await fetch("/api/content-management?page=home")
+        const data = await response.json()
+        if (data.success && data.data) {
+          setContent((prev) => ({ ...prev, ...data.data }))
+        }
+      } catch (error) {
+        console.error("Error fetching home content:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchContent()
+  }, [])
+
   // Get featured products, fallback to recent products if no featured ones exist
-  const { products: featuredProducts, loading } = useProducts({
+  const { products: featuredProducts, loading: productsLoading } = useProducts({
     category: activeCategory === "all" ? undefined : activeCategory,
     limit: 8,
   })
@@ -33,35 +94,49 @@ export default function Home() {
   // If no products from the hook, we'll show a fallback
   const displayProducts = featuredProducts?.length > 0 ? featuredProducts : []
 
+  // Icon mapping for benefits
+  const iconMap = {
+    TrendingUp,
+    Award,
+    Shield,
+    Truck,
+  }
+
   return (
     <>
       {/* Hero Section */}
       <section ref={heroRef} className="relative h-screen flex items-center justify-center overflow-hidden">
         <motion.div className="absolute inset-0 z-0" style={{ y, opacity }}>
-          <Image src="/greenfieldsbg.jpeg" alt="Premium Cannabis" fill className="object-cover" priority />
+          <Image
+            src={content.hero?.backgroundImage || "/greenfieldsbg.jpeg"}
+            alt="Premium Cannabis"
+            fill
+            className="object-cover"
+            priority
+          />
           <div className="absolute inset-0 bg-black/50" />
         </motion.div>
 
-        <div className="container mx-auto px-4 z-10 text-center">
+        {/* <div className="container mx-auto px-4 z-10 text-center">
           <motion.h1
             className="text-5xl md:text-7xl font-bold mb-6 gold-text"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            {/* GREENFIELDS */}
+            {content.hero?.title || "GREENFIELDS"}
           </motion.h1>
 
-          {/* <motion.p
-            className="text-xl md:text-2xl pt-[400px] mb-8 text-beige max-w-2xl mx-auto"
+          <motion.p
+            className="text-xl md:text-2xl mb-8 text-beige max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Premium Quality Cannabis Products for Connoisseurs
-          </motion.p> */}
+            {content.hero?.subtitle || "Premium Quality Cannabis Products for Connoisseurs"}
+          </motion.p>
 
-          {/* <motion.div
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
@@ -72,7 +147,7 @@ export default function Home() {
               className="bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FF8C00] hover:bg-[#B8860B] text-black text-lg py-6 px-8 rounded-none"
             >
               <Link href="/products">
-                Shop Now <ChevronRight className="ml-2" />
+                {content.hero?.ctaText || "Shop Now"} <ChevronRight className="ml-2" />
               </Link>
             </Button>
 
@@ -81,10 +156,10 @@ export default function Home() {
               variant="outline"
               className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 text-lg py-6 px-8 rounded-none"
             >
-              <Link href="/about">Learn More</Link>
+              <Link href="/about">{content.hero?.ctaSecondaryText || "Learn More"}</Link>
             </Button>
-          </motion.div> */}
-        </div>
+          </motion.div>
+        </div> */}
 
         <motion.div
           className="absolute bottom-10 left-0 right-0 text-center"
@@ -109,9 +184,7 @@ export default function Home() {
             transition={{ duration: 0.8 }}
           >
             <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Explore Our Categories</h2>
-            <p className="text-beige max-w-2xl mx-auto">
-              Discover our wide range of premium cannabis products
-            </p>
+            <p className="text-beige max-w-2xl mx-auto">Discover our wide range of premium cannabis products</p>
           </motion.div>
 
           <CategorySlider categories={categories} />
@@ -135,7 +208,11 @@ export default function Home() {
           <div className="flex flex-wrap justify-center gap-4 mb-10">
             <Button
               variant={activeCategory === "all" ? "default" : "outline"}
-              className={activeCategory === "all" ? "bg-[#D4AF37] text-white hover:text-[#D4AF37] hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000" : "border-2 border-[#D4AF37] text-[#D4AF37]"}
+              className={
+                activeCategory === "all"
+                  ? "bg-[#D4AF37] text-white hover:text-[#D4AF37] hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000"
+                  : "border-2 border-[#D4AF37] text-[#D4AF37]"
+              }
               onClick={() => setActiveCategory("all")}
             >
               All
@@ -145,7 +222,9 @@ export default function Home() {
                 key={category.id}
                 variant={activeCategory === category.id ? "default" : "outline"}
                 className={
-                  activeCategory === category.id ? "bg-[#D4AF37] text-black " : "border-2 border-[#D4AF37] text-[#D4AF37] hover:text-white hover:border-2 hover:border-white cursor-pointer transition-all duration-1000"
+                  activeCategory === category.id
+                    ? "bg-[#D4AF37] text-black "
+                    : "border-2 border-[#D4AF37] text-[#D4AF37] hover:text-white hover:border-2 hover:border-white cursor-pointer transition-all duration-1000"
                 }
                 onClick={() => setActiveCategory(category.id)}
               >
@@ -154,7 +233,7 @@ export default function Home() {
             ))}
           </div>
 
-          {loading ? (
+          {productsLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="bg-[#111] border border-[#333] rounded-lg p-6 animate-pulse">
@@ -189,14 +268,14 @@ export default function Home() {
           ) : (
             <div className="text-center py-16">
               <p className="text-beige text-lg mb-4">No products available in this category</p>
-              {/* <Button asChild className="bg-[#D4AF37] hover:bg-black text-black hover:text-[#D4AF37] hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000">
-                <Link href="/products">View All Products</Link>
-              </Button> */}
             </div>
           )}
 
           <div className="text-center mt-16">
-            <Button asChild className="bg-[#D4AF37] text-black text-lg py-6 px-10 rounded-none hover:text-[#D4AF37] hover:bg-black hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000">
+            <Button
+              asChild
+              className="bg-[#D4AF37] text-black text-lg py-6 px-10 rounded-none hover:text-[#D4AF37] hover:bg-black hover:border-2 hover:border-[#D4AF37] cursor-pointer transition-all duration-1000"
+            >
               <Link href="/products">
                 View All Products <ChevronRight className="ml-2" />
               </Link>
@@ -206,8 +285,19 @@ export default function Home() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 bg-black">
-        <div className="container mx-auto px-4">
+      <section className="py-20 bg-black relative">
+        {content.benefits?.backgroundImage && (
+          <div className="absolute inset-0 opacity-10">
+            <Image
+              src={content.benefits.backgroundImage || "/placeholder.svg"}
+              alt="Benefits Background"
+              fill
+              className="object-cover"
+            />
+          </div>
+        )}
+
+        <div className="container mx-auto px-4 relative z-10">
           <motion.div
             className="text-center mb-16"
             initial={{ opacity: 0, y: 30 }}
@@ -215,47 +305,33 @@ export default function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">Why Choose Greenfields</h2>
-            <p className="text-beige max-w-2xl mx-auto">Experience the difference with our premium cannabis products</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 gold-text">
+              {content.benefits?.title || "Why Choose Greenfields"}
+            </h2>
+            <p className="text-beige max-w-2xl mx-auto">
+              {content.benefits?.subtitle || "Experience the difference with our premium cannabis products"}
+            </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: TrendingUp,
-                title: "Premium Quality",
-                description: "Sourced from the finest growers with strict quality control",
-              },
-              {
-                icon: Award,
-                title: "Award Winning",
-                description: "Multiple cannabis cup winner for our exclusive strains",
-              },
-              {
-                icon: Shield,
-                title: "Lab Tested",
-                description: "All products are rigorously tested for purity and potency",
-              },
-              {
-                icon: Truck,
-                title: "Fast Delivery",
-                description: "Discreet packaging with fast and reliable shipping",
-              },
-            ].map((benefit, index) => (
-              <motion.div
-                key={index}
-                className="bg-[#111] p-8 border border-[#333] hover:border-[#D4AF37] transition-all duration-300"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ y: -10, boxShadow: "0 10px 30px rgba(212, 175, 55, 0.2)" }}
-              >
-                <benefit.icon size={48} className="text-[#D4AF37] mb-4" />
-                <h3 className="text-xl font-bold mb-2">{benefit.title}</h3>
-                <p className="text-beige">{benefit.description}</p>
-              </motion.div>
-            ))}
+            {content.benefits?.items?.map((benefit, index) => {
+              const IconComponent = iconMap[benefit.icon] || TrendingUp
+              return (
+                <motion.div
+                  key={index}
+                  className="bg-[#111] p-8 border border-[#333] hover:border-[#D4AF37] transition-all duration-300"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ y: -10, boxShadow: "0 10px 30px rgba(212, 175, 55, 0.2)" }}
+                >
+                  <IconComponent size={48} className="text-[#D4AF37] mb-4" />
+                  <h3 className="text-xl font-bold mb-2">{benefit.title}</h3>
+                  <p className="text-beige">{benefit.description}</p>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -283,7 +359,12 @@ export default function Home() {
       {/* Newsletter */}
       <section className="py-20 bg-[#111] relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <Image src="/community.jpg" alt="Background Pattern" fill className="object-cover" />
+          <Image
+            src={content.newsletter?.backgroundImage || "/community.jpg"}
+            alt="Background Pattern"
+            fill
+            className="object-cover"
+          />
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
@@ -295,9 +376,12 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold mb-4 gold-text">Join Our Community</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 gold-text">
+                {content.newsletter?.title || "Join Our Community"}
+              </h2>
               <p className="text-beige max-w-2xl mx-auto">
-                Subscribe to our newsletter for exclusive offers, new product alerts, and cannabis education
+                {content.newsletter?.subtitle ||
+                  "Subscribe to our newsletter for exclusive offers, new product alerts, and cannabis education"}
               </p>
             </motion.div>
 

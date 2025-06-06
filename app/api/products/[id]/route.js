@@ -30,7 +30,7 @@ async function verifyAdmin(request) {
     }
 
     console.log("Token found, verifying with custom AuthToken...")
-    const decoded = AuthToken.verify(token)
+    const decoded = await AuthToken.verify(token)
     console.log("Token decoded:", decoded ? { userId: decoded.userId, isAdmin: decoded.isAdmin } : "null")
 
     if (!decoded) {
@@ -90,9 +90,6 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ success: false, error: "Product ID is required" }, { status: 400 })
     }
 
-    // Temporarily disable authentication for testing
-    // TODO: Re-enable after testing
-    /*
     // Verify admin authentication
     const authResult = await verifyAdmin(request)
     if (authResult.error) {
@@ -105,17 +102,16 @@ export async function PUT(request, { params }) {
         { status: authResult.status },
       )
     }
-    */
 
-    console.log("Proceeding with product update (auth temporarily disabled)")
+    console.log("Authentication successful, proceeding with product update")
 
     const body = await request.json()
     console.log("Updating product with data:", JSON.stringify(body, null, 2))
 
-    // Validate required fields
-    const requiredFields = ["name", "description", "category", "price", "stock"]
+    // Validate required fields for new weight-based pricing structure
+    const requiredFields = ["name", "description", "category"]
     for (const field of requiredFields) {
-      if (!body[field] && body[field] !== 0) {
+      if (!body[field]) {
         return NextResponse.json(
           {
             success: false,
@@ -126,18 +122,73 @@ export async function PUT(request, { params }) {
       }
     }
 
-    // Validate numeric fields
-    if (isNaN(Number.parseFloat(body.price)) || Number.parseFloat(body.price) <= 0) {
+    // Validate weight pricing or traditional pricing
+    if (body.weightPricing && Array.isArray(body.weightPricing) && body.weightPricing.length > 0) {
+      // Validate weight-based pricing
+      for (let i = 0; i < body.weightPricing.length; i++) {
+        const weightOption = body.weightPricing[i]
+
+        if (
+          !weightOption.weight ||
+          isNaN(Number.parseFloat(weightOption.weight)) ||
+          Number.parseFloat(weightOption.weight) <= 0
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Weight pricing option ${i + 1}: Weight must be a valid positive number`,
+            },
+            { status: 400 },
+          )
+        }
+
+        if (
+          !weightOption.price ||
+          isNaN(Number.parseFloat(weightOption.price)) ||
+          Number.parseFloat(weightOption.price) <= 0
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Weight pricing option ${i + 1}: Price must be a valid positive number`,
+            },
+            { status: 400 },
+          )
+        }
+
+        if (!weightOption.unit) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Weight pricing option ${i + 1}: Unit is required`,
+            },
+            { status: 400 },
+          )
+        }
+      }
+    } else if (body.price) {
+      // Validate traditional pricing
+      if (isNaN(Number.parseFloat(body.price)) || Number.parseFloat(body.price) <= 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Price must be a valid positive number",
+          },
+          { status: 400 },
+        )
+      }
+    } else {
       return NextResponse.json(
         {
           success: false,
-          error: "Price must be a valid positive number",
+          error: "Either weightPricing array or price field is required",
         },
         { status: 400 },
       )
     }
 
-    if (isNaN(Number.parseInt(body.stock)) || Number.parseInt(body.stock) < 0) {
+    // Validate stock
+    if (body.stock !== undefined && (isNaN(Number.parseInt(body.stock)) || Number.parseInt(body.stock) < 0)) {
       return NextResponse.json(
         {
           success: false,
@@ -147,21 +198,17 @@ export async function PUT(request, { params }) {
       )
     }
 
-    // Process product data
+    // Process product data for new structure
     const productData = {
       name: body.name.trim(),
       description: body.description.trim(),
       fullDescription: body.fullDescription?.trim() || body.description.trim(),
       category: body.category,
-      price: Number.parseFloat(body.price),
-      oldPrice: body.oldPrice ? Number.parseFloat(body.oldPrice) : null,
-      stock: Number.parseInt(body.stock),
-      thcContent: body.thcContent ? Number.parseFloat(body.thcContent) / 100 : 0,
-      cbdContent: body.cbdContent ? Number.parseFloat(body.cbdContent) / 100 : 0,
-      weight: body.weight ? Number.parseFloat(body.weight) : 0,
+      thcContent: body.thcContent || 0,
+      cbdContent: body.cbdContent || 0,
       origin: body.origin || "",
       effects: body.effects || [],
-      inStock: Number.parseInt(body.stock) > 0,
+      inStock: body.inStock !== undefined ? body.inStock : true,
       featured: body.featured || false,
       images: body.images || ["/placeholder.svg?height=400&width=400"],
       cloudinaryIds: body.cloudinaryIds || [],
@@ -171,13 +218,58 @@ export async function PUT(request, { params }) {
       updatedAt: new Date(),
     }
 
+    // Handle weight-based pricing or traditional pricing
+    if (body.weightPricing && Array.isArray(body.weightPricing) && body.weightPricing.length > 0) {
+      // New weight-based pricing structure
+      productData.weightPricing = body.weightPricing.map((option) => ({
+        weight: Number.parseFloat(option.weight),
+        unit: option.unit,
+        price: Number.parseFloat(option.price),
+        stock: option.stock || Number.parseInt(body.stock) || 0, // Use individual stock or fallback to general stock
+      }))
+
+      // Set base price from the first weight option or provided basePrice
+      productData.basePrice = body.basePrice ? Number.parseFloat(body.basePrice) : productData.weightPricing[0].price
+
+      // Calculate total stock from all weight options
+      productData.stock = productData.weightPricing.reduce((total, option) => total + (option.stock || 0), 0)
+
+      // Set inStock based on total stock
+      productData.inStock = productData.stock > 0
+    } else {
+      // Traditional pricing structure (backward compatibility)
+      productData.price = Number.parseFloat(body.price)
+      productData.basePrice = productData.price
+      productData.stock = Number.parseInt(body.stock) || 0
+      productData.inStock = productData.stock > 0
+
+      // Clear weight pricing if switching back to traditional pricing
+      productData.weightPricing = []
+    }
+
+    // Handle discount percentage
+    if (body.discountPercentage !== undefined) {
+      const discount = Number.parseInt(body.discountPercentage)
+      productData.discountPercentage = isNaN(discount) ? 0 : Math.max(0, Math.min(100, discount))
+    }
+
     console.log("Processed product data:", JSON.stringify(productData, null, 2))
 
     const updatedProduct = await ProductOperations.updateProduct(id, productData)
 
+    if (!updatedProduct) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to update product - product not found",
+        },
+        { status: 404 },
+      )
+    }
+
     return NextResponse.json({
       success: true,
-      data: updatedProduct,
+      product: updatedProduct,
       message: "Product updated successfully",
     })
   } catch (error) {
@@ -206,9 +298,6 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ success: false, error: "Product ID is required" }, { status: 400 })
     }
 
-    // Temporarily disable authentication for testing
-    // TODO: Re-enable after testing
-    /*
     // Verify admin authentication
     const authResult = await verifyAdmin(request)
     if (authResult.error) {
@@ -221,9 +310,8 @@ export async function DELETE(request, { params }) {
         { status: authResult.status },
       )
     }
-    */
 
-    console.log("Proceeding with product deletion (auth temporarily disabled)")
+    console.log("Authentication successful, proceeding with product deletion")
 
     // Check if product exists before attempting to delete
     const product = await ProductOperations.getProductById(id)

@@ -35,30 +35,33 @@ const AdminProducts = () => {
   const router = useRouter()
   const { toast } = useToast()
   const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const { accessToken } = useAuth()
 
-  // Memoize the options to prevent infinite re-renders
-  const categories = useMemo(
-    () => [
-      { value: "all", label: "All Categories" },
-      { value: "flower", label: "Flower" },
-      { value: "pre-rolls", label: "Pre-Rolls" },
-      { value: "edibles", label: "Edibles" },
-      { value: "concentrates", label: "Concentrates" },
-      { value: "accessories", label: "Accessories" },
-      { value: "cansdales", label: "Cansdales" },
-      { value: "apparel", label: "Apparel" },
-    ],
-    [],
-  )
-
   // Delete confirmation state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("/api/categories")
+        if (response.ok) {
+          const data = await response.json()
+          setCategories([{ id: "all", name: "All Categories" }, ...data.categories])
+        }
+      } catch (error) {
+        console.error("Failed to fetch categories:", error)
+      }
+    }
+
+    fetchCategories()
+  }, [])
 
   // Fetch products
   useEffect(() => {
@@ -84,6 +87,73 @@ const AdminProducts = () => {
 
     fetchProducts()
   }, [toast])
+
+  // Helper function to get category name
+  const getCategoryName = (product) => {
+    // First check if product already has categoryName
+    if (product.categoryName) {
+      return product.categoryName
+    }
+
+    // If not, try to look it up from categories
+    if (!product.category) return "Uncategorized"
+
+    const category = categories.find(
+      (cat) =>
+        cat.id === product.category ||
+        cat._id === product.category ||
+        cat._id?.toString() === product.category ||
+        cat.value === product.category ||
+        cat.name?.toLowerCase() === product.category?.toLowerCase(),
+    )
+
+    if (category) return category.name
+
+    // If category looks like an ObjectId, it's probably a category we don't have in our list
+    if (typeof product.category === "string" && product.category.length === 24) {
+      return "Unknown Category"
+    }
+
+    // Otherwise just return the category value
+    return product.category
+  }
+
+  // Helper function to format price display for weight-based pricing
+  const formatPriceDisplay = (product) => {
+    if (product.weightPricing && product.weightPricing.length > 0) {
+      // Sort by weight to show the lowest price first
+      const sortedPricing = [...product.weightPricing].sort((a, b) => a.weight - b.weight)
+      const lowestPrice = sortedPricing[0]
+      const highestPrice = sortedPricing[sortedPricing.length - 1]
+
+      if (sortedPricing.length === 1) {
+        return `$${lowestPrice.price.toFixed(2)}/${lowestPrice.unit}`
+      } else {
+        return `$${lowestPrice.price.toFixed(2)} - $${highestPrice.price.toFixed(2)}`
+      }
+    } else if (product.price && !isNaN(product.price)) {
+      return `$${Number(product.price).toFixed(2)}`
+    } else {
+      return "Price not set"
+    }
+  }
+
+  // Helper function to get stock display
+  const getStockDisplay = (product) => {
+    if (product.weightPricing && product.weightPricing.length > 0) {
+      const totalStock = product.weightPricing.reduce((sum, wp) => sum + (wp.stock || 0), 0)
+      return totalStock
+    }
+    return product.stock || 0
+  }
+
+  // Helper function to check if product is in stock
+  const isProductInStock = (product) => {
+    if (product.weightPricing && product.weightPricing.length > 0) {
+      return product.weightPricing.some((wp) => (wp.stock || 0) > 0)
+    }
+    return (product.stock || 0) > 0
+  }
 
   // Filter products based on search query and category
   const filteredProducts = useMemo(() => {
@@ -183,8 +253,8 @@ const AdminProducts = () => {
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
                 {categories.map((category) => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
+                  <option key={category.id || category._id} value={category.id || category._id}>
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -207,7 +277,7 @@ const AdminProducts = () => {
                   </div>
                 </th>
                 <th className="text-left p-4 text-beige">Category</th>
-                <th className="text-left p-4 text-beige">Price</th>
+                <th className="text-left p-4 text-beige">Price Range</th>
                 <th className="text-left p-4 text-beige">Stock</th>
                 <th className="text-left p-4 text-beige">Status</th>
                 <th className="text-right p-4 text-beige">Actions</th>
@@ -234,7 +304,7 @@ const AdminProducts = () => {
                   <tr key={product._id || product.id} className="border-b border-[#333] hover:bg-[#1a1a1a]">
                     <td className="p-4">
                       <div className="flex items-center">
-                        <div className="h-28 w-28 rounded bg-[#222] mr-3 overflow-hidden">
+                        <div className="h-10 w-10 rounded bg-[#222] mr-3 overflow-hidden">
                           <img
                             src={product.images?.[0] || "/placeholder.svg?height=40&width=40"}
                             alt={product.name}
@@ -244,16 +314,16 @@ const AdminProducts = () => {
                         <span className="text-white font-medium">{product.name}</span>
                       </div>
                     </td>
-                    <td className="p-4 text-beige capitalize">{product.category}</td>
-                    <td className="p-4 text-beige">${Number.parseFloat(product.price).toFixed(2)}</td>
-                    <td className="p-4 text-beige">{product.stock}</td>
+                    <td className="p-4 text-beige capitalize">{getCategoryName(product)}</td>
+                    <td className="p-4 text-beige">{formatPriceDisplay(product)}</td>
+                    <td className="p-4 text-beige">{getStockDisplay(product)}</td>
                     <td className="p-4">
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
-                          product.inStock ? "bg-green-900/20 text-green-400" : "bg-red-900/20 text-red-400"
+                          isProductInStock(product) ? "bg-green-900/20 text-green-400" : "bg-red-900/20 text-red-400"
                         }`}
                       >
-                        {product.inStock ? "In Stock" : "Out of Stock"}
+                        {isProductInStock(product) ? "In Stock" : "Out of Stock"}
                       </span>
                     </td>
                     <td className="p-4 text-right">

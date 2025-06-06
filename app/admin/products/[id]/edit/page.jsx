@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Upload, X, Save } from "lucide-react"
+import { ArrowLeft, Upload, X, Save, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -21,6 +21,38 @@ const EditProduct = ({ params }) => {
   const [saving, setSaving] = useState(false)
   const [uploadingImages, setUploadingImages] = useState(false)
   const [images, setImages] = useState([])
+  const [categories, setCategories] = useState([])
+
+  // Fetch categories from database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("/api/categories")
+        if (!response.ok) {
+          throw new Error("Failed to fetch categories")
+        }
+        const data = await response.json()
+        setCategories(data.categories || [])
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load categories. Using default values.",
+          variant: "destructive",
+        })
+        // Fallback to default categories if API fails
+        setCategories([
+          { value: "flower", label: "Flower" },
+          { value: "pre-rolls", label: "Pre-Rolls" },
+          { value: "edibles", label: "Edibles" },
+          { value: "concentrates", label: "Concentrates" },
+          { value: "accessories", label: "Accessories" },
+        ])
+      }
+    }
+
+    fetchCategories()
+  }, [toast])
 
   // Unwrap params using React.use()
   const resolvedParams = use(params)
@@ -31,12 +63,10 @@ const EditProduct = ({ params }) => {
     description: "",
     fullDescription: "",
     category: "",
-    price: "",
-    oldPrice: "",
-    stock: "",
+    weightPricing: [{ weight: "", unit: "g", price: "", stock: "" }],
+    discountPercentage: "",
     thcContent: "",
     cbdContent: "",
-    weight: "",
     origin: "",
     effects: [
       { name: "Relaxation", level: 0 },
@@ -47,16 +77,6 @@ const EditProduct = ({ params }) => {
     inStock: true,
     featured: false,
   })
-
-  const categories = [
-    { value: "flower", label: "Flower" },
-    { value: "pre-rolls", label: "Pre-Rolls" },
-    { value: "edibles", label: "Edibles" },
-    { value: "concentrates", label: "Concentrates" },
-    { value: "accessories", label: "Accessories" },
-    { value: "cansdales", label: "Cansdales" },
-    { value: "apparel", label: "Apparel" },
-  ]
 
   // Check if user is admin
   useEffect(() => {
@@ -121,17 +141,36 @@ const EditProduct = ({ params }) => {
           return existingEffect || { name, level: 0 }
         })
 
+        // Handle weight pricing
+        let weightPricing = []
+        if (product.weightPricing && product.weightPricing.length > 0) {
+          weightPricing = product.weightPricing.map((item) => ({
+            weight: item.weight.toString(),
+            unit: item.unit || "g",
+            price: item.price.toString(),
+            stock: (item.stock || 0).toString(),
+          }))
+        } else if (product.price) {
+          // Legacy format - convert to new format
+          weightPricing = [
+            {
+              weight: product.weight?.toString() || "1",
+              unit: "g",
+              price: product.price.toString(),
+              stock: (product.stock || 0).toString(),
+            },
+          ]
+        }
+
         setFormData({
           name: product.name || "",
           description: product.description || "",
           fullDescription: product.fullDescription || "",
           category: product.category || "",
-          price: product.price?.toString() || "",
-          oldPrice: product.oldPrice?.toString() || "",
-          stock: product.stock?.toString() || "",
+          weightPricing: weightPricing.length > 0 ? weightPricing : [{ weight: "", unit: "g", price: "", stock: "" }],
+          discountPercentage: product.discountPercentage?.toString() || "",
           thcContent: product.thcContent ? (product.thcContent * 100).toString() : "",
           cbdContent: product.cbdContent ? (product.cbdContent * 100).toString() : "",
-          weight: product.weight?.toString() || "",
           origin: product.origin || "",
           effects: normalizedEffects,
           inStock: product.inStock !== undefined ? product.inStock : true,
@@ -278,10 +317,21 @@ const EditProduct = ({ params }) => {
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.description || !formData.category || !formData.price || !formData.stock) {
+      if (!formData.name || !formData.description || !formData.category) {
         toast({
           title: "Validation Error",
           description: "Please fill in all required fields.",
+          variant: "destructive",
+        })
+        setSaving(false)
+        return
+      }
+
+      // Validate weight pricing
+      if (formData.weightPricing.some((item) => !item.weight || !item.price || !item.stock)) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all weight, price, and stock fields.",
           variant: "destructive",
         })
         setSaving(false)
@@ -294,12 +344,16 @@ const EditProduct = ({ params }) => {
         description: formData.description.trim(),
         fullDescription: formData.fullDescription.trim(),
         category: formData.category,
-        price: formData.price,
-        oldPrice: formData.oldPrice || null,
-        stock: formData.stock,
-        thcContent: formData.thcContent || "0",
-        cbdContent: formData.cbdContent || "0",
-        weight: formData.weight || "0",
+        weightPricing: formData.weightPricing.map((item) => ({
+          weight: Number.parseFloat(item.weight),
+          unit: item.unit,
+          price: Number.parseFloat(item.price),
+          stock: Number.parseInt(item.stock),
+        })),
+        basePrice: formData.weightPricing[0]?.price || "0", // Use first price as base price
+        discountPercentage: formData.discountPercentage ? Number.parseInt(formData.discountPercentage) : 0,
+        thcContent: formData.thcContent ? Number.parseFloat(formData.thcContent) / 100 : 0,
+        cbdContent: formData.cbdContent ? Number.parseFloat(formData.cbdContent) / 100 : 0,
         origin: formData.origin || "",
         effects: formData.effects,
         inStock: formData.inStock,
@@ -503,77 +557,177 @@ const EditProduct = ({ params }) => {
           {/* Pricing & Inventory */}
           <Card className="bg-[#111] border-[#333]">
             <CardHeader>
-              <CardTitle className="text-white">Pricing & Inventory</CardTitle>
+              <CardTitle className="text-white">Weight-Based Pricing & Stock</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="price" className="text-beige">
-                    Price ($) *
+                  <Label className="text-beige mb-2 flex justify-between items-center">
+                    <span>Weight Options with Individual Stock *</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-[#333] h-8"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          weightPricing: [...prev.weightPricing, { weight: "", unit: "g", price: "", stock: "" }],
+                        }))
+                      }}
+                    >
+                      <Plus size={14} className="mr-1" /> Add Weight Option
+                    </Button>
                   </Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
-                    required
-                  />
+
+                  {formData.weightPricing.map((item, index) => (
+                    <div key={index} className="grid grid-cols-12 gap-2 mb-3 p-3 bg-black border border-[#333] rounded">
+                      <div className="col-span-2">
+                        <Label className="text-xs text-beige">Weight</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Weight"
+                          value={item.weight}
+                          onChange={(e) => {
+                            const newWeightPricing = [...formData.weightPricing]
+                            newWeightPricing[index].weight = e.target.value
+                            setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                          }}
+                          className="bg-[#111] border-[#333] focus:border-[#D4AF37] text-sm"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs text-beige">Unit</Label>
+                        <select
+                          value={item.unit}
+                          onChange={(e) => {
+                            const newWeightPricing = [...formData.weightPricing]
+                            newWeightPricing[index].unit = e.target.value
+                            setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                          }}
+                          className="w-full h-10 px-2 py-2 bg-[#111] border border-[#333] rounded-md text-white focus:border-[#D4AF37] text-sm"
+                        >
+                          <option value="g">g</option>
+                          <option value="oz">oz</option>
+                          <option value="mg">mg</option>
+                          <option value="kg">kg</option>
+                          <option value="lb">lb</option>
+                        </select>
+                      </div>
+
+                      <div className="col-span-3">
+                        <Label className="text-xs text-beige">Price ($)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Price"
+                            value={item.price}
+                            onChange={(e) => {
+                              const newWeightPricing = [...formData.weightPricing]
+                              newWeightPricing[index].price = e.target.value
+                              setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                            }}
+                            className="bg-[#111] border-[#333] focus:border-[#D4AF37] pl-7 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-span-3">
+                        <Label className="text-xs text-beige">Stock Qty</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="Stock"
+                          value={item.stock}
+                          onChange={(e) => {
+                            const newWeightPricing = [...formData.weightPricing]
+                            newWeightPricing[index].stock = e.target.value
+                            setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                          }}
+                          className="bg-[#111] border-[#333] focus:border-[#D4AF37] text-sm"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs text-beige opacity-0">Remove</Label>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="w-full h-10"
+                          onClick={() => {
+                            if (formData.weightPricing.length > 1) {
+                              const newWeightPricing = formData.weightPricing.filter((_, i) => i !== index)
+                              setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                            } else {
+                              toast({
+                                title: "Error",
+                                description: "At least one weight option is required",
+                                variant: "destructive",
+                              })
+                            }
+                          }}
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                <div>
-                  <Label htmlFor="oldPrice" className="text-beige">
-                    Old Price ($) - Optional
-                  </Label>
-                  <Input
-                    id="oldPrice"
-                    name="oldPrice"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.oldPrice}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <div>
+                    <Label htmlFor="discountPercentage" className="text-beige">
+                      Discount Percentage (%)
+                    </Label>
+                    <Input
+                      id="discountPercentage"
+                      name="discountPercentage"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      value={formData.discountPercentage}
+                      onChange={handleInputChange}
+                      placeholder="0"
+                      className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Enter percentage value (e.g. 10 for 10% off)</p>
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="stock" className="text-beige">
-                    Stock Quantity *
-                  </Label>
-                  <Input
-                    id="stock"
-                    name="stock"
-                    type="number"
-                    min="0"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="weight" className="text-beige">
-                    Weight (grams)
-                  </Label>
-                  <Input
-                    id="weight"
-                    name="weight"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={formData.weight}
-                    onChange={handleInputChange}
-                    placeholder="0.0"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
-                  />
+                {/* Total Stock Display */}
+                <div className="bg-[#222] p-3 rounded border border-[#333]">
+                  <Label className="text-beige text-sm">Total Stock Summary</Label>
+                  <div className="mt-2 space-y-1">
+                    {formData.weightPricing.map((item, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span className="text-gray-300">
+                          {item.weight}
+                          {item.unit}:
+                        </span>
+                        <span className="text-[#D4AF37]">{item.stock || 0} units</span>
+                      </div>
+                    ))}
+                    <div className="border-t border-[#333] pt-1 mt-2">
+                      <div className="flex justify-between text-sm font-medium">
+                        <span className="text-white">Total Stock:</span>
+                        <span className="text-[#D4AF37]">
+                          {formData.weightPricing.reduce(
+                            (total, item) => total + (Number.parseInt(item.stock) || 0),
+                            0,
+                          )}{" "}
+                          units
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -699,6 +853,10 @@ const EditProduct = ({ params }) => {
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-gray-400 mt-4">
+                <strong>Note:</strong> For best results, upload square images (1:1 ratio) with dimensions of at least
+                800x800 pixels. Maximum file size: 5MB per image. Supported formats: JPG, PNG, WebP.
+              </p>
 
               {images.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
@@ -707,7 +865,7 @@ const EditProduct = ({ params }) => {
                       <img
                         src={image.url || "/placeholder.svg"}
                         alt="Product"
-                        className="w-full h-40 object-cover rounded-lg"
+                        className="w-full h-24 object-cover rounded-lg"
                       />
                       <Button
                         type="button"
@@ -716,15 +874,12 @@ const EditProduct = ({ params }) => {
                         className="absolute top-1 right-1 w-6 h-6 p-0"
                         onClick={() => removeImage(image.id)}
                       >
-                        <X size={12} className="text-red-900"/>
+                        <X size={12} />
                       </Button>
                     </div>
                   ))}
-
-                  
                 </div>
               )}
-              <p className="text-xs text-red-600">Image Size should be square shape like: 1024 x 1024</p>
             </CardContent>
           </Card>
 

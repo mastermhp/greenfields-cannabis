@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Upload, X, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,12 +25,10 @@ const NewProduct = () => {
     description: "",
     fullDescription: "",
     category: "",
-    price: "",
-    oldPrice: "",
-    stock: "",
+    weightPricing: [{ weight: "", unit: "g", price: "", stock: "" }],
+    discountPercentage: "",
     thcContent: "",
     cbdContent: "",
-    weight: "",
     origin: "",
     effects: [
       { name: "Relaxation", level: 0 },
@@ -42,15 +40,39 @@ const NewProduct = () => {
     featured: false,
   })
 
-  const categories = [
-    { value: "flower", label: "Flower" },
-    { value: "pre-rolls", label: "Pre-Rolls" },
-    { value: "edibles", label: "Edibles" },
-    { value: "concentrates", label: "Concentrates" },
-    { value: "accessories", label: "Accessories" },
-    { value: "cansdales", label: "Cansdales" },
-    { value: "apparel", label: "Apparel" },
-  ]
+  const [categories, setCategories] = useState([])
+
+  // Fetch categories from database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("/api/categories")
+        if (!response.ok) {
+          throw new Error("Failed to fetch categories")
+        }
+        const data = await response.json()
+        console.log("Fetched categories:", data.categories)
+        setCategories(data.categories || [])
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load categories. Using default values.",
+          variant: "destructive",
+        })
+        // Fallback to default categories if API fails
+        setCategories([
+          { id: "flower", name: "Flower", value: "flower" },
+          { id: "pre-rolls", name: "Pre-Rolls", value: "pre-rolls" },
+          { id: "edibles", name: "Edibles", value: "edibles" },
+          { id: "concentrates", name: "Concentrates", value: "concentrates" },
+          { id: "accessories", name: "Accessories", value: "accessories" },
+        ])
+      }
+    }
+
+    fetchCategories()
+  }, [toast])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -163,7 +185,7 @@ const NewProduct = () => {
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.description || !formData.category || !formData.price || !formData.stock) {
+      if (!formData.name || !formData.description || !formData.category) {
         toast({
           title: "Validation Error",
           description: "Please fill in all required fields.",
@@ -173,18 +195,42 @@ const NewProduct = () => {
         return
       }
 
+      // Validate weight pricing
+      if (formData.weightPricing.some((item) => !item.weight || !item.price || !item.stock)) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all weight, price, and stock fields.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Find the selected category to get both ID and name
+      const selectedCategory = categories.find(
+        (cat) => cat.id === formData.category || cat.value === formData.category || cat._id === formData.category,
+      )
+
+      console.log("Selected category:", selectedCategory)
+      console.log("Form category value:", formData.category)
+
       // Prepare product data
       const productData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         fullDescription: formData.fullDescription.trim(),
-        category: formData.category,
-        price: formData.price,
-        oldPrice: formData.oldPrice || null,
-        stock: formData.stock,
-        thcContent: formData.thcContent || "0",
-        cbdContent: formData.cbdContent || "0",
-        weight: formData.weight || "0",
+        category: formData.category, // Store the category ID/value
+        categoryName: selectedCategory ? selectedCategory.name : formData.category, // Store the category name
+        weightPricing: formData.weightPricing.map((item) => ({
+          weight: Number.parseFloat(item.weight),
+          unit: item.unit,
+          price: Number.parseFloat(item.price),
+          stock: Number.parseInt(item.stock),
+        })),
+        basePrice: formData.weightPricing[0]?.price || "0", // Use first price as base price
+        discountPercentage: formData.discountPercentage ? Number.parseInt(formData.discountPercentage) : 0,
+        thcContent: formData.thcContent ? Number.parseFloat(formData.thcContent) / 100 : 0,
+        cbdContent: formData.cbdContent ? Number.parseFloat(formData.cbdContent) / 100 : 0,
         origin: formData.origin || "",
         effects: formData.effects,
         inStock: formData.inStock,
@@ -207,7 +253,6 @@ const NewProduct = () => {
       })
 
       console.log("Response status:", response.status)
-      console.log("Response headers:", response.headers)
 
       // Check if response is ok and has content
       if (!response.ok) {
@@ -367,8 +412,8 @@ const NewProduct = () => {
                 >
                   <option value="">Select a category</option>
                   {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
+                    <option key={cat.id || cat._id} value={cat.id || cat.value || cat._id}>
+                      {cat.name}
                     </option>
                   ))}
                 </select>
@@ -379,77 +424,177 @@ const NewProduct = () => {
           {/* Pricing & Inventory */}
           <Card className="bg-[#111] border-[#333]">
             <CardHeader>
-              <CardTitle className="text-white">Pricing & Inventory</CardTitle>
+              <CardTitle className="text-white">Weight-Based Pricing & Stock</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="price" className="text-beige">
-                    Price ($) *
+                  <Label className="text-beige mb-2 flex justify-between items-center">
+                    <span>Weight Options with Individual Stock *</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-[#333] h-8"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          weightPricing: [...prev.weightPricing, { weight: "", unit: "g", price: "", stock: "" }],
+                        }))
+                      }}
+                    >
+                      <Plus size={14} className="mr-1" /> Add Weight Option
+                    </Button>
                   </Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
-                    required
-                  />
+
+                  {formData.weightPricing.map((item, index) => (
+                    <div key={index} className="grid grid-cols-12 gap-2 mb-3 p-3 bg-black border border-[#333] rounded">
+                      <div className="col-span-2">
+                        <Label className="text-xs text-beige">Weight</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Weight"
+                          value={item.weight}
+                          onChange={(e) => {
+                            const newWeightPricing = [...formData.weightPricing]
+                            newWeightPricing[index].weight = e.target.value
+                            setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                          }}
+                          className="bg-[#111] border-[#333] focus:border-[#D4AF37] text-sm"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs text-beige">Unit</Label>
+                        <select
+                          value={item.unit}
+                          onChange={(e) => {
+                            const newWeightPricing = [...formData.weightPricing]
+                            newWeightPricing[index].unit = e.target.value
+                            setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                          }}
+                          className="w-full h-10 px-2 py-2 bg-[#111] border border-[#333] rounded-md text-white focus:border-[#D4AF37] text-sm"
+                        >
+                          <option value="g">g</option>
+                          <option value="oz">oz</option>
+                          <option value="mg">mg</option>
+                          <option value="kg">kg</option>
+                          <option value="lb">lb</option>
+                        </select>
+                      </div>
+
+                      <div className="col-span-3">
+                        <Label className="text-xs text-beige">Price ($)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Price"
+                            value={item.price}
+                            onChange={(e) => {
+                              const newWeightPricing = [...formData.weightPricing]
+                              newWeightPricing[index].price = e.target.value
+                              setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                            }}
+                            className="bg-[#111] border-[#333] focus:border-[#D4AF37] pl-7 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-span-3">
+                        <Label className="text-xs text-beige">Stock Qty</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="Stock"
+                          value={item.stock}
+                          onChange={(e) => {
+                            const newWeightPricing = [...formData.weightPricing]
+                            newWeightPricing[index].stock = e.target.value
+                            setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                          }}
+                          className="bg-[#111] border-[#333] focus:border-[#D4AF37] text-sm"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs text-beige opacity-0">Remove</Label>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="w-full h-10"
+                          onClick={() => {
+                            if (formData.weightPricing.length > 1) {
+                              const newWeightPricing = formData.weightPricing.filter((_, i) => i !== index)
+                              setFormData((prev) => ({ ...prev, weightPricing: newWeightPricing }))
+                            } else {
+                              toast({
+                                title: "Error",
+                                description: "At least one weight option is required",
+                                variant: "destructive",
+                              })
+                            }
+                          }}
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                <div>
-                  <Label htmlFor="oldPrice" className="text-beige">
-                    Old Price ($) - Optional
-                  </Label>
-                  <Input
-                    id="oldPrice"
-                    name="oldPrice"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.oldPrice}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <div>
+                    <Label htmlFor="discountPercentage" className="text-beige">
+                      Discount Percentage (%)
+                    </Label>
+                    <Input
+                      id="discountPercentage"
+                      name="discountPercentage"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      value={formData.discountPercentage}
+                      onChange={handleInputChange}
+                      placeholder="0"
+                      className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Enter percentage value (e.g. 10 for 10% off)</p>
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="stock" className="text-beige">
-                    Stock Quantity *
-                  </Label>
-                  <Input
-                    id="stock"
-                    name="stock"
-                    type="number"
-                    min="0"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="weight" className="text-beige">
-                    Weight (grams)
-                  </Label>
-                  <Input
-                    id="weight"
-                    name="weight"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={formData.weight}
-                    onChange={handleInputChange}
-                    placeholder="0.0"
-                    className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
-                  />
+                {/* Total Stock Display */}
+                <div className="bg-[#222] p-3 rounded border border-[#333]">
+                  <Label className="text-beige text-sm">Total Stock Summary</Label>
+                  <div className="mt-2 space-y-1">
+                    {formData.weightPricing.map((item, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span className="text-gray-300">
+                          {item.weight}
+                          {item.unit}:
+                        </span>
+                        <span className="text-[#D4AF37]">{item.stock || 0} units</span>
+                      </div>
+                    ))}
+                    <div className="border-t border-[#333] pt-1 mt-2">
+                      <div className="flex justify-between text-sm font-medium">
+                        <span className="text-white">Total Stock:</span>
+                        <span className="text-[#D4AF37]">
+                          {formData.weightPricing.reduce(
+                            (total, item) => total + (Number.parseInt(item.stock) || 0),
+                            0,
+                          )}{" "}
+                          units
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -461,7 +606,7 @@ const NewProduct = () => {
               <CardTitle className="text-white">Cannabis Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="thcContent" className="text-beige">
                     THC Content (%)
@@ -498,7 +643,7 @@ const NewProduct = () => {
                   />
                 </div>
 
-                {/* <div>
+                <div>
                   <Label htmlFor="origin" className="text-beige">
                     Origin
                   </Label>
@@ -510,7 +655,7 @@ const NewProduct = () => {
                     placeholder="e.g., California, USA"
                     className="bg-black border-[#333] focus:border-[#D4AF37] mt-1"
                   />
-                </div> */}
+                </div>
               </div>
 
               <div>
@@ -575,6 +720,10 @@ const NewProduct = () => {
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-gray-400 mt-4">
+                <strong>Note:</strong> For best results, upload square images (1:1 ratio) with dimensions of at least
+                800x800 pixels. Maximum file size: 5MB per image. Supported formats: JPG, PNG, WebP.
+              </p>
 
               {images.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">

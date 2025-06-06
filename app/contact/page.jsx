@@ -23,12 +23,20 @@ export default function ContactPage() {
   const [formLoading, setFormLoading] = useState(false)
 
   const [content, setContent] = useState({
-    heroTitle: "Contact Us",
-    heroSubtitle: "We're here to help with any questions or concerns about our premium cannabis products",
-    address: "123 Cannabis Boulevard\nLos Angeles, CA 90210",
-    phone: "+1 (800) 420-6969",
-    email: "info@greenfields.com",
-    businessHours: "Monday - Friday: 9:00 AM - 8:00 PM\nSaturday - Sunday: 10:00 AM - 6:00 PM",
+    hero: {
+      title: "Contact Us",
+      subtitle: "We're here to help with any questions or concerns about our premium cannabis products",
+      backgroundImage: "/contact1.jpeg",
+    },
+    info: {
+      address: "123 Cannabis Boulevard\nLos Angeles, CA 90210",
+      phone: "+1 (800) 420-6969",
+      email: "info@greenfields.com",
+      businessHours: "Monday - Friday: 9:00 AM - 8:00 PM\nSaturday - Sunday: 10:00 AM - 6:00 PM",
+    },
+    map: {
+      backgroundImage: "",
+    },
   })
   const [loading, setLoading] = useState(true)
 
@@ -80,7 +88,13 @@ export default function ContactPage() {
       {/* Hero Section */}
       <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <Image src="/contact1.jpeg" alt="Contact Us" fill className="object-cover" priority />
+          <Image
+            src={content.hero?.backgroundImage || "/contact1.jpeg"}
+            alt="Contact Us"
+            fill
+            className="object-cover"
+            priority
+          />
           <div className="absolute inset-0 bg-black/70" />
         </div>
 
@@ -91,7 +105,7 @@ export default function ContactPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            {content.heroTitle}
+            {content.hero?.title || "Contact Us"}
           </motion.h1>
 
           <motion.p
@@ -100,7 +114,8 @@ export default function ContactPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            {content.heroSubtitle}
+            {content.hero?.subtitle ||
+              "We're here to help with any questions or concerns about our premium cannabis products"}
           </motion.p>
         </div>
       </section>
@@ -252,7 +267,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Our Location</h3>
                     <p className="text-beige">
-                      {content.address.split("\n").map((line, index) => (
+                      {content.info?.address?.split("\n").map((line, index) => (
                         <React.Fragment key={index}>
                           {line}
                           <br />
@@ -268,7 +283,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Phone Number</h3>
-                    <p className="text-beige">{content.phone}</p>
+                    <p className="text-beige">{content.info?.phone}</p>
                   </div>
                 </div>
 
@@ -278,7 +293,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Email Address</h3>
-                    <p className="text-beige">{content.email}</p>
+                    <p className="text-beige">{content.info?.email}</p>
                   </div>
                 </div>
 
@@ -289,7 +304,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="text-xl font-semibold mb-2">Business Hours</h3>
                     <p className="text-beige">
-                      {content.businessHours.split("\n").map((line, index) => (
+                      {content.info?.businessHours?.split("\n").map((line, index) => (
                         <React.Fragment key={index}>
                           {line}
                           <br />
@@ -323,11 +338,17 @@ export default function ContactPage() {
       <section className="py-20 bg-[#111]">
         <div className="container mx-auto px-4">
           <div className="relative h-[500px] w-full">
-            {/* <Image src="/map.png" alt="Map" fill className="object-cover" /> */}
+            {content.map?.backgroundImage ? (
+              <Image src={content.map.backgroundImage || "/placeholder.svg"} alt="Map" fill className="object-cover" />
+            ) : (
+              <div className="w-full h-full bg-[#222] flex items-center justify-center">
+                <p className="text-gray-400">Map placeholder - Upload map image in admin panel</p>
+              </div>
+            )}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 p-6 border border-[#D4AF37]">
               <h3 className="text-xl font-bold mb-2 gold-text">Greenfields Headquarters</h3>
               <p className="text-beige">
-                {content.address.split("\n").map((line, index) => (
+                {content.info?.address?.split("\n").map((line, index) => (
                   <React.Fragment key={index}>
                     {line}
                     <br />

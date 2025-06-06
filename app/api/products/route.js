@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { ProductOperations } from "@/lib/database-operations"
 import { initializeDatabase } from "@/lib/database-operations"
 import { AuthToken } from "@/lib/auth"
+import { connectToDatabase, collections } from "@/lib/mongodb"
 
 // Initialize database on first request
 let initialized = false
@@ -45,8 +46,8 @@ async function verifyAdmin(request) {
     console.log("Token found, verifying...")
     console.log("Token:", token.substring(0, 20) + "..." + token.substring(token.length - 10))
 
-    // Use our custom AuthToken class instead of external JWT library
-    const decoded = AuthToken.verify(token)
+    // Use our custom AuthToken class with await
+    const decoded = await AuthToken.verify(token)
 
     if (!decoded) {
       console.log("Token verification failed")
@@ -120,12 +121,46 @@ export async function GET(request) {
       products = products.slice(0, limit)
     }
 
-    console.log("API: Returning products:", products.length)
+    // Fetch all categories to map IDs to names
+    const { db } = await connectToDatabase()
+    const categories = await db.collection(collections.categories).find({}).toArray()
+
+    // Add category names to products that don't already have them
+    const productsWithCategoryNames = products.map((product) => {
+      // If product already has categoryName, use it
+      if (product.categoryName) {
+        return product
+      }
+
+      // Otherwise, look up the category name
+      if (product.category) {
+        const category = categories.find(
+          (cat) =>
+            cat.id === product.category ||
+            cat._id?.toString() === product.category ||
+            cat._id === product.category ||
+            cat.value === product.category ||
+            cat.name?.toLowerCase() === product.category?.toLowerCase(),
+        )
+        if (category) {
+          return {
+            ...product,
+            categoryName: category.name,
+          }
+        }
+      }
+      return {
+        ...product,
+        categoryName: product.category || "Uncategorized",
+      }
+    })
+
+    console.log("API: Returning products:", productsWithCategoryNames.length)
 
     return NextResponse.json({
       success: true,
-      products,
-      total: products.length,
+      products: productsWithCategoryNames,
+      total: productsWithCategoryNames.length,
     })
   } catch (error) {
     console.error("Error fetching products:", error)
@@ -139,11 +174,6 @@ export async function POST(request) {
 
     await ensureInitialized()
 
-    // TEMPORARY: Skip authentication for testing
-    // Comment this out and uncomment the authentication code below when ready
-    console.log("⚠️ WARNING: Authentication check temporarily disabled for testing")
-
-    /*
     // Verify admin authentication
     const authResult = await verifyAdmin(request)
     if (authResult.error) {
@@ -158,88 +188,76 @@ export async function POST(request) {
     }
 
     console.log("Authentication successful for user:", authResult.user.email)
-    */
 
-    const body = await request.json()
-    console.log("Creating product with data:", JSON.stringify(body, null, 2))
+    const data = await request.json()
 
     // Validate required fields
-    const requiredFields = ["name", "description", "category", "price", "stock"]
-    for (const field of requiredFields) {
-      if (!body[field] && body[field] !== 0) {
-        console.log(`Missing required field: ${field}`)
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Missing required field: ${field}`,
-          },
-          { status: 400 },
-        )
-      }
-    }
-
-    // Validate numeric fields
-    if (isNaN(Number.parseFloat(body.price)) || Number.parseFloat(body.price) <= 0) {
-      console.log("Invalid price:", body.price)
+    if (!data.name || !data.description || !data.category) {
       return NextResponse.json(
         {
           success: false,
-          error: "Price must be a valid positive number",
+          error: "Missing required fields",
         },
         { status: 400 },
       )
     }
 
-    if (isNaN(Number.parseInt(body.stock)) || Number.parseInt(body.stock) < 0) {
-      console.log("Invalid stock:", body.stock)
+    // Validate weight pricing
+    if (!data.weightPricing || !Array.isArray(data.weightPricing) || data.weightPricing.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "Stock must be a valid non-negative number",
+          error: "At least one weight-price option is required",
         },
         { status: 400 },
       )
     }
 
-    // Create product
-    const productData = {
-      name: body.name.trim(),
-      description: body.description.trim(),
-      fullDescription: body.fullDescription?.trim() || body.description.trim(),
-      category: body.category,
-      price: Number.parseFloat(body.price),
-      oldPrice: body.oldPrice ? Number.parseFloat(body.oldPrice) : null,
-      stock: Number.parseInt(body.stock),
-      thcContent: body.thcContent ? Number.parseFloat(body.thcContent) / 100 : 0,
-      cbdContent: body.cbdContent ? Number.parseFloat(body.cbdContent) / 100 : 0,
-      weight: body.weight ? Number.parseFloat(body.weight) : 0,
-      origin: body.origin || "",
-      effects: body.effects || [],
-      inStock: Number.parseInt(body.stock) > 0,
-      featured: body.featured || false,
-      images: body.images || ["/placeholder.svg?height=400&width=400"],
-      cloudinaryIds: body.cloudinaryIds || [],
-      tags: body.tags || [],
-      strain: body.strain || "",
-      genetics: body.genetics || "",
+    // Connect to database
+    const { db } = await connectToDatabase()
+
+    // Create product object with new structure
+    const product = {
+      name: data.name,
+      description: data.description,
+      fullDescription: data.fullDescription || "",
+      category: data.category,
+      categoryName: data.categoryName || data.category, // Store both ID and name
+      weightPricing: data.weightPricing,
+      basePrice: Number.parseFloat(data.weightPricing[0].price) || 0,
+      discountPercentage: Number.parseInt(data.discountPercentage) || 0,
+      thcContent: Number.parseFloat(data.thcContent) || 0,
+      cbdContent: Number.parseFloat(data.cbdContent) || 0,
+      origin: data.origin || "",
+      effects: data.effects || [],
+      inStock: data.inStock !== undefined ? data.inStock : true,
+      featured: data.featured || false,
+      images: data.images || [],
+      cloudinaryIds: data.cloudinaryIds || [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
 
-    console.log("Processed product data:", JSON.stringify(productData, null, 2))
+    // Calculate sale price if discount is applied
+    if (product.discountPercentage > 0) {
+      product.salePrice = product.basePrice * (1 - product.discountPercentage / 100)
+    }
 
-    const product = await ProductOperations.createProduct(productData)
+    console.log("Creating product with category:", product.category, "categoryName:", product.categoryName)
 
-    console.log("Product created successfully:", product)
+    // Insert product into database
+    const result = await db.collection("products").insertOne(product)
 
     return NextResponse.json(
       {
         success: true,
-        data: product,
+        productId: result.insertedId,
         message: "Product created successfully",
       },
       { status: 201 },
     )
   } catch (error) {
-    console.error("Create Product Error:", error)
+    console.error("Error creating product:", error)
     return NextResponse.json(
       {
         success: false,
