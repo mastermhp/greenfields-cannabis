@@ -16,11 +16,17 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ success: false, error: "Document ID is required" }, { status: 400 })
     }
 
-    // Delete the document
-    const deletedDocument = await UserDocumentOperations.deleteDocument(id)
-
-    if (!deletedDocument) {
+    // Get document first to check if it exists
+    const document = await UserDocumentOperations.getDocumentById(id)
+    if (!document) {
       return NextResponse.json({ success: false, error: "Document not found" }, { status: 404 })
+    }
+
+    // Delete the document
+    const deleted = await UserDocumentOperations.deleteDocument(id)
+
+    if (!deleted) {
+      return NextResponse.json({ success: false, error: "Failed to delete document" }, { status: 500 })
     }
 
     return NextResponse.json({

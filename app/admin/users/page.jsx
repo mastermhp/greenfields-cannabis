@@ -78,6 +78,7 @@ const AdminUsersComponent = () => {
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState("")
   const [documentPreviewDialog, setDocumentPreviewDialog] = useState(false)
 
+  // Fix the fetchProducts function to properly handle the response data
   const fetchProducts = async () => {
     try {
       setLoadingProducts(true)
@@ -91,11 +92,17 @@ const AdminUsersComponent = () => {
 
       const data = await response.json()
 
-      if (data.success) {
-        setProducts(data.data || [])
+      // Fix: Check for products array in the response
+      if (data.success && data.products) {
+        console.log("Fetched products:", data.products.length)
+        setProducts(data.products)
+      } else {
+        console.error("No products found in response:", data)
+        setProducts([])
       }
     } catch (error) {
       console.error("Error fetching products:", error)
+      setProducts([])
     } finally {
       setLoadingProducts(false)
     }

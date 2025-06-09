@@ -96,7 +96,7 @@ export default function AnalyticsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${(stats.totalRevenue || 0).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Lifetime revenue</p>
           </CardContent>
         </Card>
@@ -107,7 +107,7 @@ export default function AnalyticsPage() {
             <ShoppingBag className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalOrders}</div>
+            <div className="text-2xl font-bold">{stats.totalOrders || 0}</div>
             <p className="text-xs text-muted-foreground">All time orders</p>
           </CardContent>
         </Card>
@@ -118,7 +118,7 @@ export default function AnalyticsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <div className="text-2xl font-bold">{stats.totalUsers || 0}</div>
             <p className="text-xs text-muted-foreground">Registered users</p>
           </CardContent>
         </Card>
@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+            <div className="text-2xl font-bold">{stats.totalProducts || 0}</div>
             <p className="text-xs text-muted-foreground">Active products</p>
           </CardContent>
         </Card>
@@ -191,11 +191,11 @@ export default function AnalyticsPage() {
                   <div key={product.id || product._id} className="flex items-center justify-between">
                     <div className="flex items-center">
                       <span className="w-6 text-muted-foreground">{index + 1}.</span>
-                      <span className="font-medium">{product.name}</span>
+                      <span className="font-medium">{product.name || "Unknown Product"}</span>
                     </div>
                     <div className="flex items-center space-x-4">
-                      <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
-                      <span className="text-sm font-medium">{product.sales} sold</span>
+                      <span className="text-sm text-muted-foreground">${(product.price || 0).toFixed(2)}</span>
+                      <span className="text-sm font-medium">{product.sales || 0} sold</span>
                     </div>
                   </div>
                 ))}
@@ -218,12 +218,12 @@ export default function AnalyticsPage() {
                 {categoryStats.map((category) => (
                   <div key={category._id} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium capitalize">{category._id}</span>
-                      <span className="text-sm font-medium">${category.totalRevenue.toFixed(2)}</span>
+                      <span className="font-medium capitalize">{category._id || "Unknown"}</span>
+                      <span className="text-sm font-medium">${(category.totalRevenue || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{category.totalProducts} products</span>
-                      <span>Avg. ${category.averagePrice.toFixed(2)}</span>
+                      <span>{category.totalProducts || 0} products</span>
+                      <span>Avg. ${category.averagePrice ? category.averagePrice.toFixed(2) : "0.00"}</span>
                     </div>
                   </div>
                 ))}
