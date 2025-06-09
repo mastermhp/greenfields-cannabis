@@ -23,6 +23,19 @@ const LoyaltyPage = () => {
     birthdayBonus: 50,
   })
 
+  const [referralSettings, setReferralSettings] = useState({
+    referrerPoints: 200,
+    newCustomerPoints: 100,
+    monthlyReferralLimit: 10,
+    minimumPurchaseAmount: 25,
+    referralLinkExpiration: 30,
+    requireAccountCreation: true,
+    requireFirstPurchase: true,
+    emailSubject: "Join Greenfields Cannabis - Get 100 Bonus Points!",
+    emailContent:
+      "Hey there! I thought you might enjoy Greenfields Cannabis. Use my referral link to sign up and get 100 bonus points on your first purchase! [REFERRAL_LINK]",
+  })
+
   const [tiers, setTiers] = useState([
     { name: "Bronze", threshold: 0, discount: 5, freeShipping: false, birthdayBonus: true },
     { name: "Silver", threshold: 1000, discount: 10, freeShipping: true, birthdayBonus: true },
@@ -39,6 +52,13 @@ const LoyaltyPage = () => {
 
   const handleSettingChange = (setting, value) => {
     setProgramSettings((prev) => ({
+      ...prev,
+      [setting]: value,
+    }))
+  }
+
+  const handleReferralSettingChange = (setting, value) => {
+    setReferralSettings((prev) => ({
       ...prev,
       [setting]: value,
     }))
@@ -64,13 +84,19 @@ const LoyaltyPage = () => {
             </Label>
           </div>
           {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
+            <Button
+              onClick={() => setIsEditing(true)}
+              className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
+            >
               <Edit size={16} className="mr-2" />
               Edit Program
             </Button>
           ) : (
             <div className="flex space-x-2">
-              <Button onClick={() => setIsEditing(false)} className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black">
+              <Button
+                onClick={() => setIsEditing(false)}
+                className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
+              >
                 <Save size={16} className="mr-2" />
                 Save Changes
               </Button>
@@ -480,8 +506,10 @@ const LoyaltyPage = () => {
                         <Input
                           id="referrer-points"
                           type="number"
-                          value={programSettings.referralBonus}
-                          onChange={(e) => handleSettingChange("referralBonus", Number.parseInt(e.target.value))}
+                          value={referralSettings.referrerPoints}
+                          onChange={(e) =>
+                            handleReferralSettingChange("referrerPoints", Number.parseInt(e.target.value))
+                          }
                           disabled={!isEditing}
                           className="bg-[#222] border-[#333] text-white"
                         />
@@ -498,7 +526,10 @@ const LoyaltyPage = () => {
                         <Input
                           id="referee-points"
                           type="number"
-                          value={100}
+                          value={referralSettings.newCustomerPoints}
+                          onChange={(e) =>
+                            handleReferralSettingChange("newCustomerPoints", Number.parseInt(e.target.value))
+                          }
                           disabled={!isEditing}
                           className="bg-[#222] border-[#333] text-white"
                         />
@@ -515,7 +546,10 @@ const LoyaltyPage = () => {
                         <Input
                           id="referral-limit"
                           type="number"
-                          value={10}
+                          value={referralSettings.monthlyReferralLimit}
+                          onChange={(e) =>
+                            handleReferralSettingChange("monthlyReferralLimit", Number.parseInt(e.target.value))
+                          }
                           disabled={!isEditing}
                           className="bg-[#222] border-[#333] text-white"
                         />
@@ -530,11 +564,21 @@ const LoyaltyPage = () => {
                       <Label className="text-beige">Referral Qualification</Label>
                       <div className="space-y-2">
                         <div className="flex items-center space-x-2">
-                          <Switch checked={true} disabled={!isEditing} />
+                          <Switch
+                            checked={referralSettings.requireAccountCreation}
+                            onCheckedChange={(checked) =>
+                              handleReferralSettingChange("requireAccountCreation", checked)
+                            }
+                            disabled={!isEditing}
+                          />
                           <Label className="text-white">Account Creation</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Switch checked={true} disabled={!isEditing} />
+                          <Switch
+                            checked={referralSettings.requireFirstPurchase}
+                            onCheckedChange={(checked) => handleReferralSettingChange("requireFirstPurchase", checked)}
+                            disabled={!isEditing}
+                          />
                           <Label className="text-white">First Purchase</Label>
                         </div>
                       </div>
@@ -546,7 +590,10 @@ const LoyaltyPage = () => {
                         <span className="text-beige mr-2">$</span>
                         <Input
                           type="number"
-                          value={25}
+                          value={referralSettings.minimumPurchaseAmount}
+                          onChange={(e) =>
+                            handleReferralSettingChange("minimumPurchaseAmount", Number.parseInt(e.target.value))
+                          }
                           disabled={!isEditing}
                           className="bg-[#222] border-[#333] text-white"
                         />
@@ -559,7 +606,10 @@ const LoyaltyPage = () => {
                       <div className="flex items-center">
                         <Input
                           type="number"
-                          value={30}
+                          value={referralSettings.referralLinkExpiration}
+                          onChange={(e) =>
+                            handleReferralSettingChange("referralLinkExpiration", Number.parseInt(e.target.value))
+                          }
                           disabled={!isEditing}
                           className="bg-[#222] border-[#333] text-white"
                         />
@@ -576,7 +626,8 @@ const LoyaltyPage = () => {
                     <div className="space-y-2">
                       <Label className="text-beige">Email Subject</Label>
                       <Input
-                        value="Join Greenfields Cannabis - Get 100 Bonus Points!"
+                        value={referralSettings.emailSubject}
+                        onChange={(e) => handleReferralSettingChange("emailSubject", e.target.value)}
                         disabled={!isEditing}
                         className="bg-[#333] border-[#444] text-white"
                       />
@@ -585,10 +636,15 @@ const LoyaltyPage = () => {
                       <Label className="text-beige">Email Content</Label>
                       <textarea
                         rows={5}
-                        value="Hey there! I thought you might enjoy Greenfields Cannabis. Use my referral link to sign up and get 100 bonus points on your first purchase! [REFERRAL_LINK]"
+                        value={referralSettings.emailContent}
+                        onChange={(e) => handleReferralSettingChange("emailContent", e.target.value)}
                         disabled={!isEditing}
-                        className="w-full bg-[#333] border border-[#444] rounded-md p-2 text-white"
+                        className="w-full bg-[#333] border border-[#444] rounded-md p-2 text-white resize-none"
+                        placeholder="Use [REFERRAL_LINK] placeholder for the referral link"
                       />
+                      <p className="text-xs text-beige">
+                        Use [REFERRAL_LINK] as placeholder for the actual referral link
+                      </p>
                     </div>
                   </div>
                 </div>
