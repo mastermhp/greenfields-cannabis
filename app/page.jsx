@@ -12,6 +12,7 @@ import NewsletterForm from "@/components/forms/newsletter-form"
 import { Button } from "@/components/ui/button"
 import { useProducts } from "@/hooks/use-products"
 import { categories } from "@/lib/data"
+import { useCategories } from "@/hooks/use-categories"
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("all")
@@ -57,6 +58,8 @@ export default function Home() {
     },
   })
   const [loading, setLoading] = useState(true)
+   const [categories, setCategories] = useState([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
 
   const heroRef = useRef(null)
   const { scrollYProgress } = useScroll({
@@ -83,6 +86,25 @@ export default function Home() {
       }
     }
     fetchContent()
+  }, [])
+
+  // Fetch categories on component mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true)
+        const response = await fetch("/api/categories")
+        const data = await response.json()
+        if (data.success && data.data) {
+          setCategories(data.data)
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+    fetchCategories()
   }, [])
 
   // Get featured products, fallback to recent products if no featured ones exist
@@ -187,7 +209,21 @@ export default function Home() {
             <p className="text-beige max-w-2xl mx-auto">Discover our wide range of premium cannabis products</p>
           </motion.div>
 
-          <CategorySlider categories={categories} />
+          {categoriesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-[#111] border border-[#333] rounded-lg animate-pulse">
+                  <div className="h-48 bg-[#333] rounded-t-lg mb-4"></div>
+                  <div className="p-4">
+                    <div className="h-6 bg-[#333] rounded mb-2"></div>
+                    <div className="h-4 bg-[#333] rounded w-3/4"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <CategorySlider categories={categories} />
+          )}
         </div>
       </section>
 

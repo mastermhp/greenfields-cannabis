@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { motion, AnimatePresence, useAnimation } from "framer-motion"
 import {
   Search,
@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input"
 import { useCart } from "@/hooks/use-cart"
 import { useAuth } from "@/hooks/use-auth"
 import { useMobile } from "@/hooks/use-mobile"
+import { useCategories } from "@/hooks/use-products"
 
 // Particle animation component - client-side only
 const ParticleEffect = () => {
@@ -158,9 +159,11 @@ const CartBadge = ({ count }) => {
 // Main Navbar component
 const Navbar = () => {
   const pathname = usePathname()
+  const router = useRouter()
   const { isMobile } = useMobile()
   const { cartItems = [], cartTotal } = useCart()
   const { user, isAuthenticated } = useAuth()
+  const { categories } = useCategories()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -169,7 +172,7 @@ const Navbar = () => {
   const searchInputRef = useRef(null)
   const controls = useAnimation()
 
-  // Enhanced nav links
+  // Enhanced nav links with dynamic categories
   const navLinks = [
     { name: "HOME", href: "/" },
     {
@@ -177,13 +180,10 @@ const Navbar = () => {
       href: "/products",
       dropdown: [
         { name: "All Products", href: "/products" },
-        { name: "Flower", href: "/products?category=flower" },
-        { name: "Pre-Rolls", href: "/products?category=pre-rolls" },
-        { name: "Edibles", href: "/products?category=edibles" },
-        { name: "Concentrates", href: "/products?category=concentrates" },
-        { name: "Accessories", href: "/products?category=accessories" },
-        { name: "Cansdales", href: "/products?category=cansdales" },
-        { name: "Apparel", href: "/products?category=apparel" },
+        ...(categories || []).map((category) => ({
+          name: category.name,
+          href: `/products?category=${category._id || category.id}`,
+        })),
       ],
     },
     { name: "ABOUT", href: "/about" },
@@ -291,8 +291,8 @@ const Navbar = () => {
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      // Implement search functionality
-      console.log("Searching for:", searchQuery)
+      // Navigate to products page with search query
+      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`)
       setIsSearchOpen(false)
       setSearchQuery("")
     }
@@ -367,7 +367,13 @@ const Navbar = () => {
                       ease: "linear",
                     }}
                   />
-                  <Image src="/logo.png" alt="Greenfields Logo" width={100} height={100} className="object-cover w-28 h-28" />
+                  <Image
+                    src="/logo.png"
+                    alt="Greenfields Logo"
+                    width={100}
+                    height={100}
+                    className="object-cover w-28 h-28"
+                  />
                 </div>
               </motion.div>
             </Link>

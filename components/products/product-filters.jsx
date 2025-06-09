@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -9,12 +10,23 @@ import { Search, Filter, X } from "lucide-react"
 import { useCategories } from "@/hooks/use-products"
 
 const ProductFilters = ({ onFilterChange }) => {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { categories, loading: categoriesLoading } = useCategories()
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [localPriceRange, setLocalPriceRange] = useState([0, 200])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedEffects, setSelectedEffects] = useState([])
-  const [selectedPotency, setSelectedPotency] = useState([])
+
+  // Get initial values from URL params
+  const initialCategory = searchParams.get("category") || "all"
+  const initialSearch = searchParams.get("search") || ""
+  const initialMinPrice = Number(searchParams.get("minPrice") || 0)
+  const initialMaxPrice = Number(searchParams.get("maxPrice") || 200)
+  const initialEffects = searchParams.get("effects") ? searchParams.get("effects").split(",") : []
+  const initialPotency = searchParams.get("potency") ? searchParams.get("potency").split(",") : []
+
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory)
+  const [localPriceRange, setLocalPriceRange] = useState([initialMinPrice, initialMaxPrice])
+  const [searchTerm, setSearchTerm] = useState(initialSearch)
+  const [selectedEffects, setSelectedEffects] = useState(initialEffects)
+  const [selectedPotency, setSelectedPotency] = useState(initialPotency)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const effects = [
@@ -43,6 +55,18 @@ const ProductFilters = ({ onFilterChange }) => {
       potency: selectedPotency,
     }
     onFilterChange(filters)
+
+    // Update URL with filters
+    const params = new URLSearchParams()
+    if (selectedCategory !== "all") params.set("category", selectedCategory)
+    if (searchTerm) params.set("search", searchTerm)
+    if (localPriceRange[0] > 0) params.set("minPrice", localPriceRange[0].toString())
+    if (localPriceRange[1] < 200) params.set("maxPrice", localPriceRange[1].toString())
+    if (selectedEffects.length > 0) params.set("effects", selectedEffects.join(","))
+    if (selectedPotency.length > 0) params.set("potency", selectedPotency.join(","))
+
+    const newUrl = `/products${params.toString() ? `?${params.toString()}` : ""}`
+    window.history.replaceState({}, "", newUrl)
   }, [selectedCategory, searchTerm, localPriceRange, selectedEffects, selectedPotency, onFilterChange])
 
   const handleEffectChange = (effectId, checked) => {

@@ -959,7 +959,7 @@ const AdminUsersComponent = () => {
 
       {/* View User Dialog */}
       <Dialog open={viewUserDialog} onOpenChange={setViewUserDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-[98vw] w-[98vw] max-h-[95vh] h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">User Details</DialogTitle>
             <DialogDescription className="text-beige">
@@ -970,26 +970,23 @@ const AdminUsersComponent = () => {
           {selectedUser && (
             <div className="space-y-6">
               {/* Tabs */}
-              <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="flex border-b border-[#333]">
+              <Tabs defaultValue="profile" onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 bg-[#222] border border-[#333]">
                   <TabsTrigger
                     value="profile"
-                    className={`flex-1 rounded-none ${activeTab === "profile" ? "border-b-2 border-[#D4AF37]" : ""}`}
-                    onClick={() => setActiveTab("profile")}
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
                   >
                     Profile
                   </TabsTrigger>
                   <TabsTrigger
                     value="orders"
-                    className={`flex-1 rounded-none ${activeTab === "orders" ? "border-b-2 border-[#D4AF37]" : ""}`}
-                    onClick={() => setActiveTab("orders")}
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
                   >
                     Orders
                   </TabsTrigger>
                   <TabsTrigger
                     value="documents"
-                    className={`flex-1 rounded-none ${activeTab === "documents" ? "border-b-2 border-[#D4AF37]" : ""}`}
-                    onClick={() => setActiveTab("documents")}
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
                   >
                     Documents
                   </TabsTrigger>
@@ -1237,7 +1234,7 @@ const AdminUsersComponent = () => {
 
       {/* Add User Dialog */}
       <Dialog open={addUserDialog} onOpenChange={setAddUserDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-md">
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-6xl w-[60vw] max-h-[85vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-xl">Add New User</DialogTitle>
             <DialogDescription className="text-beige">

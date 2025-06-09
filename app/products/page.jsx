@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import ProductCard from "@/components/products/product-card"
 import ProductFilters from "@/components/products/product-filters"
@@ -9,16 +10,27 @@ import { Button } from "@/components/ui/button"
 import { Grid, List } from "lucide-react"
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams()
+
+  // Get initial filter values from URL
+  const initialCategory = searchParams.get("category") || ""
+  const initialSearch = searchParams.get("search") || ""
+  const initialMinPrice = Number(searchParams.get("minPrice") || 0)
+  const initialMaxPrice = Number(searchParams.get("maxPrice") || 200)
+  const initialEffects = searchParams.get("effects") ? searchParams.get("effects").split(",") : []
+  const initialPotency = searchParams.get("potency") ? searchParams.get("potency").split(",") : []
+  const initialSort = searchParams.get("sort") || "name"
+
   const [filters, setFilters] = useState({
-    category: "",
-    search: "",
-    minPrice: 0,
-    maxPrice: 200,
-    effects: [],
-    potency: [],
+    category: initialCategory,
+    search: initialSearch,
+    minPrice: initialMinPrice,
+    maxPrice: initialMaxPrice,
+    effects: initialEffects,
+    potency: initialPotency,
   })
   const [viewMode, setViewMode] = useState("grid")
-  const [sortBy, setSortBy] = useState("name")
+  const [sortBy, setSortBy] = useState(initialSort)
 
   // Use real database data with filters
   const { products, loading } = useProducts({
@@ -30,6 +42,14 @@ export default function ProductsPage() {
   const handleFilterChange = useCallback((newFilters) => {
     setFilters(newFilters)
   }, [])
+
+  // Update URL when sort changes
+  useEffect(() => {
+    const currentParams = new URLSearchParams(window.location.search)
+    currentParams.set("sort", sortBy)
+    const newUrl = `/products${currentParams.toString() ? `?${currentParams.toString()}` : ""}`
+    window.history.replaceState({}, "", newUrl)
+  }, [sortBy])
 
   if (loading) {
     return (

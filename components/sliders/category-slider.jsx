@@ -88,12 +88,19 @@ const CategorySlider = ({ categories }) => {
             <Link href={`/products?category=${category.id}`}>
               <div className="bg-[#111] border border-[#333] hover:border-[#D4AF37] overflow-hidden group transition-all duration-300">
                 <div className="relative h-48 overflow-hidden">
-                  <Image
-                    src={category.image || "/placeholder.svg"}
-                    alt={category.name}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
+                  {category?.image ? (
+                      <Image
+                        src={category.image || "/placeholder.svg"}
+                        alt={category.name || "Category"}
+                        width={300}
+                        height={200}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package size={48} className="text-gray-400" />
+                      </div>
+                    )}
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-1000 cursor-pointer duration-300"></div>
                 </div>
 
