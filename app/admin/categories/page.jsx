@@ -9,8 +9,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
+import { useAuth } from "@/hooks/use-auth"
 
 const CategoriesPage = () => {
+  const { accessToken } = useAuth()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
@@ -157,6 +159,16 @@ const CategoriesPage = () => {
     console.log("Categories Page: Submitting form...")
 
     try {
+      // Check if user is authenticated
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to manage categories. Please refresh the page and try again.",
+          variant: "destructive",
+        })
+        return
+      }
+
       // First upload image if there's a new one
       let imageUrl = formData.image
 
@@ -182,13 +194,22 @@ const CategoriesPage = () => {
         image: imageUrl,
       }
 
+      const headers = {
+        "Content-Type": "application/json",
+      }
+
+      // Only add Authorization header if we have a valid token
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`
+      }
+
+      console.log("Categories Page: Making request with headers:", headers)
+
       console.log("Categories Page: Sending request:", { url, method, categoryData })
 
       const response = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(categoryData),
       })
 
@@ -233,8 +254,24 @@ const CategoriesPage = () => {
     console.log("Categories Page: Deleting category:", id)
 
     try {
+      // Check if user is authenticated
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to delete categories.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const headers = {}
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`
+      }
+
       const response = await fetch(`/api/categories/${id}`, {
         method: "DELETE",
+        headers,
       })
 
       console.log("Categories Page: Delete response status:", response.status)

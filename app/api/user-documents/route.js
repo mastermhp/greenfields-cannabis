@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
 import { UserDocumentOperations } from "@/lib/database-operations"
+import { uploadImage } from "@/lib/cloudinary"
+import { verifyAuth } from "@/lib/auth"
 
 export async function POST(request) {
   try {
-    // This would typically handle file upload to a storage service like Cloudinary
-    // For now, we'll simulate the upload and store the metadata
+    // Verify authentication
+    const authResult = await verifyAuth(request)
+    if (authResult.error) {
+      return NextResponse.json({ success: false, error: authResult.error }, { status: 401 })
+    }
 
     const formData = await request.formData()
     const file = formData.get("file")
@@ -15,9 +20,16 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
-    // In a real implementation, you would upload the file to a storage service
-    // and get back a URL. For now, we'll create a placeholder URL
-    const documentUrl = `https://storage.example.com/${userId}/${documentType}/${Date.now()}-${file.name}`
+    // Convert file to base64 for Cloudinary upload
+    const buffer = await file.arrayBuffer()
+    const base64String = `data:${file.type};base64,${Buffer.from(buffer).toString("base64")}`
+
+    // Upload to Cloudinary
+    const uploadResult = await uploadImage(base64String, "user-documents")
+
+    if (!uploadResult || !uploadResult.url) {
+      return NextResponse.json({ success: false, error: "Failed to upload document to cloud storage" }, { status: 500 })
+    }
 
     // Store document metadata in database
     const documentData = {
@@ -26,7 +38,10 @@ export async function POST(request) {
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
-      url: documentUrl,
+      url: uploadResult.url,
+      publicId: uploadResult.public_id,
+      width: uploadResult.width,
+      height: uploadResult.height,
     }
 
     const document = await UserDocumentOperations.uploadDocument(documentData)
@@ -44,6 +59,12 @@ export async function POST(request) {
 
 export async function GET(request) {
   try {
+    // Verify authentication
+    const authResult = await verifyAuth(request)
+    if (authResult.error) {
+      return NextResponse.json({ success: false, error: authResult.error }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get("userId")
     const documentType = searchParams.get("documentType")

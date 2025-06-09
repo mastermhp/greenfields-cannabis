@@ -1,41 +1,35 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
 import {
-  Search,
-  Eye,
   User,
-  Mail,
-  MapPin,
-  Calendar,
-  ShoppingBag,
-  DollarSign,
-  X,
   Ban,
   CheckCircle,
   AlertCircle,
   Clock,
   Package,
   Truck,
-  RefreshCw,
-  UserCheck,
-  UserX,
   Crown,
   Shield,
+  FileText,
+  ImageIcon,
   PlusCircle,
+  X,
+  RefreshCw,
+  ShoppingBag,
+  Upload,
+  Eye,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-const AdminUsers = () => {
+const AdminUsersComponent = () => {
   const { toast } = useToast()
   const [users, setUsers] = useState([])
   const [filteredUsers, setFilteredUsers] = useState([])
@@ -58,12 +52,214 @@ const AdminUsers = () => {
     confirmPassword: "",
     role: "customer",
     phone: "",
+    street: "",
     city: "",
     state: "",
-    country: "",
+    zip: "",
+    country: "United States",
     status: "active",
   })
   const [addingUser, setAddingUser] = useState(false)
+
+  const [selectedAttachment, setSelectedAttachment] = useState(null)
+  const [userAttachments, setUserAttachments] = useState([])
+  const [loadingAttachments, setLoadingAttachments] = useState(false)
+  const [manualOrderDialog, setManualOrderDialog] = useState(false)
+  const [manualOrderForm, setManualOrderForm] = useState({
+    items: [{ productId: "", product: null, quantity: 1 }],
+    shippingAddress: "",
+    notes: "",
+    paymentMethod: "cash",
+  })
+  const [creatingOrder, setCreatingOrder] = useState(false)
+  const [products, setProducts] = useState([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [uploadingDocument, setUploadingDocument] = useState(false)
+  const [documentPreviewUrl, setDocumentPreviewUrl] = useState("")
+  const [documentPreviewDialog, setDocumentPreviewDialog] = useState(false)
+
+  const fetchProducts = async () => {
+    try {
+      setLoadingProducts(true)
+      const accessToken = localStorage.getItem("accessToken")
+
+      const response = await fetch("/api/products", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setProducts(data.data || [])
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
+
+  const addOrderItem = () => {
+    setManualOrderForm((prev) => ({
+      ...prev,
+      items: [...prev.items, { productId: "", product: null, quantity: 1 }],
+    }))
+  }
+
+  const removeOrderItem = (index) => {
+    setManualOrderForm((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }))
+  }
+
+  const updateOrderItem = (index, field, value) => {
+    setManualOrderForm((prev) => {
+      const newItems = [...prev.items]
+      if (field === "productId") {
+        const selectedProduct = products.find((p) => p.id === value)
+        newItems[index] = {
+          ...newItems[index],
+          productId: value,
+          product: selectedProduct,
+        }
+      } else {
+        newItems[index] = {
+          ...newItems[index],
+          [field]: value,
+        }
+      }
+      return {
+        ...prev,
+        items: newItems,
+      }
+    })
+  }
+
+  const calculateOrderTotal = () => {
+    return manualOrderForm.items.reduce((total, item) => {
+      if (item.product) {
+        return total + item.product.price * item.quantity
+      }
+      return total
+    }, 0)
+  }
+
+  const createManualOrder = async () => {
+    try {
+      setCreatingOrder(true)
+      const accessToken = localStorage.getItem("accessToken")
+
+      // Validate that all items have products selected
+      const validItems = manualOrderForm.items.filter((item) => item.product && item.quantity > 0)
+
+      if (validItems.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please select at least one product",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const subtotal = validItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
+      const tax = subtotal * 0.08 // 8% tax
+      const shipping = 0 // Free shipping for manual orders
+      const total = subtotal + tax + shipping
+
+      const orderData = {
+        customer: {
+          id: selectedUser.id,
+          name: selectedUser.name,
+          email: selectedUser.email,
+          phone: selectedUser.phone || "",
+        },
+        items: validItems.map((item) => ({
+          productId: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+          category: item.product.category,
+          sku: item.product.sku || "",
+          image: item.product.images?.[0] || "",
+        })),
+        subtotal,
+        tax,
+        shipping,
+        total,
+        shippingAddress: {
+          street: manualOrderForm.shippingAddress || selectedUser.street || "",
+          city: selectedUser.city || "",
+          state: selectedUser.state || "",
+          zip: selectedUser.zip || "",
+          country: "United States",
+          name: selectedUser.name,
+        },
+        billingAddress: {
+          street: selectedUser.street || "",
+          city: selectedUser.city || "",
+          state: selectedUser.state || "",
+          zip: selectedUser.zip || "",
+          country: "United States",
+          name: selectedUser.name,
+        },
+        paymentMethod: manualOrderForm.paymentMethod,
+        paymentStatus: "paid", // Manual orders are considered paid
+        notes: manualOrderForm.notes,
+        status: "processing", // Start as processing
+        adminCreated: true,
+      }
+
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Order Created",
+          description: `Order ${data.data.id} created successfully for $${total.toFixed(2)}`,
+        })
+        setManualOrderDialog(false)
+        setManualOrderForm({
+          items: [{ productId: "", product: null, quantity: 1 }],
+          shippingAddress: "",
+          notes: "",
+          paymentMethod: "cash",
+        })
+        // Refresh user orders
+        fetchUserDetails(selectedUser.id)
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to create order",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error creating manual order:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create order",
+        variant: "destructive",
+      })
+    } finally {
+      setCreatingOrder(false)
+    }
+  }
+
+  const openManualOrderDialog = async () => {
+    setManualOrderDialog(true)
+    await fetchProducts()
+  }
 
   // Fetch users from API
   const fetchUsers = async () => {
@@ -111,6 +307,115 @@ const AdminUsers = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleAttachmentUpload = async (file) => {
+    if (!file) return
+
+    try {
+      setUploadingDocument(true)
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("userId", selectedUser.id)
+      formData.append("documentType", "general")
+
+      // Get the access token from localStorage
+      const accessToken = localStorage.getItem("accessToken")
+
+      const response = await fetch("/api/user-documents", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Document uploaded successfully",
+        })
+        fetchUserAttachments(selectedUser.id)
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to upload document",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error uploading attachment:", error)
+      toast({
+        title: "Error",
+        description: "Failed to upload document",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingDocument(false)
+    }
+  }
+
+  const fetchUserAttachments = async (userId) => {
+    try {
+      setLoadingAttachments(true)
+      const accessToken = localStorage.getItem("accessToken")
+      const response = await fetch(`/api/user-documents?userId=${userId}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setUserAttachments(data.data || [])
+      }
+    } catch (error) {
+      console.error("Error fetching attachments:", error)
+    } finally {
+      setLoadingAttachments(false)
+    }
+  }
+
+  const deleteUserAttachment = async (documentId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken")
+      const response = await fetch(`/api/user-documents/${documentId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Document deleted successfully",
+        })
+        fetchUserAttachments(selectedUser.id)
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to delete document",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting attachment:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete document",
+      })
+    }
+  }
+
+  const previewDocument = (document) => {
+    setDocumentPreviewUrl(document.url)
+    setDocumentPreviewDialog(true)
   }
 
   // Fetch user orders and stats
@@ -171,6 +476,9 @@ const AdminUsers = () => {
         setUserOrders([])
         setUserStats(null)
       }
+
+      // Fetch user attachments
+      await fetchUserAttachments(userId)
     } catch (error) {
       console.error("Error fetching user details:", error)
       setUserOrders([])
@@ -398,8 +706,10 @@ const AdminUsers = () => {
           password: addUserForm.password,
           role: addUserForm.role,
           phone: addUserForm.phone,
+          street: addUserForm.street,
           city: addUserForm.city,
           state: addUserForm.state,
+          zip: addUserForm.zip,
           country: addUserForm.country,
           status: addUserForm.status,
           adminCreated: true,
@@ -422,9 +732,11 @@ const AdminUsers = () => {
           confirmPassword: "",
           role: "customer",
           phone: "",
+          street: "",
           city: "",
           state: "",
-          country: "",
+          zip: "",
+          country: "United States",
           status: "active",
         })
 
@@ -504,6 +816,16 @@ const AdminUsers = () => {
     )
   }
 
+  const getDocumentIcon = (fileType) => {
+    if (fileType.startsWith("image/")) {
+      return <ImageIcon size={20} className="text-blue-400" />
+    } else if (fileType.includes("pdf")) {
+      return <FileText size={20} className="text-red-400" />
+    } else {
+      return <FileText size={20} className="text-gray-400" />
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -534,380 +856,697 @@ const AdminUsers = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold gold-text">Users Management</h1>
-          <p className="text-beige mt-2">Manage customer accounts and user data</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Users</h2>
+          <p className="text-muted-foreground">Manage users and their accounts.</p>
         </div>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            onClick={fetchUsers}
-            disabled={loading}
-            className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
-          >
-            <RefreshCw size={16} className="mr-2" />
-            Refresh Users
-          </Button>
-          <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black" onClick={() => setAddUserDialog(true)}>
-            <PlusCircle size={16} className="mr-2" />
-            Add User
-          </Button>
-        </div>
+        <Button onClick={() => setAddUserDialog(true)}>Add User</Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          {
-            title: "Total Users",
-            value: users.length,
-            color: "text-blue-400",
-            icon: <User className="h-8 w-8 text-blue-400" />,
-          },
-          {
-            title: "Active Users",
-            value: users.filter((u) => u.status === "active" || !u.status).length,
-            color: "text-green-400",
-            icon: <UserCheck className="h-8 w-8 text-green-400" />,
-          },
-          {
-            title: "Inactive Users",
-            value: users.filter((u) => u.status === "inactive").length,
-            color: "text-yellow-400",
-            icon: <Clock className="h-8 w-8 text-yellow-400" />,
-          },
-          {
-            title: "Banned Users",
-            value: users.filter((u) => u.status === "banned").length,
-            color: "text-red-400",
-            icon: <UserX className="h-8 w-8 text-red-400" />,
-          },
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Card className="bg-[#111] border-[#333] hover:border-[#D4AF37]/50 transition-all">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-beige text-sm">{stat.title}</p>
-                    <p className={`text-3xl font-bold mt-2 ${stat.color}`}>{stat.value}</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Input
+          type="search"
+          placeholder="Search users..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="bg-black border-[#333]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#111] border-[#333]">
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="banned">Banned</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="bg-black border-[#333]">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#111] border-[#333]">
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="customer">Customer</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="moderator">Moderator</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full leading-normal">
+          <thead>
+            <tr className="border-b border-gray-700">
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredUsers.map((user) => (
+              <tr key={user.id} className="border-b border-gray-700 hover:bg-[#111]">
+                <td className="px-5 py-5 text-sm">
+                  <div className="flex items-center">
+                    <div className="ml-3">
+                      <p className="text-white whitespace-no-wrap">{user.name}</p>
+                    </div>
                   </div>
-                  {stat.icon}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+                </td>
+                <td className="px-5 py-5 text-sm">
+                  <p className="text-gray-200 whitespace-no-wrap">{user.email}</p>
+                </td>
+                <td className="px-5 py-5 text-sm">
+                  <span className="relative inline-block px-3 py-1 font-semibold leading-tight">
+                    {getRoleBadge(user.role)}
+                  </span>
+                </td>
+                <td className="px-5 py-5 text-sm">
+                  <span className="relative inline-block px-3 py-1 font-semibold leading-tight">
+                    {getStatusBadge(user.status)}
+                  </span>
+                </td>
+                <td className="px-5 py-5 text-sm">
+                  <div className="space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => viewUser(user)} className="border-[#333]">
+                      View
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Filters */}
-      <Card className="bg-[#111] border-[#333]">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+      {/* View User Dialog */}
+      <Dialog open={viewUserDialog} onOpenChange={setViewUserDialog}>
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">User Details</DialogTitle>
+            <DialogDescription className="text-beige">
+              View and manage user information, orders, and documents.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedUser && (
+            <div className="space-y-6">
+              {/* Tabs */}
+              <Tabs defaultValue="profile" className="w-full">
+                <TabsList className="flex border-b border-[#333]">
+                  <TabsTrigger
+                    value="profile"
+                    className={`flex-1 rounded-none ${activeTab === "profile" ? "border-b-2 border-[#D4AF37]" : ""}`}
+                    onClick={() => setActiveTab("profile")}
+                  >
+                    Profile
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="orders"
+                    className={`flex-1 rounded-none ${activeTab === "orders" ? "border-b-2 border-[#D4AF37]" : ""}`}
+                    onClick={() => setActiveTab("orders")}
+                  >
+                    Orders
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="documents"
+                    className={`flex-1 rounded-none ${activeTab === "documents" ? "border-b-2 border-[#D4AF37]" : ""}`}
+                    onClick={() => setActiveTab("documents")}
+                  >
+                    Documents
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="profile" className="mt-4 space-y-4">
+                  <h3 className="text-lg font-semibold">User Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-beige">Name:</p>
+                      <p className="text-white">{selectedUser.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-beige">Email:</p>
+                      <p className="text-white">{selectedUser.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-beige">Role:</p>
+                      <p className="text-white">{getRoleBadge(selectedUser.role)}</p>
+                    </div>
+                    <div>
+                      <p className="text-beige">Status:</p>
+                      <p className="text-white">{getStatusBadge(selectedUser.status)}</p>
+                    </div>
+                    <div>
+                      <p className="text-beige">Phone:</p>
+                      <p className="text-white">{selectedUser.phone || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-beige">Address:</p>
+                      <p className="text-white">
+                        {selectedUser.street || "N/A"}, {selectedUser.city || "N/A"}, {selectedUser.state || "N/A"},{" "}
+                        {selectedUser.zip || "N/A"}, {selectedUser.country || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold mt-4">Update Status</h3>
+                  <div className="flex space-x-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateUserStatus(selectedUser.id, "active")}
+                      className="border-[#333]"
+                    >
+                      Mark as Active
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateUserStatus(selectedUser.id, "inactive")}
+                      className="border-[#333]"
+                    >
+                      Mark as Inactive
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateUserStatus(selectedUser.id, "banned")}
+                      className="border-[#333]"
+                    >
+                      Ban User
+                    </Button>
+                  </div>
+
+                  {userStats && (
+                    <div className="space-y-4 mt-4">
+                      <h3 className="text-lg font-semibold">User Statistics</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-beige">Total Orders:</p>
+                          <p className="text-white">{userStats.totalOrders}</p>
+                        </div>
+                        <div>
+                          <p className="text-beige">Total Spent:</p>
+                          <p className="text-white">${userStats.totalSpent.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-beige">Completed Orders:</p>
+                          <p className="text-white">{userStats.completedOrders}</p>
+                        </div>
+                        <div>
+                          <p className="text-beige">Pending Orders:</p>
+                          <p className="text-white">{userStats.pendingOrders}</p>
+                        </div>
+                        <div>
+                          <p className="text-beige">Cancelled Orders:</p>
+                          <p className="text-white">{userStats.cancelledOrders}</p>
+                        </div>
+                        <div>
+                          <p className="text-beige">Average Order Value:</p>
+                          <p className="text-white">${userStats.averageOrderValue.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-beige">First Order Date:</p>
+                          <p className="text-white">{formatDate(userStats.firstOrderDate)}</p>
+                        </div>
+                        <div>
+                          <p className="text-beige">Last Order Date:</p>
+                          <p className="text-white">{formatDate(userStats.lastOrderDate)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Orders Tab */}
+                <TabsContent value="orders" className="mt-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">User Orders</h3>
+                    <Button variant="outline" size="sm" onClick={openManualOrderDialog} className="border-[#333]">
+                      Create Order
+                    </Button>
+                  </div>
+                  {loadingUserData ? (
+                    <p className="text-gray-400">Loading orders...</p>
+                  ) : userOrders.length === 0 ? (
+                    <p className="text-gray-400">No orders found for this user.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full leading-normal">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                              Order ID
+                            </th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                              Date
+                            </th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                              Total
+                            </th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {userOrders.map((order) => (
+                            <tr key={order.id} className="border-b border-gray-700 hover:bg-[#111]">
+                              <td className="px-5 py-5 text-sm">
+                                <p className="text-white whitespace-no-wrap">{order.id}</p>
+                              </td>
+                              <td className="px-5 py-5 text-sm">
+                                <p className="text-gray-200 whitespace-no-wrap">{formatDate(order.createdAt)}</p>
+                              </td>
+                              <td className="px-5 py-5 text-sm">
+                                <p className="text-white whitespace-no-wrap">${order.total.toFixed(2)}</p>
+                              </td>
+                              <td className="px-5 py-5 text-sm">
+                                <span className="relative inline-block px-3 py-1 font-semibold leading-tight">
+                                  {getOrderStatusBadge(order.status)}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Documents Tab */}
+                <TabsContent value="documents" className="mt-4 space-y-4">
+                  <div className="bg-[#222] p-4 rounded-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-lg">User Documents</h3>
+                      <div>
+                        <input
+                          type="file"
+                          id="attachment-upload"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files[0]
+                            if (file) {
+                              handleAttachmentUpload(file)
+                            }
+                          }}
+                        />
+                        <Button
+                          onClick={() => document.getElementById("attachment-upload").click()}
+                          className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                          disabled={uploadingDocument}
+                        >
+                          <Upload size={16} className="mr-2" />
+                          {uploadingDocument ? "Uploading..." : "Upload Document"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {loadingAttachments ? (
+                      <div className="text-center py-8">
+                        <RefreshCw className="animate-spin mx-auto mb-4" size={32} />
+                        <p className="text-beige">Loading documents...</p>
+                      </div>
+                    ) : userAttachments.length > 0 ? (
+                      <div className="space-y-3">
+                        {userAttachments.map((doc, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
+                            <div>
+                              <p className="font-medium">{doc.fileName || doc.name || "Document"}</p>
+                              <p className="text-sm text-beige">
+                                Uploaded: {formatDate(doc.createdAt)} • {doc.fileType}
+                              </p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {doc.verified && (
+                                <Badge className="bg-green-500/20 text-green-400 border-0">Verified</Badge>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => previewDocument(doc)}
+                                className="border-[#333]"
+                              >
+                                <Eye size={16} className="mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => deleteUserAttachment(doc.id)}
+                                className="border-red-500 text-red-400 hover:bg-red-500/10"
+                              >
+                                <X size={16} className="mr-1" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Upload size={48} className="mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-semibold text-white mb-2">No Documents</h3>
+                        <p className="text-beige">No documents have been uploaded for this user.</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={addUserDialog} onOpenChange={setAddUserDialog}>
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Add New User</DialogTitle>
+            <DialogDescription className="text-beige">
+              Create a new user account and set their initial details.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Name</label>
               <Input
-                placeholder="Search users by name, email, ID, or phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-black border-[#333] focus:border-[#D4AF37]"
+                type="text"
+                placeholder="Enter name"
+                value={addUserForm.name}
+                onChange={(e) => handleAddUserFormChange("name", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
               />
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] bg-black border-[#333]">
-                  <SelectValue placeholder="User Status" />
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Email</label>
+              <Input
+                type="email"
+                placeholder="Enter email"
+                value={addUserForm.email}
+                onChange={(e) => handleAddUserFormChange("email", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Password</label>
+              <Input
+                type="password"
+                placeholder="Enter password"
+                value={addUserForm.password}
+                onChange={(e) => handleAddUserFormChange("password", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Confirm Password</label>
+              <Input
+                type="password"
+                placeholder="Confirm password"
+                value={addUserForm.confirmPassword}
+                onChange={(e) => handleAddUserFormChange("confirmPassword", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Role</label>
+              <Select value={addUserForm.role} onValueChange={(value) => handleAddUserFormChange("role", value)}>
+                <SelectTrigger className="bg-black border-[#333]">
+                  <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#111] border-[#333]">
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="banned">Banned</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-[140px] bg-black border-[#333]">
-                  <SelectValue placeholder="User Role" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#111] border-[#333]">
-                  <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="moderator">Moderator</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  setSearchQuery("")
-                  setStatusFilter("all")
-                  setRoleFilter("all")
-                }}
-                className="border-[#333] hover:bg-[#222] hover:text-[#D4AF37]"
-              >
-                <X size={16} />
-              </Button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Phone</label>
+              <Input
+                type="tel"
+                placeholder="Enter phone number"
+                value={addUserForm.phone}
+                onChange={(e) => handleAddUserFormChange("phone", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Street</label>
+              <Input
+                type="text"
+                placeholder="Enter street address"
+                value={addUserForm.street}
+                onChange={(e) => handleAddUserFormChange("street", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">City</label>
+              <Input
+                type="text"
+                placeholder="Enter city"
+                value={addUserForm.city}
+                onChange={(e) => handleAddUserFormChange("city", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">State</label>
+              <Input
+                type="text"
+                placeholder="Enter state"
+                value={addUserForm.state}
+                onChange={(e) => handleAddUserFormChange("state", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Zip</label>
+              <Input
+                type="text"
+                placeholder="Enter zip code"
+                value={addUserForm.zip}
+                onChange={(e) => handleAddUserFormChange("zip", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Country</label>
+              <Input
+                type="text"
+                placeholder="Enter country"
+                value={addUserForm.country}
+                onChange={(e) => handleAddUserFormChange("country", e.target.value)}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Status</label>
+              <Select value={addUserForm.status} onValueChange={(value) => handleAddUserFormChange("status", value)}>
+                <SelectTrigger className="bg-black border-[#333]">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111] border-[#333]">
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="banned">Banned</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Users List */}
-      <div className="space-y-4">
-        {filteredUsers.map((user, index) => (
-          <motion.div
-            key={user.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Card className="bg-[#111] border-[#333] hover:border-[#D4AF37]/50 transition-colors">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-                  <div className="flex items-center space-x-4 flex-1">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                      <AvatarFallback className="bg-[#D4AF37] text-black">
-                        {user.name?.charAt(0)?.toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#333]">
+            <Button variant="outline" onClick={() => setAddUserDialog(false)} className="border-[#333]">
+              Cancel
+            </Button>
+            <Button onClick={addUser} disabled={addingUser} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+              {addingUser ? <>Adding User...</> : "Add User"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold text-white">{user.name || "Unknown User"}</h3>
-                        {getStatusBadge(user.status)}
-                        {getRoleBadge(user.role)}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-beige">Contact Info</p>
-                          <p className="text-white">{user.email || "No email"}</p>
-                          <p className="text-gray-400">{user.phone || "No phone"}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-beige">User ID</p>
-                          <p className="text-white font-mono text-xs">{user.id}</p>
-                          <p className="text-gray-400">Joined: {formatDate(user.createdAt)}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-beige">Location</p>
-                          <p className="text-white">
-                            {user.city || "Unknown"}, {user.state || "Unknown"}
-                          </p>
-                          <p className="text-gray-400">{user.country || "Unknown"}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-beige">Last Activity</p>
-                          <p className="text-white">{formatDate(user.lastLoginAt || user.updatedAt)}</p>
-                          <p className="text-gray-400">
-                            {user.isOnline ? (
-                              <span className="text-green-400">● Online</span>
-                            ) : (
-                              <span className="text-gray-400">● Offline</span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => viewUser(user)} className="border-[#333]">
-                      <Eye size={16} className="mr-2" />
-                      View Details
-                    </Button>
-
-                    {/* {user.status !== "banned" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateUserStatus(user.id, "banned")}
-                        className="border-red-500 text-red-400 hover:bg-red-500/10"
-                      >
-                        <Ban size={16} className="mr-2" />
-                        Ban User
-                      </Button>
-                    )}
-
-                    {user.status === "banned" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateUserStatus(user.id, "active")}
-                        className="border-green-500 text-green-400 hover:bg-green-500/10"
-                      >
-                        <CheckCircle size={16} className="mr-2" />
-                        Unban User
-                      </Button>
-                    )} */}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {filteredUsers.length === 0 && (
-        <Card className="bg-[#111] border-[#333]">
-          <CardContent className="p-12 text-center">
-            <User size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No users found</h3>
-            <p className="text-beige">Try adjusting your search or filter criteria</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Add User Dialog */}
-      <Dialog open={addUserDialog} onOpenChange={setAddUserDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+      {/* Manual Order Dialog */}
+      <Dialog open={manualOrderDialog} onOpenChange={setManualOrderDialog}>
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center">
               <PlusCircle className="mr-2" size={20} />
-              Add New User
+              Create Manual Order for {selectedUser?.name}
             </DialogTitle>
-            <DialogDescription className="text-beige">Create a new user account manually</DialogDescription>
+            <DialogDescription className="text-beige">Select products and create an order manually</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Basic Information */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Basic Information</h3>
-
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">Full Name *</label>
-                  <Input
-                    value={addUserForm.name}
-                    onChange={(e) => handleAddUserFormChange("name", e.target.value)}
-                    placeholder="Enter full name"
-                    className="bg-black border-[#333] focus:border-[#D4AF37]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">Email Address *</label>
-                  <Input
-                    type="email"
-                    value={addUserForm.email}
-                    onChange={(e) => handleAddUserFormChange("email", e.target.value)}
-                    placeholder="Enter email address"
-                    className="bg-black border-[#333] focus:border-[#D4AF37]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">Phone Number</label>
-                  <Input
-                    value={addUserForm.phone}
-                    onChange={(e) => handleAddUserFormChange("phone", e.target.value)}
-                    placeholder="Enter phone number"
-                    className="bg-black border-[#333] focus:border-[#D4AF37]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">Role</label>
-                  <Select value={addUserForm.role} onValueChange={(value) => handleAddUserFormChange("role", value)}>
-                    <SelectTrigger className="bg-black border-[#333]">
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#111] border-[#333]">
-                      <SelectItem value="customer">Customer</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="moderator">Moderator</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">Status</label>
-                  <Select
-                    value={addUserForm.status}
-                    onValueChange={(value) => handleAddUserFormChange("status", value)}
-                  >
-                    <SelectTrigger className="bg-black border-[#333]">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#111] border-[#333]">
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="banned">Banned</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Order Items */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-lg">Order Items</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addOrderItem}
+                  className="border-[#333] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                >
+                  <PlusCircle size={16} className="mr-2" />
+                  Add Item
+                </Button>
               </div>
 
-              {/* Security & Location */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Security & Location</h3>
+                {manualOrderForm.items.map((item, index) => (
+                  <div key={index} className="bg-[#222] p-4 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-beige mb-2">Product</label>
+                        <Select
+                          value={item.productId}
+                          onValueChange={(value) => updateOrderItem(index, "productId", value)}
+                        >
+                          <SelectTrigger className="bg-black border-[#333]">
+                            <SelectValue placeholder="Select a product" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#111] border-[#333] max-h-60">
+                            {loadingProducts ? (
+                              <div className="p-2 text-center text-gray-400">Loading products...</div>
+                            ) : products.length === 0 ? (
+                              <div className="p-2 text-center text-gray-400">No products available</div>
+                            ) : (
+                              products.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  <div className="flex items-center justify-between w-full">
+                                    <span>{product.name}</span>
+                                    <span className="text-[#D4AF37] ml-2">${product.price}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {item.product && (
+                          <div className="mt-2 text-xs text-gray-400">
+                            <p>Category: {item.product.category}</p>
+                            <p>Stock: {item.product.stock || 0} available</p>
+                          </div>
+                        )}
+                      </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">Password *</label>
-                  <Input
-                    type="password"
-                    value={addUserForm.password}
-                    onChange={(e) => handleAddUserFormChange("password", e.target.value)}
-                    placeholder="Enter password (min 6 characters)"
-                    className="bg-black border-[#333] focus:border-[#D4AF37]"
-                  />
-                </div>
+                      <div>
+                        <label className="block text-sm font-medium text-beige mb-2">Quantity</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max={item.product?.stock || 999}
+                          value={item.quantity}
+                          onChange={(e) => updateOrderItem(index, "quantity", Number.parseInt(e.target.value) || 1)}
+                          className="bg-black border-[#333] focus:border-[#D4AF37]"
+                        />
+                      </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">Confirm Password *</label>
-                  <Input
-                    type="password"
-                    value={addUserForm.confirmPassword}
-                    onChange={(e) => handleAddUserFormChange("confirmPassword", e.target.value)}
-                    placeholder="Confirm password"
-                    className="bg-black border-[#333] focus:border-[#D4AF37]"
-                  />
-                </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-beige">Subtotal</p>
+                          <p className="text-[#D4AF37] font-medium">
+                            ${item.product ? (item.product.price * item.quantity).toFixed(2) : "0.00"}
+                          </p>
+                        </div>
+                        {manualOrderForm.items.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeOrderItem(index)}
+                            className="border-red-500 text-red-400 hover:bg-red-500/10"
+                          >
+                            <X size={16} />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">City</label>
-                  <Input
-                    value={addUserForm.city}
-                    onChange={(e) => handleAddUserFormChange("city", e.target.value)}
-                    placeholder="Enter city"
-                    className="bg-black border-[#333] focus:border-[#D4AF37]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-beige mb-2">State</label>
-                  <Input
-                    value={addUserForm.state}
-                    onChange={(e) => handleAddUserFormChange("state", e.target.value)}
-                    placeholder="Enter state"
-                    className="bg-black border-[#333] focus:border-[#D4AF37]"
-                  />
+              {/* Order Summary */}
+              <div className="bg-[#222] p-4 rounded-lg mt-4">
+                <h4 className="font-semibold mb-3">Order Summary</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-beige">Subtotal:</span>
+                    <span>${calculateOrderTotal().toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-beige">Tax (8%):</span>
+                    <span>${(calculateOrderTotal() * 0.08).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-beige">Shipping:</span>
+                    <span>Free</span>
+                  </div>
+                  <div className="border-t border-[#333] pt-2 mt-2">
+                    <div className="flex justify-between font-semibold text-lg">
+                      <span>Total:</span>
+                      <span className="text-[#D4AF37]">${(calculateOrderTotal() * 1.08).toFixed(2)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Password Requirements */}
-            <div className="bg-[#222] p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-beige mb-2">Password Requirements:</h4>
-              <ul className="text-xs text-gray-400 space-y-1">
-                <li>• Minimum 6 characters long</li>
-                <li>• Must match confirmation password</li>
-                <li>• User will be able to change password after first login</li>
-              </ul>
+            {/* Shipping Address */}
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Custom Shipping Address (Optional)</label>
+              <Input
+                value={manualOrderForm.shippingAddress}
+                onChange={(e) => setManualOrderForm((prev) => ({ ...prev, shippingAddress: e.target.value }))}
+                placeholder={`Default: ${selectedUser?.street || "User address"}, ${selectedUser?.city || ""}, ${selectedUser?.state || ""}`}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+
+            {/* Payment Method */}
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Payment Method</label>
+              <Select
+                value={manualOrderForm.paymentMethod}
+                onValueChange={(value) => setManualOrderForm((prev) => ({ ...prev, paymentMethod: value }))}
+              >
+                <SelectTrigger className="bg-black border-[#333]">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111] border-[#333]">
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-beige mb-2">Order Notes (Optional)</label>
+              <Textarea
+                value={manualOrderForm.notes}
+                onChange={(e) => setManualOrderForm((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Add any special instructions or notes for this order..."
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+                rows={3}
+              />
             </div>
 
             {/* Action Buttons */}
@@ -915,35 +1554,33 @@ const AdminUsers = () => {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setAddUserDialog(false)
-                  setAddUserForm({
-                    name: "",
-                    email: "",
-                    password: "",
-                    confirmPassword: "",
-                    role: "customer",
-                    phone: "",
-                    city: "",
-                    state: "",
-                    country: "",
-                    status: "active",
+                  setManualOrderDialog(false)
+                  setManualOrderForm({
+                    items: [{ productId: "", product: null, quantity: 1 }],
+                    shippingAddress: "",
+                    notes: "",
+                    paymentMethod: "cash",
                   })
                 }}
                 className="border-[#333]"
-                disabled={addingUser}
+                disabled={creatingOrder}
               >
                 Cancel
               </Button>
-              <Button onClick={addUser} disabled={addingUser} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
-                {addingUser ? (
+              <Button
+                onClick={createManualOrder}
+                disabled={creatingOrder || calculateOrderTotal() === 0}
+                className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+              >
+                {creatingOrder ? (
                   <>
                     <RefreshCw size={16} className="mr-2 animate-spin" />
-                    Creating User...
+                    Creating Order...
                   </>
                 ) : (
                   <>
-                    <UserCheck size={16} className="mr-2" />
-                    Create User
+                    <ShoppingBag size={16} className="mr-2" />
+                    Create Order (${(calculateOrderTotal() * 1.08).toFixed(2)})
                   </>
                 )}
               </Button>
@@ -952,492 +1589,20 @@ const AdminUsers = () => {
         </DialogContent>
       </Dialog>
 
-      {/* View User Dialog */}
-      <Dialog open={viewUserDialog} onOpenChange={setViewUserDialog}>
+      {/* Document Preview Dialog */}
+      <Dialog open={documentPreviewDialog} onOpenChange={setDocumentPreviewDialog}>
         <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl flex items-center">
-              <User className="mr-2" size={20} />
-              User Details
-              {selectedUser && (
-                <div className="ml-3 flex items-center space-x-2">
-                  {getStatusBadge(selectedUser.status)}
-                  {getRoleBadge(selectedUser.role)}
-                </div>
-              )}
-            </DialogTitle>
-            <DialogDescription className="text-beige">
-              {selectedUser && `Member since ${formatDate(selectedUser.createdAt)}`}
-            </DialogDescription>
+            <DialogTitle className="text-xl">Document Preview</DialogTitle>
+            <DialogDescription className="text-beige">Preview the selected document.</DialogDescription>
           </DialogHeader>
-
-          {selectedUser && (
-            <div className="space-y-6">
-              <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-[#222] border border-[#333]">
-                  <TabsTrigger
-                    value="profile"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
-                  >
-                    Profile
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="orders"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
-                  >
-                    Order History
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="stats"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
-                  >
-                    Statistics
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="activity"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
-                  >
-                    Activity
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="profile" className="mt-4 space-y-4">
-                  {/* User Profile Header */}
-                  <div className="bg-[#222] p-6 rounded-lg">
-                    <div className="flex items-center space-x-6">
-                      <Avatar className="h-20 w-20">
-                        <AvatarImage src={selectedUser.avatar || "/placeholder.svg"} alt={selectedUser.name} />
-                        <AvatarFallback className="bg-[#D4AF37] text-black text-2xl">
-                          {selectedUser.name?.charAt(0)?.toUpperCase() || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-white mb-2">{selectedUser.name || "Unknown User"}</h2>
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {getStatusBadge(selectedUser.status)}
-                          {getRoleBadge(selectedUser.role)}
-                          {selectedUser.isEmailVerified && (
-                            <Badge className="bg-blue-500/20 text-blue-400 border-0">
-                              <Mail size={16} className="mr-1" />
-                              Email Verified
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-beige">
-                          User ID: <span className="font-mono text-xs">{selectedUser.id}</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Contact Information */}
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold text-lg mb-3 flex items-center">
-                        <Mail size={20} className="mr-2 text-red-400" />
-                        Contact Information
-                      </h3>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-beige">Email:</span>
-                          <span>{selectedUser.email || "N/A"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-beige">Phone:</span>
-                          <span>{selectedUser.phone || "N/A"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-beige">Email Verified:</span>
-                          <span className={selectedUser.isEmailVerified ? "text-green-400" : "text-red-400"}>
-                            {selectedUser.isEmailVerified ? "Yes" : "No"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#222] p-4 rounded-lg">
-                      <h3 className="font-semibold text-lg mb-3 flex items-center">
-                        <MapPin size={20} className="mr-2 text-green-400" />
-                        Location
-                      </h3>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-beige">City:</span>
-                          <span>{selectedUser.city || "N/A"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-beige">State:</span>
-                          <span>{selectedUser.state || "N/A"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-beige">Country:</span>
-                          <span>{selectedUser.country || "N/A"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-beige">Timezone:</span>
-                          <span>{selectedUser.timezone || "N/A"}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Account Information */}
-                  <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold text-lg mb-3 flex items-center">
-                      <Calendar size={20} className="mr-2 text-purple-400" />
-                      Account Information
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-beige text-sm">Account Created</p>
-                        <p className="text-white">{formatDate(selectedUser.createdAt)}</p>
-                      </div>
-                      <div>
-                        <p className="text-beige text-sm">Last Updated</p>
-                        <p className="text-white">{formatDate(selectedUser.updatedAt)}</p>
-                      </div>
-                      <div>
-                        <p className="text-beige text-sm">Last Login</p>
-                        <p className="text-white">{formatDate(selectedUser.lastLoginAt)}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Preferences */}
-                  <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3">User Preferences</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-beige text-sm">Marketing Emails</p>
-                        <p className="text-white">
-                          {selectedUser.preferences?.marketingEmails ? "Enabled" : "Disabled"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-beige text-sm">SMS Notifications</p>
-                        <p className="text-white">
-                          {selectedUser.preferences?.smsNotifications ? "Enabled" : "Disabled"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-beige text-sm">Newsletter</p>
-                        <p className="text-white">
-                          {selectedUser.preferences?.newsletter ? "Subscribed" : "Unsubscribed"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-beige text-sm">Language</p>
-                        <p className="text-white">{selectedUser.preferences?.language || "English"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="orders" className="mt-4 space-y-4">
-                  {loadingUserData ? (
-                    <div className="bg-[#222] p-8 rounded-lg text-center">
-                      <RefreshCw className="animate-spin mx-auto mb-4" size={32} />
-                      <p className="text-beige">Loading order history...</p>
-                    </div>
-                  ) : userOrders.length > 0 ? (
-                    <div className="space-y-4">
-                      {userOrders.map((order, index) => (
-                        <div key={order.id} className="bg-[#222] p-4 rounded-lg">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between space-y-2 md:space-y-0">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-3 mb-2">
-                                <h4 className="font-semibold">Order #{order.id}</h4>
-                                {getOrderStatusBadge(order.status)}
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div>
-                                  <p className="text-beige">Order Date</p>
-                                  <p className="text-white">{formatDate(order.createdAt)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-beige">Items</p>
-                                  <p className="text-white">{order.items?.length || 0} item(s)</p>
-                                </div>
-
-                                <div className="flex gap-3">
-                                  <p className="text-beige">Total:</p>
-                                  <p className="text-[#D4AF37] font-medium">${order.total?.toFixed(2)}</p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-[#333]"
-                                onClick={() => {
-                                  // This would open the order details
-                                  toast({
-                                    title: "Feature Coming Soon",
-                                    description: "Order details view will be available in the next update.",
-                                  })
-                                }}
-                              >
-                                <Eye size={16} className="mr-2" />
-                                View Order
-                              </Button>
-                            </div> */}
-                          </div>
-
-                          {/* Order Items Preview */}
-                          {order.items && order.items.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-[#333]">
-                              <p className="text-beige text-sm mb-2">Items:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {order.items.slice(0, 3).map((item, itemIndex) => (
-                                  <Badge key={itemIndex} variant="outline" className="border-[#333] text-xs">
-                                    {item.name} x{item.quantity}
-                                  </Badge>
-                                ))}
-                                {order.items.length > 3 && (
-                                  <Badge variant="outline" className="border-[#333] text-xs">
-                                    +{order.items.length - 3} more
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-[#222] p-8 rounded-lg text-center">
-                      <ShoppingBag size={48} className="mx-auto text-gray-400 mb-4" />
-                      <h3 className="text-lg font-semibold text-white mb-2">No Orders Found</h3>
-                      <p className="text-beige">This user hasn't placed any orders yet.</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="stats" className="mt-4 space-y-4">
-                  {loadingUserData ? (
-                    <div className="bg-[#222] p-8 rounded-lg text-center">
-                      <RefreshCw className="animate-spin mx-auto mb-4" size={32} />
-                      <p className="text-beige">Loading statistics...</p>
-                    </div>
-                  ) : userStats ? (
-                    <div className="space-y-4">
-                      {/* Order Statistics */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                        <div className="bg-[#222] p-4 rounded-lg text-center">
-                          <ShoppingBag className="mx-auto mb-2 text-blue-400" size={24} />
-                          <p className="text-2xl font-bold text-white">{userStats.totalOrders}</p>
-                          <p className="text-beige text-sm">Total Orders</p>
-                        </div>
-
-                        <div className="bg-[#222] p-4 rounded-lg text-center">
-                          <DollarSign className="mx-auto mb-2 text-green-400" size={24} />
-                          <p className="text-2xl font-bold text-white">${userStats.totalSpent.toFixed(2)}</p>
-                          <p className="text-beige text-sm">Total Spent</p>
-                        </div>
-
-                        <div className="bg-[#222] p-4 rounded-lg text-center">
-                          <DollarSign className="mx-auto mb-2 text-green-400" size={24} />
-                          <p className="text-2xl font-bold text-white">${userStats.totalSpent.toFixed(2)}</p>
-                          <p className="text-beige text-sm">Total Spent</p>
-                        </div>
-
-                        <div className="bg-[#222] p-4 rounded-lg text-center">
-                          <Package className="mx-auto mb-2 text-yellow-400" size={24} />
-                          <p className="text-2xl font-bold text-white">${userStats.averageOrderValue.toFixed(2)}</p>
-                          <p className="text-beige text-sm">Average Order</p>
-                        </div>
-
-                        <div className="bg-[#222] p-4 rounded-lg text-center">
-                          <Calendar className="mx-auto mb-2 text-purple-400" size={24} />
-                          <p className="text-2xl font-bold text-white">
-                            {userStats.lastOrderDate ? formatDate(userStats.lastOrderDate).split(",")[0] : "N/A"}
-                          </p>
-                          <p className="text-beige text-sm">Last Order</p>
-                        </div>
-                      </div>
-
-                      {/* Order Status Breakdown */}
-                      <div className="bg-[#222] p-4 rounded-lg">
-                        <h3 className="font-semibold text-lg mb-3">Order Status Breakdown</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
-                            <div className="flex items-center">
-                              <CheckCircle size={20} className="text-green-400 mr-2" />
-                              <span>Completed</span>
-                            </div>
-                            <Badge className="bg-green-500/20 text-green-400 border-0">
-                              {userStats.completedOrders}
-                            </Badge>
-                          </div>
-
-                          <div className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
-                            <div className="flex items-center">
-                              <Clock size={20} className="text-yellow-400 mr-2" />
-                              <span>Pending</span>
-                            </div>
-                            <Badge className="bg-yellow-500/20 text-yellow-400 border-0">
-                              {userStats.pendingOrders}
-                            </Badge>
-                          </div>
-
-                          <div className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
-                            <div className="flex items-center">
-                              <AlertCircle size={20} className="text-red-400 mr-2" />
-                              <span>Cancelled</span>
-                            </div>
-                            <Badge className="bg-red-500/20 text-red-400 border-0">{userStats.cancelledOrders}</Badge>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Spending Over Time */}
-                      <div className="bg-[#222] p-4 rounded-lg">
-                        <h3 className="font-semibold mb-3">Customer Lifetime</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-beige text-sm">First Order</p>
-                            <p className="text-white">
-                              {userStats.firstOrderDate ? formatDate(userStats.firstOrderDate) : "N/A"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-beige text-sm">Last Order</p>
-                            <p className="text-white">
-                              {userStats.lastOrderDate ? formatDate(userStats.lastOrderDate) : "N/A"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-beige text-sm">Customer For</p>
-                            <p className="text-white">
-                              {userStats.firstOrderDate
-                                ? `${Math.floor((new Date() - new Date(userStats.firstOrderDate)) / (1000 * 60 * 60 * 24 * 30))} months`
-                                : "N/A"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-beige text-sm">Loyalty Points</p>
-                            <p className="text-[#D4AF37]">
-                              {selectedUser.loyaltyPoints || userStats.loyaltyPoints || 0} points
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-[#222] p-8 rounded-lg text-center">
-                      <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
-                      <h3 className="text-lg font-semibold text-white mb-2">No Statistics Available</h3>
-                      <p className="text-beige">We couldn't find any statistics for this user.</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="activity" className="mt-4 space-y-4">
-                  <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3">Recent Activity</h3>
-
-                    {loadingUserData ? (
-                      <div className="text-center py-8">
-                        <RefreshCw className="animate-spin mx-auto mb-4" size={32} />
-                        <p className="text-beige">Loading activity...</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {/* Login Activity */}
-                        <div>
-                          <h4 className="text-sm text-beige mb-2">Login Activity</h4>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
-                              <div className="flex items-center">
-                                <User size={16} className="text-blue-400 mr-2" />
-                                <span>Last Login</span>
-                              </div>
-                              <span>{formatDate(selectedUser.lastLoginAt || selectedUser.updatedAt)}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
-                              <div className="flex items-center">
-                                <Shield size={16} className="text-green-400 mr-2" />
-                                <span>Account Status</span>
-                              </div>
-                              <span>{getStatusBadge(selectedUser.status)}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Recent Actions */}
-                        <div>
-                          <h4 className="text-sm text-beige mb-2">Recent Actions</h4>
-                          <div className="space-y-2">
-                            {userOrders && userOrders.length > 0 ? (
-                              userOrders.slice(0, 3).map((order, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
-                                  <div className="flex items-center">
-                                    <ShoppingBag size={16} className="text-[#D4AF37] mr-2" />
-                                    <span>Placed Order #{order.id}</span>
-                                  </div>
-                                  <span>{formatDate(order.createdAt)}</span>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="p-3 bg-[#111] rounded-lg text-center text-gray-400">
-                                No recent activity found
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-[#333]">
-                <Button variant="outline" onClick={() => setViewUserDialog(false)} className="border-[#333]">
-                  Close
-                </Button>
-
-                {/* {selectedUser.status !== "banned" ? (
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      updateUserStatus(selectedUser.id, "banned")
-                      setViewUserDialog(false)
-                    }}
-                    className="bg-red-500/20 text-red-400 hover:bg-red-500/30 border-red-500/50"
-                  >
-                    <Ban size={16} className="mr-2" />
-                    Ban User
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      updateUserStatus(selectedUser.id, "active")
-                      setViewUserDialog(false)
-                    }}
-                    className="border-green-500 text-green-400 hover:bg-green-500/10"
-                  >
-                    <CheckCircle size={16} className="mr-2" />
-                    Unban User
-                  </Button>
-                )} */}
-
-                {/* <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
-                  <Mail size={16} className="mr-2" />
-                  Contact User
-                </Button> */}
-              </div>
-            </div>
-          )}
+          {documentPreviewUrl && <iframe src={documentPreviewUrl} width="100%" height="600px" />}
         </DialogContent>
       </Dialog>
     </div>
   )
 }
 
-export default AdminUsers
+export default function AdminUsers() {
+  return <AdminUsersComponent />
+}

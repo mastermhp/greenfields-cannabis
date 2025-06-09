@@ -205,7 +205,7 @@ export default function UserInvoicesPage() {
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Invoice Date</p>
-                      <p className="font-medium">{formatSafeDate(invoice.invoiceDate)}</p>
+                      <p className="font-medium">{formatSafeDate(invoice.createdAt)}</p>
                     </div>
                   </div>
 
@@ -278,10 +278,8 @@ export default function UserInvoicesPage() {
                               <div>
                                 <p className="font-medium">Shipping Address:</p>
                                 <p className="text-sm text-gray-600">
-                                  {invoice.shippingAddress.street}
-                                  <br />
-                                  {invoice.shippingAddress.city}, {invoice.shippingAddress.state}{" "}
-                                  {invoice.shippingAddress.zipCode}
+                                  {invoice.shippingAddress}
+                                  
                                 </p>
                               </div>
                             </div>
@@ -342,7 +340,7 @@ export default function UserInvoicesPage() {
                             <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                               <div className="flex-1">
                                 <h4 className="font-medium">{item.name}</h4>
-                                <p className="text-sm text-gray-600">{item.description || "No description"}</p>
+                                {/* <p className="text-sm text-gray-600">{item.description || "No description"}</p> */}
                                 <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                                   <span>Quantity: {item.quantity}</span>
                                   <span>Unit Price: ${item.price?.toFixed(2) || "0.00"}</span>

@@ -566,12 +566,12 @@ export default function OrderDetailsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-white space-y-1">
-                      <p>{order.shippingAddress.name}</p>
-                      <p className="text-beige">{order.shippingAddress.street}</p>
+                      <p>{order.shippingAddress}</p>
+                      {/* <p className="text-beige">{order.shippingAddress.street}</p> */}
                       <p className="text-beige">
-                        {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}
+                        {/* {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip} */}
                       </p>
-                      <p className="text-beige">{order.shippingAddress.country}</p>
+                      {/* <p className="text-beige">{order.shippingAddress.country}</p> */}
                     </div>
                   </CardContent>
                 </Card>

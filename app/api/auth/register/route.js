@@ -133,16 +133,26 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
+    // Handle phone number properly
+    const phoneNumber = phone || body.phone || ""
+
     // Prepare user data
     const userData = {
+      id: generateId(),
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
-      role: isAdminRequest ? role || "customer" : "customer",
-      isAdmin: isAdminRequest ? role === "admin" : false,
-      status: isAdminRequest ? status || "active" : "active",
-      loyaltyTier: "bronze",
-      loyaltyPoints: 100, // Welcome bonus
+      role: role || "customer",
+      phone: phoneNumber,
+      street: street || body.street || "",
+      city: city || body.city || "",
+      state: state || body.state || "",
+      zip: zip || body.zip || "",
+      country: country || body.country || "United States",
+      status: status || body.status || "active",
+      isVerified: adminCreated || false, // Auto-verify admin-created users
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
 
     // Add optional fields if provided

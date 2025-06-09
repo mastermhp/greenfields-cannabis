@@ -21,6 +21,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // console.log(order)
     const loadDashboardData = async () => {
       try {
         // Fetch analytics data
@@ -46,7 +47,9 @@ const AdminDashboard = () => {
             userGrowth: analyticsData.data.userGrowth || 12.5,
             orderGrowth: analyticsData.data.orderGrowth || 8.3,
           })
+          // console.log(rdersData.data)
         }
+        console.log(ordersData.data)
       } catch (error) {
         console.error("Failed to load dashboard data:", error)
       } finally {
@@ -180,7 +183,7 @@ const AdminDashboard = () => {
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <Card className="bg-[#111] border-[#333]">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center col-span-3 justify-between">
               <CardTitle className="text-white">Recent Orders</CardTitle>
               <Button asChild variant="outline" size="sm" className="border-[#333]">
                 <Link href="/admin/orders">
@@ -226,14 +229,9 @@ const AdminDashboard = () => {
                           <div>
                             <span className="font-medium text-white">Address:</span>
                             <br />
-                            {order.shippingAddress ? (
-                              <span className="text-xs">
-                                {order.shippingAddress.street}, {order.shippingAddress.city},{" "}
-                                {order.shippingAddress.state} {order.shippingAddress.zip}
-                              </span>
-                            ) : (
-                              "N/A"
-                            )}
+                            {/* <p className="font-medium text-white">{order.shippingAddress}</p> */}
+                            {typeof order.shippingAddress === "string" && <p>{order.shippingAddress}</p>}
+
                           </div>
                         </div>
                       </div>
@@ -254,7 +252,7 @@ const AdminDashboard = () => {
           transition={{ duration: 0.5, delay: 0.5 }}
         >
           <Card className="bg-[#111] border-[#333]">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center col-span-2 justify-between">
               <CardTitle className="text-white">Top Products</CardTitle>
               <Button asChild variant="outline" size="sm" className="border-[#333]">
                 <Link href="/admin/products">

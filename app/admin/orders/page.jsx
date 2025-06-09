@@ -24,6 +24,8 @@ import {
   Save,
   Trash2,
   RefreshCw,
+  FileText,
+  ImageIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,6 +54,7 @@ const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState("all")
   const [paymentFilter, setPaymentFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("all")
+  const [dateSearchFilter, setDateSearchFilter] = useState("")
   const [loading, setLoading] = useState(true)
   const [updatingOrder, setUpdatingOrder] = useState(null)
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -61,6 +64,8 @@ const AdminOrders = () => {
   const [editedOrder, setEditedOrder] = useState(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
+  const [customerDocuments, setCustomerDocuments] = useState([])
+  const [loadingDocuments, setLoadingDocuments] = useState(false)
 
   // Fetch orders from API
   const fetchOrders = async () => {
@@ -110,6 +115,35 @@ const AdminOrders = () => {
     }
   }
 
+  // Fetch customer documents
+  const fetchCustomerDocuments = async (customerId) => {
+    try {
+      setLoadingDocuments(true)
+      const accessToken = localStorage.getItem("accessToken")
+
+      if (!accessToken) return
+
+      const response = await fetch(`/api/user-documents?userId=${customerId}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setCustomerDocuments(data.data || [])
+      } else {
+        setCustomerDocuments([])
+      }
+    } catch (error) {
+      console.error("Error fetching customer documents:", error)
+      setCustomerDocuments([])
+    } finally {
+      setLoadingDocuments(false)
+    }
+  }
+
   useEffect(() => {
     fetchOrders()
   }, [])
@@ -136,6 +170,15 @@ const AdminOrders = () => {
     // Apply payment filter
     if (paymentFilter !== "all") {
       filtered = filtered.filter((order) => order.paymentStatus === paymentFilter)
+    }
+
+    // Apply date search filter
+    if (dateSearchFilter) {
+      const searchDate = new Date(dateSearchFilter)
+      filtered = filtered.filter((order) => {
+        const orderDate = new Date(order.createdAt)
+        return orderDate.toDateString() === searchDate.toDateString()
+      })
     }
 
     // Apply date filter
@@ -211,7 +254,7 @@ const AdminOrders = () => {
     })
 
     setFilteredOrders(filtered)
-  }, [searchQuery, statusFilter, paymentFilter, dateFilter, orders, sortConfig])
+  }, [searchQuery, statusFilter, paymentFilter, dateFilter, dateSearchFilter, orders, sortConfig])
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -445,9 +488,15 @@ const AdminOrders = () => {
     }
   }
 
-  const viewOrder = (order) => {
+  const viewOrder = async (order) => {
     setSelectedOrder(order)
     setViewOrderDialog(true)
+    setActiveTab("details")
+
+    // Fetch customer documents if customer ID exists
+    if (order.customer?.id) {
+      await fetchCustomerDocuments(order.customer.id)
+    }
   }
 
   const editOrder = (order) => {
@@ -706,6 +755,16 @@ const AdminOrders = () => {
     )
   }
 
+  const getDocumentIcon = (fileType) => {
+    if (fileType?.startsWith("image/")) {
+      return <ImageIcon size={20} className="text-blue-400" />
+    } else if (fileType?.includes("pdf")) {
+      return <FileText size={20} className="text-red-400" />
+    } else {
+      return <FileText size={20} className="text-gray-400" />
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -752,10 +811,10 @@ const AdminOrders = () => {
             <RefreshCw size={16} className="mr-2" />
             Refresh Orders
           </Button>
-          <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+          {/* <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
             <Download size={16} className="mr-2" />
             Export Orders
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -865,6 +924,26 @@ const AdminOrders = () => {
                 </SelectContent>
               </Select>
 
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="date"
+                  value={dateSearchFilter}
+                  onChange={(e) => setDateSearchFilter(e.target.value)}
+                  className="w-[160px] bg-black border-[#333] focus:border-[#D4AF37]"
+                  placeholder="Search by date"
+                />
+                {dateSearchFilter && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDateSearchFilter("")}
+                    className="border-[#333] hover:bg-[#222] hover:text-[#D4AF37]"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+
               <Button
                 variant="outline"
                 size="icon"
@@ -873,6 +952,7 @@ const AdminOrders = () => {
                   setStatusFilter("all")
                   setPaymentFilter("all")
                   setDateFilter("all")
+                  setDateSearchFilter("")
                 }}
                 className="border-[#333] hover:bg-[#222] hover:text-[#D4AF37]"
               >
@@ -1091,7 +1171,7 @@ const AdminOrders = () => {
 
       {/* View Order Dialog */}
       <Dialog open={viewOrderDialog} onOpenChange={setViewOrderDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-[#111] border border-[#333] text-white w-[800px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg flex items-center">
               <ShoppingBag className="mr-2" size={20} />
@@ -1099,37 +1179,44 @@ const AdminOrders = () => {
               <Badge className="ml-3 text-green-500">{selectedOrder?.id}</Badge>
             </DialogTitle>
             <DialogDescription className="text-beige">
-              <span className="text-xs">Created on</span> <span className="text-red-400">{selectedOrder && formatDate(selectedOrder.createdAt)}</span>
+              <span className="text-xs">Created on</span>{" "}
+              <span className="text-red-400">{selectedOrder && formatDate(selectedOrder.createdAt)}</span>
             </DialogDescription>
           </DialogHeader>
 
           {selectedOrder && (
-            <div className="space-y-6">
-              <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-[#222] border border-[#333]">
+            <div className="space-y-6 w-[100%]">
+              <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab} className="">
+                <TabsList className="bg-[#222] border border-[#333] w-[100%]">
                   <TabsTrigger
                     value="details"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs"
                   >
                     Order Details
                   </TabsTrigger>
                   <TabsTrigger
                     value="customer"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs"
                   >
-                    Customer Info
+                    Customer
                   </TabsTrigger>
                   <TabsTrigger
                     value="shipping"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs"
                   >
-                    Shipping & Payment
+                    Ship & Pay
                   </TabsTrigger>
                   <TabsTrigger
                     value="history"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs" 
                   >
-                    Order History
+                     History
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="documents"
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs"
+                  >
+                    Documents
                   </TabsTrigger>
                 </TabsList>
 
@@ -1246,7 +1333,9 @@ const AdminOrders = () => {
                         </div>
                         <div className="flex justify-center gap-2">
                           <span className="text-sm">Email:</span>
-                          <span className="text-xs bg-purple-700 p-1 rounded-[20px]">{selectedOrder.customer?.email || "N/A"}</span>
+                          <span className="text-xs bg-purple-700 p-1 rounded-[20px]">
+                            {selectedOrder.customer?.email || "N/A"}
+                          </span>
                         </div>
                         <div className="flex justify-center gap-2">
                           <span className="text-beige">Phone:</span>
@@ -1254,7 +1343,9 @@ const AdminOrders = () => {
                         </div>
                         <div className="flex justify-center gap-2">
                           <span className="text-sm">Customer ID:</span>
-                          <span className="font-mono text-xs bg-green-700 p-1 rounded-[20px]">{selectedOrder.customer?.id || "N/A"}</span>
+                          <span className="font-mono text-xs bg-green-700 p-1 rounded-[20px]">
+                            {selectedOrder.customer?.id || "N/A"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1267,28 +1358,6 @@ const AdminOrders = () => {
                       </p>
                     </div>
                   </div>
-
-                  {/* Customer Order History */}
-                  {/* <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3">Customer Order History</h3>
-                    <p className="text-beige text-sm">
-                      This is the customer's order. View their profile for complete order history.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 border-[#333]"
-                      onClick={() => {
-                        // This would navigate to the customer profile
-                        toast({
-                          title: "Feature Coming Soon",
-                          description: "Customer profile view will be available in the next update.",
-                        })
-                      }}
-                    >
-                      View Customer Profile
-                    </Button>
-                  </div> */}
                 </TabsContent>
 
                 <TabsContent value="shipping" className="mt-4 space-y-4">
@@ -1499,32 +1568,58 @@ const AdminOrders = () => {
                       )}
                     </div>
                   </div>
+                </TabsContent>
 
-                  {/* Admin Notes */}
-                  {/* <div className="bg-[#222] p-4 rounded-lg">
-                    <h3 className="font-semibold mb-3">Admin Notes</h3>
-                    <div className="space-y-2">
-                      {selectedOrder.adminNotes ? (
-                        <p className="text-beige">{selectedOrder.adminNotes}</p>
-                      ) : (
-                        <p className="text-gray-400 italic">No admin notes for this order</p>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-[#333]"
-                        onClick={() => {
-                          // This would open a dialog to add/edit admin notes
-                          toast({
-                            title: "Feature Coming Soon",
-                            description: "Admin notes editing will be available in the next update.",
-                          })
-                        }}
-                      >
-                        Add/Edit Notes
-                      </Button>
-                    </div>
-                  </div> */}
+                <TabsContent value="documents" className="mt-4 space-y-4">
+                  <div className="bg-[#222] p-4 rounded-lg">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center">
+                      <FileText size={20} className="mr-2 text-[#D4AF37]" />
+                      Customer Documents
+                    </h3>
+
+                    {loadingDocuments ? (
+                      <div className="text-center py-8">
+                        <RefreshCw className="animate-spin mx-auto mb-4" size={32} />
+                        <p className="text-beige">Loading customer documents...</p>
+                      </div>
+                    ) : customerDocuments.length > 0 ? (
+                      <div className="space-y-3">
+                        {customerDocuments.map((doc, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              {getDocumentIcon(doc.fileType)}
+                              <div>
+                                <p className="font-medium">{doc.fileName}</p>
+                                <p className="text-sm text-beige">
+                                  Uploaded: {formatDate(doc.createdAt)} • {doc.fileType}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {doc.verified && (
+                                <Badge className="bg-green-500/20 text-green-400 border-0">Verified</Badge>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(doc.url, "_blank")}
+                                className="border-[#333]"
+                              >
+                                <Eye size={16} className="mr-1" />
+                                View
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-semibold text-white mb-2">No Documents</h3>
+                        <p className="text-beige">No documents have been uploaded for this customer.</p>
+                      </div>
+                    )}
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>

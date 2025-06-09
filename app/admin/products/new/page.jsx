@@ -184,6 +184,17 @@ const NewProduct = () => {
     setLoading(true)
 
     try {
+      // Check if user is authenticated
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to create products. Please refresh the page and try again.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
       // Validate required fields
       if (!formData.name || !formData.description || !formData.category) {
         toast({
@@ -242,12 +253,20 @@ const NewProduct = () => {
       console.log("Submitting product data:", productData)
 
       // Make API call to create product
+      const headers = {
+        "Content-Type": "application/json",
+      }
+
+      // Only add Authorization header if we have a valid token
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`
+      }
+
+      console.log("Making request with headers:", headers)
+
       const response = await fetch("/api/products", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers,
         credentials: "include",
         body: JSON.stringify(productData),
       })

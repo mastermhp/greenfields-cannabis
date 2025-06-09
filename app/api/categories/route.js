@@ -67,13 +67,29 @@ export async function POST(request) {
 
     // Verify authentication
     const authResult = await verifyAuth(request)
-    if (!authResult.isAuthenticated || !authResult.user.isAdmin) {
+    console.log("Categories API: Auth result:", authResult)
+
+    if (!authResult.auth || authResult.error) {
+      console.log("Categories API: Authentication failed:", authResult.error)
       return NextResponse.json(
         {
           success: false,
           error: "Unauthorized",
         },
         { status: 401 },
+      )
+    }
+
+    // Check if user is admin
+    const user = authResult.auth
+    if (!user.isAdmin && !user.role === "admin") {
+      console.log("Categories API: User is not admin:", user)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Admin access required",
+        },
+        { status: 403 },
       )
     }
 
