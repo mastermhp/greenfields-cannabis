@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/hooks/use-toast"
 import { Gift, Users, Percent, DollarSign, Award, Edit, Trash2, Plus, Save, X } from "lucide-react"
 
 const LoyaltyPage = () => {
@@ -16,38 +18,59 @@ const LoyaltyPage = () => {
   const [programSettings, setProgramSettings] = useState({
     enabled: true,
     pointsPerDollar: 10,
+    pointsPerDollarNotes: "",
     minimumRedeemPoints: 500,
+    minimumRedeemPointsNotes: "",
     pointsExpiration: 90,
+    pointsExpirationNotes: "",
     welcomeBonus: 100,
+    welcomeBonusNotes: "",
     referralBonus: 200,
+    referralBonusNotes: "",
     birthdayBonus: 50,
+    birthdayBonusNotes: "",
   })
 
   const [referralSettings, setReferralSettings] = useState({
     referrerPoints: 200,
+    referrerPointsNotes: "",
     newCustomerPoints: 100,
+    newCustomerPointsNotes: "",
     monthlyReferralLimit: 10,
+    monthlyReferralLimitNotes: "",
     minimumPurchaseAmount: 25,
+    minimumPurchaseAmountNotes: "",
     referralLinkExpiration: 30,
+    referralLinkExpirationNotes: "",
     requireAccountCreation: true,
+    requireAccountCreationNotes: "",
     requireFirstPurchase: true,
+    requireFirstPurchaseNotes: "",
     emailSubject: "Join Greenfields Cannabis - Get 100 Bonus Points!",
+    emailSubjectNotes: "",
     emailContent:
       "Hey there! I thought you might enjoy Greenfields Cannabis. Use my referral link to sign up and get 100 bonus points on your first purchase! [REFERRAL_LINK]",
+    emailContentNotes: "",
   })
 
   const [tiers, setTiers] = useState([
-    { name: "Bronze", threshold: 0, discount: 5, freeShipping: false, birthdayBonus: true },
-    { name: "Silver", threshold: 1000, discount: 10, freeShipping: true, birthdayBonus: true },
-    { name: "Gold", threshold: 5000, discount: 15, freeShipping: true, birthdayBonus: true },
-    { name: "Platinum", threshold: 10000, discount: 20, freeShipping: true, birthdayBonus: true },
+    { name: "Bronze", threshold: 0, discount: 5, freeShipping: false, birthdayBonus: true, notes: "" },
+    { name: "Silver", threshold: 1000, discount: 10, freeShipping: true, birthdayBonus: true, notes: "" },
+    { name: "Gold", threshold: 5000, discount: 15, freeShipping: true, birthdayBonus: true, notes: "" },
+    { name: "Platinum", threshold: 10000, discount: 20, freeShipping: true, birthdayBonus: true, notes: "" },
   ])
 
   const [rewards, setRewards] = useState([
-    { id: 1, name: "$5 Off Coupon", pointsCost: 500, description: "Get $5 off your next purchase" },
-    { id: 2, name: "$10 Off Coupon", pointsCost: 1000, description: "Get $10 off your next purchase" },
-    { id: 3, name: "Free Shipping", pointsCost: 750, description: "Free shipping on your next order" },
-    { id: 4, name: "Free Product", pointsCost: 2000, description: "Get a free product with your next purchase" },
+    { id: 1, name: "$5 Off Coupon", pointsCost: 500, description: "Get $5 off your next purchase", notes: "" },
+    { id: 2, name: "$10 Off Coupon", pointsCost: 1000, description: "Get $10 off your next purchase", notes: "" },
+    { id: 3, name: "Free Shipping", pointsCost: 750, description: "Free shipping on your next order", notes: "" },
+    {
+      id: 4,
+      name: "Free Product",
+      pointsCost: 2000,
+      description: "Get a free product with your next purchase",
+      notes: "",
+    },
   ])
 
   const handleSettingChange = (setting, value) => {
@@ -64,6 +87,14 @@ const LoyaltyPage = () => {
     }))
   }
 
+  const saveLoyaltySettings = () => {
+    toast({
+      title: "Settings Saved",
+      description: "Loyalty program settings have been updated successfully.",
+    })
+    setIsEditing(false)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -77,7 +108,13 @@ const LoyaltyPage = () => {
             <Switch
               id="program-status"
               checked={programSettings.enabled}
-              onCheckedChange={(checked) => handleSettingChange("enabled", checked)}
+              onCheckedChange={(checked) => {
+                handleSettingChange("enabled", checked)
+                toast({
+                  title: "Program Status Updated",
+                  description: `Loyalty program is now ${checked ? "active" : "inactive"}`,
+                })
+              }}
             />
             <Label htmlFor="program-status" className="text-beige">
               {programSettings.enabled ? "Program Active" : "Program Inactive"}
@@ -94,7 +131,7 @@ const LoyaltyPage = () => {
           ) : (
             <div className="flex space-x-2">
               <Button
-                onClick={() => setIsEditing(false)}
+                onClick={saveLoyaltySettings}
                 className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
               >
                 <Save size={16} className="mr-2" />
@@ -157,6 +194,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">points</span>
                       </div>
                       <p className="text-xs text-beige">Number of points earned per dollar spent</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about points per dollar..."
+                          value={programSettings.pointsPerDollarNotes}
+                          onChange={(e) => handleSettingChange("pointsPerDollarNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -175,6 +221,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">points</span>
                       </div>
                       <p className="text-xs text-beige">Minimum points required for redemption</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about minimum redemption..."
+                          value={programSettings.minimumRedeemPointsNotes}
+                          onChange={(e) => handleSettingChange("minimumRedeemPointsNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -193,6 +248,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">days</span>
                       </div>
                       <p className="text-xs text-beige">Number of days until points expire (0 = never)</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about points expiration..."
+                          value={programSettings.pointsExpirationNotes}
+                          onChange={(e) => handleSettingChange("pointsExpirationNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -213,6 +277,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">points</span>
                       </div>
                       <p className="text-xs text-beige">Points awarded for new account creation</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about welcome bonus..."
+                          value={programSettings.welcomeBonusNotes}
+                          onChange={(e) => handleSettingChange("welcomeBonusNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -231,6 +304,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">points</span>
                       </div>
                       <p className="text-xs text-beige">Points awarded for successful referrals</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about referral bonus..."
+                          value={programSettings.referralBonusNotes}
+                          onChange={(e) => handleSettingChange("referralBonusNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -249,6 +331,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">points</span>
                       </div>
                       <p className="text-xs text-beige">Points awarded on customer's birthday</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about birthday bonus..."
+                          value={programSettings.birthdayBonusNotes}
+                          onChange={(e) => handleSettingChange("birthdayBonusNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -390,6 +481,23 @@ const LoyaltyPage = () => {
                           </div>
                         </div>
                       </div>
+
+                      {isEditing && (
+                        <div className="space-y-2">
+                          <Label className="text-beige">Notes</Label>
+                          <Textarea
+                            placeholder="Add notes about this tier..."
+                            value={tier.notes}
+                            onChange={(e) => {
+                              const newTiers = [...tiers]
+                              newTiers[index].notes = e.target.value
+                              setTiers(newTiers)
+                            }}
+                            className="bg-[#333] border-[#444] text-white"
+                            rows={2}
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -479,6 +587,24 @@ const LoyaltyPage = () => {
                       ) : (
                         <p className="text-beige">{reward.description}</p>
                       )}
+
+                      {isEditing && (
+                        <div className="space-y-2">
+                          <Label className="text-beige">Notes</Label>
+                          <Textarea
+                            placeholder="Add notes about this reward..."
+                            value={reward.notes}
+                            onChange={(e) => {
+                              const newRewards = rewards.map((r) =>
+                                r.id === reward.id ? { ...r, notes: e.target.value } : r,
+                              )
+                              setRewards(newRewards)
+                            }}
+                            className="bg-[#333] border-[#444] text-white"
+                            rows={2}
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -516,6 +642,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">points</span>
                       </div>
                       <p className="text-xs text-beige">Points awarded to the referrer</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about referrer points..."
+                          value={referralSettings.referrerPointsNotes}
+                          onChange={(e) => handleReferralSettingChange("referrerPointsNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -536,6 +671,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">points</span>
                       </div>
                       <p className="text-xs text-beige">Points awarded to the new customer</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about new customer points..."
+                          value={referralSettings.newCustomerPointsNotes}
+                          onChange={(e) => handleReferralSettingChange("newCustomerPointsNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -556,6 +700,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">referrals</span>
                       </div>
                       <p className="text-xs text-beige">Maximum referrals per month (0 = unlimited)</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about monthly referral limit..."
+                          value={referralSettings.monthlyReferralLimitNotes}
+                          onChange={(e) => handleReferralSettingChange("monthlyReferralLimitNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -582,6 +735,15 @@ const LoyaltyPage = () => {
                           <Label className="text-white">First Purchase</Label>
                         </div>
                       </div>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about referral qualification..."
+                          value={referralSettings.requireAccountCreationNotes}
+                          onChange={(e) => handleReferralSettingChange("requireAccountCreationNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -599,6 +761,15 @@ const LoyaltyPage = () => {
                         />
                       </div>
                       <p className="text-xs text-beige">Minimum purchase amount to qualify for referral bonus</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about minimum purchase amount..."
+                          value={referralSettings.minimumPurchaseAmountNotes}
+                          onChange={(e) => handleReferralSettingChange("minimumPurchaseAmountNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -616,6 +787,15 @@ const LoyaltyPage = () => {
                         <span className="ml-2 text-beige">days</span>
                       </div>
                       <p className="text-xs text-beige">Days until referral link expires (0 = never)</p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about referral link expiration..."
+                          value={referralSettings.referralLinkExpirationNotes}
+                          onChange={(e) => handleReferralSettingChange("referralLinkExpirationNotes", e.target.value)}
+                          className="bg-[#222] border-[#333] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -631,6 +811,15 @@ const LoyaltyPage = () => {
                         disabled={!isEditing}
                         className="bg-[#333] border-[#444] text-white"
                       />
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about email subject..."
+                          value={referralSettings.emailSubjectNotes}
+                          onChange={(e) => handleReferralSettingChange("emailSubjectNotes", e.target.value)}
+                          className="bg-[#333] border-[#444] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label className="text-beige">Email Content</Label>
@@ -645,6 +834,15 @@ const LoyaltyPage = () => {
                       <p className="text-xs text-beige">
                         Use [REFERRAL_LINK] as placeholder for the actual referral link
                       </p>
+                      {isEditing && (
+                        <Textarea
+                          placeholder="Add notes about email content..."
+                          value={referralSettings.emailContentNotes}
+                          onChange={(e) => handleReferralSettingChange("emailContentNotes", e.target.value)}
+                          className="bg-[#333] border-[#444] text-white"
+                          rows={2}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>

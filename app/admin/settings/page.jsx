@@ -1,59 +1,31 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Save, Settings, Globe, Facebook, Twitter, Instagram, Youtube } from "lucide-react"
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("general")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-
-  // General Settings
-  const [generalSettings, setGeneralSettings] = useState({
-    storeName: "",
-    storeDescription: "",
-    storeEmail: "",
-    storePhone: "",
-    storeAddress: "",
-    currency: "USD",
-    timezone: "America/Los_Angeles",
-    taxRate: 8.5,
-    ageVerificationRequired: true,
-    maintenanceMode: false,
-  })
-
-  // Shipping Settings
-  const [shippingSettings, setShippingSettings] = useState({
-    freeShippingThreshold: 100,
-    standardShippingCost: 9.99,
-    expressShippingCost: 19.99,
-    sameDayShippingCost: 29.99,
-    standardDeliveryDays: "3-5",
-    expressDeliveryDays: "1-2",
-    sameDayDeliveryHours: "3-4",
-    shippingZones: ["California", "Nevada", "Oregon", "Washington"],
-    packagingFee: 0,
-    handlingFee: 0,
-  })
-
-  // Payment Settings
-  const [paymentSettings, setPaymentSettings] = useState({
-    stripeEnabled: true,
-    paypalEnabled: true,
-    cashOnDeliveryEnabled: false,
-    cryptoEnabled: false,
-    minimumOrderAmount: 25,
-    maximumOrderAmount: 5000,
-    processingFee: 2.9,
-    refundPolicy: "30 days",
+  const [settings, setSettings] = useState({
+    siteName: "Greenfields Cannabis",
+    siteDescription: "Premium cannabis products crafted with care",
+    contactEmail: "info@greenfields.com",
+    contactPhone: "+1 (800) 420-6969",
+    address: "123 Cannabis Boulevard\nLos Angeles, CA 90210",
+    businessHours: "Monday - Friday: 9:00 AM - 8:00 PM\nSaturday - Sunday: 10:00 AM - 6:00 PM",
+    socialLinks: {
+      facebook: "",
+      twitter: "",
+      instagram: "",
+      youtube: "",
+    },
   })
 
   // Fetch settings on component mount
@@ -61,32 +33,18 @@ export default function SettingsPage() {
     const fetchSettings = async () => {
       try {
         setLoading(true)
+        const response = await fetch("/api/settings")
+        const data = await response.json()
 
-        // Fetch general settings
-        const generalRes = await fetch("/api/settings?type=general")
-        if (generalRes.ok) {
-          const data = await generalRes.json()
-          if (data.success && data.data) {
-            setGeneralSettings(data.data)
-          }
-        }
-
-        // Fetch shipping settings
-        const shippingRes = await fetch("/api/settings?type=shipping")
-        if (shippingRes.ok) {
-          const data = await shippingRes.json()
-          if (data.success && data.data) {
-            setShippingSettings(data.data)
-          }
-        }
-
-        // Fetch payment settings
-        const paymentRes = await fetch("/api/settings?type=payment")
-        if (paymentRes.ok) {
-          const data = await paymentRes.json()
-          if (data.success && data.data) {
-            setPaymentSettings(data.data)
-          }
+        if (data.success && data.data) {
+          setSettings((prev) => ({
+            ...prev,
+            ...data.data,
+            socialLinks: {
+              ...prev.socialLinks,
+              ...(data.data.socialLinks || {}),
+            },
+          }))
         }
       } catch (error) {
         console.error("Error fetching settings:", error)
@@ -103,35 +61,20 @@ export default function SettingsPage() {
     fetchSettings()
   }, [])
 
-  // Handle saving settings
-  const saveSettings = async (type) => {
+  // Save settings function
+  const saveSettings = async () => {
     try {
       setSaving(true)
 
-      let settingsData
-      switch (type) {
-        case "general":
-          settingsData = generalSettings
-          break
-        case "shipping":
-          settingsData = shippingSettings
-          break
-        case "payment":
-          settingsData = paymentSettings
-          break
-        default:
-          throw new Error("Invalid settings type")
-      }
+      const accessToken = localStorage.getItem("accessToken")
 
       const response = await fetch("/api/settings", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          type,
-          settings: settingsData,
-        }),
+        body: JSON.stringify({ data: settings }),
       })
 
       const data = await response.json()
@@ -145,10 +88,10 @@ export default function SettingsPage() {
         throw new Error(data.message || "Failed to update settings")
       }
     } catch (error) {
-      console.error(`Error saving ${type} settings:`, error)
+      console.error("Error saving settings:", error)
       toast({
         title: "Error",
-        description: error.message || `Failed to save ${type} settings`,
+        description: error.message || "Failed to save settings",
         variant: "destructive",
       })
     } finally {
@@ -156,31 +99,21 @@ export default function SettingsPage() {
     }
   }
 
-  // Handle input changes for general settings
-  const handleGeneralChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setGeneralSettings({
-      ...generalSettings,
-      [name]: type === "checkbox" ? checked : value,
-    })
+  const handleInputChange = (field, value) => {
+    setSettings((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
   }
 
-  // Handle input changes for shipping settings
-  const handleShippingChange = (e) => {
-    const { name, value } = e.target
-    setShippingSettings({
-      ...shippingSettings,
-      [name]: value,
-    })
-  }
-
-  // Handle input changes for payment settings
-  const handlePaymentChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setPaymentSettings({
-      ...paymentSettings,
-      [name]: type === "checkbox" ? checked : value,
-    })
+  const handleSocialLinkChange = (platform, value) => {
+    setSettings((prev) => ({
+      ...prev,
+      socialLinks: {
+        ...prev.socialLinks,
+        [platform]: value,
+      },
+    }))
   }
 
   if (loading) {
@@ -194,444 +127,183 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6">Store Settings</h1>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold gold-text mb-2">Site Settings</h1>
+          <p className="text-beige">Manage your website settings and configuration</p>
+        </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 mb-8">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="shipping">Shipping</TabsTrigger>
-          <TabsTrigger value="payment">Payment</TabsTrigger>
-        </TabsList>
-
-        {/* General Settings */}
-        <TabsContent value="general">
-          <Card>
+        <div className="space-y-8">
+          {/* General Settings */}
+          <Card className="bg-[#111] border-[#333]">
             <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-              <CardDescription>Configure your store's basic information and settings.</CardDescription>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Settings size={20} />
+                General Settings
+              </CardTitle>
+              <CardDescription>Basic website information and contact details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="storeName">Store Name</Label>
+                  <Label className="text-gray-300">Site Name</Label>
                   <Input
-                    id="storeName"
-                    name="storeName"
-                    value={generalSettings.storeName}
-                    onChange={handleGeneralChange}
+                    value={settings.siteName}
+                    onChange={(e) => handleInputChange("siteName", e.target.value)}
+                    placeholder="Your site name"
+                    className="bg-[#222] border-[#444] text-white"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="storeEmail">Store Email</Label>
+                  <Label className="text-gray-300">Contact Email</Label>
                   <Input
-                    id="storeEmail"
-                    name="storeEmail"
                     type="email"
-                    value={generalSettings.storeEmail}
-                    onChange={handleGeneralChange}
+                    value={settings.contactEmail}
+                    onChange={(e) => handleInputChange("contactEmail", e.target.value)}
+                    placeholder="contact@yoursite.com"
+                    className="bg-[#222] border-[#444] text-white"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="storePhone">Store Phone</Label>
+                  <Label className="text-gray-300">Contact Phone</Label>
                   <Input
-                    id="storePhone"
-                    name="storePhone"
-                    value={generalSettings.storePhone}
-                    onChange={handleGeneralChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="storeAddress">Store Address</Label>
-                  <Input
-                    id="storeAddress"
-                    name="storeAddress"
-                    value={generalSettings.storeAddress}
-                    onChange={handleGeneralChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency</Label>
-                  <Select
-                    value={generalSettings.currency}
-                    onValueChange={(value) => setGeneralSettings({ ...generalSettings, currency: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Select
-                    value={generalSettings.timezone}
-                    onValueChange={(value) => setGeneralSettings({ ...generalSettings, timezone: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select timezone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
-                      <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
-                      <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
-                      <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="taxRate">Tax Rate (%)</Label>
-                  <Input
-                    id="taxRate"
-                    name="taxRate"
-                    type="number"
-                    step="0.01"
-                    value={generalSettings.taxRate}
-                    onChange={handleGeneralChange}
+                    value={settings.contactPhone}
+                    onChange={(e) => handleInputChange("contactPhone", e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="bg-[#222] border-[#444] text-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="storeDescription">Store Description</Label>
-                <textarea
-                  id="storeDescription"
-                  name="storeDescription"
-                  className="w-full min-h-[100px] p-2 border rounded-md"
-                  value={generalSettings.storeDescription}
-                  onChange={handleGeneralChange}
+                <Label className="text-gray-300">Site Description</Label>
+                <Textarea
+                  value={settings.siteDescription}
+                  onChange={(e) => handleInputChange("siteDescription", e.target.value)}
+                  placeholder="Brief description of your website"
+                  className="bg-[#222] border-[#444] text-white min-h-[80px]"
+                  rows={3}
                 />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="ageVerificationRequired"
-                  name="ageVerificationRequired"
-                  checked={generalSettings.ageVerificationRequired}
-                  onCheckedChange={(checked) =>
-                    setGeneralSettings({ ...generalSettings, ageVerificationRequired: checked })
-                  }
-                />
-                <Label htmlFor="ageVerificationRequired">Require Age Verification</Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="maintenanceMode"
-                  name="maintenanceMode"
-                  checked={generalSettings.maintenanceMode}
-                  onCheckedChange={(checked) => setGeneralSettings({ ...generalSettings, maintenanceMode: checked })}
-                />
-                <Label htmlFor="maintenanceMode">Maintenance Mode</Label>
-              </div>
-
-              <Button onClick={() => saveSettings("general")} disabled={saving} className="w-full md:w-auto">
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save General Settings"
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Shipping Settings */}
-        <TabsContent value="shipping">
-          <Card>
-            <CardHeader>
-              <CardTitle>Shipping Settings</CardTitle>
-              <CardDescription>Configure your store's shipping options and costs.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="freeShippingThreshold">Free Shipping Threshold ($)</Label>
-                  <Input
-                    id="freeShippingThreshold"
-                    name="freeShippingThreshold"
-                    type="number"
-                    step="0.01"
-                    value={shippingSettings.freeShippingThreshold}
-                    onChange={(e) =>
-                      setShippingSettings({
-                        ...shippingSettings,
-                        freeShippingThreshold: Number.parseFloat(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="standardShippingCost">Standard Shipping Cost ($)</Label>
-                  <Input
-                    id="standardShippingCost"
-                    name="standardShippingCost"
-                    type="number"
-                    step="0.01"
-                    value={shippingSettings.standardShippingCost}
-                    onChange={(e) =>
-                      setShippingSettings({
-                        ...shippingSettings,
-                        standardShippingCost: Number.parseFloat(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="expressShippingCost">Express Shipping Cost ($)</Label>
-                  <Input
-                    id="expressShippingCost"
-                    name="expressShippingCost"
-                    type="number"
-                    step="0.01"
-                    value={shippingSettings.expressShippingCost}
-                    onChange={(e) =>
-                      setShippingSettings({
-                        ...shippingSettings,
-                        expressShippingCost: Number.parseFloat(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sameDayShippingCost">Same Day Shipping Cost ($)</Label>
-                  <Input
-                    id="sameDayShippingCost"
-                    name="sameDayShippingCost"
-                    type="number"
-                    step="0.01"
-                    value={shippingSettings.sameDayShippingCost}
-                    onChange={(e) =>
-                      setShippingSettings({
-                        ...shippingSettings,
-                        sameDayShippingCost: Number.parseFloat(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="standardDeliveryDays">Standard Delivery Time (days)</Label>
-                  <Input
-                    id="standardDeliveryDays"
-                    name="standardDeliveryDays"
-                    value={shippingSettings.standardDeliveryDays}
-                    onChange={(e) => setShippingSettings({ ...shippingSettings, standardDeliveryDays: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="expressDeliveryDays">Express Delivery Time (days)</Label>
-                  <Input
-                    id="expressDeliveryDays"
-                    name="expressDeliveryDays"
-                    value={shippingSettings.expressDeliveryDays}
-                    onChange={(e) => setShippingSettings({ ...shippingSettings, expressDeliveryDays: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sameDayDeliveryHours">Same Day Delivery Time (hours)</Label>
-                  <Input
-                    id="sameDayDeliveryHours"
-                    name="sameDayDeliveryHours"
-                    value={shippingSettings.sameDayDeliveryHours}
-                    onChange={(e) => setShippingSettings({ ...shippingSettings, sameDayDeliveryHours: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="packagingFee">Packaging Fee ($)</Label>
-                  <Input
-                    id="packagingFee"
-                    name="packagingFee"
-                    type="number"
-                    step="0.01"
-                    value={shippingSettings.packagingFee}
-                    onChange={(e) =>
-                      setShippingSettings({ ...shippingSettings, packagingFee: Number.parseFloat(e.target.value) })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="handlingFee">Handling Fee ($)</Label>
-                  <Input
-                    id="handlingFee"
-                    name="handlingFee"
-                    type="number"
-                    step="0.01"
-                    value={shippingSettings.handlingFee}
-                    onChange={(e) =>
-                      setShippingSettings({ ...shippingSettings, handlingFee: Number.parseFloat(e.target.value) })
-                    }
-                  />
-                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="shippingZones">Shipping Zones (comma separated)</Label>
-                <Input
-                  id="shippingZones"
-                  name="shippingZones"
-                  value={shippingSettings.shippingZones.join(", ")}
-                  onChange={(e) =>
-                    setShippingSettings({
-                      ...shippingSettings,
-                      shippingZones: e.target.value.split(",").map((zone) => zone.trim()),
-                    })
-                  }
+                <Label className="text-gray-300">Business Address</Label>
+                <Textarea
+                  value={settings.address}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
+                  placeholder="Your business address"
+                  className="bg-[#222] border-[#444] text-white min-h-[80px]"
+                  rows={3}
                 />
               </div>
 
-              <Button onClick={() => saveSettings("shipping")} disabled={saving} className="w-full md:w-auto">
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Shipping Settings"
-                )}
-              </Button>
+              <div className="space-y-2">
+                <Label className="text-gray-300">Business Hours</Label>
+                <Textarea
+                  value={settings.businessHours}
+                  onChange={(e) => handleInputChange("businessHours", e.target.value)}
+                  placeholder="Your business hours"
+                  className="bg-[#222] border-[#444] text-white min-h-[80px]"
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Payment Settings */}
-        <TabsContent value="payment">
-          <Card>
+          {/* Social Media Links */}
+          <Card className="bg-[#111] border-[#333]">
             <CardHeader>
-              <CardTitle>Payment Settings</CardTitle>
-              <CardDescription>Configure your store's payment options and policies.</CardDescription>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Globe size={20} />
+                Social Media Links
+              </CardTitle>
+              <CardDescription>Configure your social media presence in the footer</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="minimumOrderAmount">Minimum Order Amount ($)</Label>
+                  <Label className="text-gray-300 flex items-center gap-2">
+                    <Facebook size={16} className="text-blue-500" />
+                    Facebook URL
+                  </Label>
                   <Input
-                    id="minimumOrderAmount"
-                    name="minimumOrderAmount"
-                    type="number"
-                    step="0.01"
-                    value={paymentSettings.minimumOrderAmount}
-                    onChange={(e) =>
-                      setPaymentSettings({ ...paymentSettings, minimumOrderAmount: Number.parseFloat(e.target.value) })
-                    }
+                    value={settings.socialLinks?.facebook || ""}
+                    onChange={(e) => handleSocialLinkChange("facebook", e.target.value)}
+                    placeholder="https://facebook.com/yourpage"
+                    className="bg-[#222] border-[#444] text-white"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="maximumOrderAmount">Maximum Order Amount ($)</Label>
+                  <Label className="text-gray-300 flex items-center gap-2">
+                    <Twitter size={16} className="text-blue-400" />
+                    Twitter URL
+                  </Label>
                   <Input
-                    id="maximumOrderAmount"
-                    name="maximumOrderAmount"
-                    type="number"
-                    step="0.01"
-                    value={paymentSettings.maximumOrderAmount}
-                    onChange={(e) =>
-                      setPaymentSettings({ ...paymentSettings, maximumOrderAmount: Number.parseFloat(e.target.value) })
-                    }
+                    value={settings.socialLinks?.twitter || ""}
+                    onChange={(e) => handleSocialLinkChange("twitter", e.target.value)}
+                    placeholder="https://twitter.com/yourhandle"
+                    className="bg-[#222] border-[#444] text-white"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="processingFee">Processing Fee (%)</Label>
+                  <Label className="text-gray-300 flex items-center gap-2">
+                    <Instagram size={16} className="text-pink-500" />
+                    Instagram URL
+                  </Label>
                   <Input
-                    id="processingFee"
-                    name="processingFee"
-                    type="number"
-                    step="0.01"
-                    value={paymentSettings.processingFee}
-                    onChange={(e) =>
-                      setPaymentSettings({ ...paymentSettings, processingFee: Number.parseFloat(e.target.value) })
-                    }
+                    value={settings.socialLinks?.instagram || ""}
+                    onChange={(e) => handleSocialLinkChange("instagram", e.target.value)}
+                    placeholder="https://instagram.com/yourhandle"
+                    className="bg-[#222] border-[#444] text-white"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="refundPolicy">Refund Policy (days)</Label>
+                  <Label className="text-gray-300 flex items-center gap-2">
+                    <Youtube size={16} className="text-red-500" />
+                    YouTube URL
+                  </Label>
                   <Input
-                    id="refundPolicy"
-                    name="refundPolicy"
-                    value={paymentSettings.refundPolicy}
-                    onChange={(e) => setPaymentSettings({ ...paymentSettings, refundPolicy: e.target.value })}
+                    value={settings.socialLinks?.youtube || ""}
+                    onChange={(e) => handleSocialLinkChange("youtube", e.target.value)}
+                    placeholder="https://youtube.com/yourchannel"
+                    className="bg-[#222] border-[#444] text-white"
                   />
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Payment Methods</h3>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="stripeEnabled"
-                    checked={paymentSettings.stripeEnabled}
-                    onCheckedChange={(checked) => setPaymentSettings({ ...paymentSettings, stripeEnabled: checked })}
-                  />
-                  <Label htmlFor="stripeEnabled">Enable Stripe</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="paypalEnabled"
-                    checked={paymentSettings.paypalEnabled}
-                    onCheckedChange={(checked) => setPaymentSettings({ ...paymentSettings, paypalEnabled: checked })}
-                  />
-                  <Label htmlFor="paypalEnabled">Enable PayPal</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="cashOnDeliveryEnabled"
-                    checked={paymentSettings.cashOnDeliveryEnabled}
-                    onCheckedChange={(checked) =>
-                      setPaymentSettings({ ...paymentSettings, cashOnDeliveryEnabled: checked })
-                    }
-                  />
-                  <Label htmlFor="cashOnDeliveryEnabled">Enable Cash on Delivery</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="cryptoEnabled"
-                    checked={paymentSettings.cryptoEnabled}
-                    onCheckedChange={(checked) => setPaymentSettings({ ...paymentSettings, cryptoEnabled: checked })}
-                  />
-                  <Label htmlFor="cryptoEnabled">Enable Cryptocurrency</Label>
-                </div>
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className="text-sm text-blue-300">
+                  <strong>Note:</strong> These social media links will appear in the footer of your website. Leave any
+                  field empty to hide that social media icon from the footer.
+                </p>
               </div>
-
-              <Button onClick={() => saveSettings("payment")} disabled={saving} className="w-full md:w-auto">
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Payment Settings"
-                )}
-              </Button>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+
+          <Button
+            onClick={saveSettings}
+            disabled={saving}
+            className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Settings
+              </>
+            )}
+          </Button>
+        </div>
+      </motion.div>
     </div>
   )
 }

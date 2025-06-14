@@ -1,69 +1,68 @@
 import { NextResponse } from "next/server"
-import { ContentManagementOperations } from "@/lib/database-operations"
+import { verifyAuth } from "@/lib/auth"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const page = searchParams.get("page")
-    const section = searchParams.get("section")
 
-    let content
-    if (page && section) {
-      content = await ContentManagementOperations.getPageSection(page, section)
-    } else if (page) {
-      content = await ContentManagementOperations.getPageContent(page)
-    } else {
-      content = await ContentManagementOperations.getAllContent()
+    if (!page) {
+      return NextResponse.json({ success: false, error: "Page parameter is required" }, { status: 400 })
     }
+
+    const { db } = await connectToDatabase()
+    const content = await db.collection("content").findOne({ page })
 
     return NextResponse.json({
       success: true,
-      data: content,
+      data: content?.content || null,
     })
   } catch (error) {
-    console.error("Content Management API Error:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch content",
-        message: error.message,
-      },
-      { status: 500 },
-    )
+    console.error("Error fetching content:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function PUT(request) {
   try {
-    const body = await request.json()
-    const { page, section, content } = body
-
-    if (!page || !section || !content) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Missing required fields: page, section, and content",
-        },
-        { status: 400 },
-      )
+    const authResult = await verifyAuth(request)
+    if (!authResult.auth || authResult.auth.role !== "admin") {
+      return NextResponse.json({ success: false, error: "Admin access required" }, { status: 401 })
     }
 
-    const updatedContent = await ContentManagementOperations.updatePageContent(page, section, content)
+    const body = await request.json()
+    const { page, content } = body
+
+    if (!page || !content) {
+      return NextResponse.json({ success: false, error: "Page and content are required" }, { status: 400 })
+    }
+
+    const { db } = await connectToDatabase()
+
+    // Update or insert content
+    const result = await db.collection("content").updateOne(
+      { page },
+      {
+        $set: {
+          page,
+          content,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true },
+    )
 
     return NextResponse.json({
       success: true,
-      data: updatedContent,
       message: "Content updated successfully",
+      data: { page, content },
     })
   } catch (error) {
-    console.error("Update Content Error:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to update content",
-        message: error.message,
-      },
-      { status: 500 },
-    )
+    console.error("Error updating content:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

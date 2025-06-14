@@ -19,6 +19,11 @@ import {
   ShoppingBag,
   Upload,
   Eye,
+  Edit,
+  Save,
+  MapPin,
+  Phone,
+  DollarSign,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
@@ -27,7 +32,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Label } from "@/components/ui/label"
 
 const AdminUsersComponent = () => {
   const { toast } = useToast()
@@ -39,10 +44,10 @@ const AdminUsersComponent = () => {
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [viewUserDialog, setViewUserDialog] = useState(false)
+  const [editUserDialog, setEditUserDialog] = useState(false)
   const [userOrders, setUserOrders] = useState([])
   const [userStats, setUserStats] = useState(null)
   const [loadingUserData, setLoadingUserData] = useState(false)
-  const [activeTab, setActiveTab] = useState("profile")
 
   const [addUserDialog, setAddUserDialog] = useState(false)
   const [addUserForm, setAddUserForm] = useState({
@@ -60,6 +65,20 @@ const AdminUsersComponent = () => {
     status: "active",
   })
   const [addingUser, setAddingUser] = useState(false)
+
+  const [editUserForm, setEditUserForm] = useState({
+    name: "",
+    email: "",
+    role: "customer",
+    phone: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "United States",
+    status: "active",
+  })
+  const [updatingUser, setUpdatingUser] = useState(false)
 
   const [selectedAttachment, setSelectedAttachment] = useState(null)
   const [userAttachments, setUserAttachments] = useState([])
@@ -215,7 +234,7 @@ const AdminUsersComponent = () => {
         paymentMethod: manualOrderForm.paymentMethod,
         paymentStatus: "paid", // Manual orders are considered paid
         notes: manualOrderForm.notes,
-        status: "processing", // Start as processing
+        status: "received", // Start as received
         adminCreated: true,
       }
 
@@ -458,7 +477,7 @@ const AdminUsersComponent = () => {
         const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0)
         const completedOrders = orders.filter((order) => order.status === "delivered").length
         const pendingOrders = orders.filter(
-          (order) => order.status === "pending" || order.status === "processing",
+          (order) => order.status === "received" || order.status === "processing",
         ).length
         const cancelledOrders = orders.filter((order) => order.status === "cancelled").length
         const averageOrderValue = orders.length > 0 ? totalSpent / orders.length : 0
@@ -585,8 +604,96 @@ const AdminUsersComponent = () => {
   const viewUser = async (user) => {
     setSelectedUser(user)
     setViewUserDialog(true)
-    setActiveTab("profile")
     await fetchUserDetails(user.id)
+  }
+
+  const editUser = (user) => {
+    setSelectedUser(user)
+    setEditUserForm({
+      name: user.name || "",
+      email: user.email || "",
+      role: user.role || "customer",
+      phone: user.phone || "",
+      street: user.street || "",
+      city: user.city || "",
+      state: user.state || "",
+      zip: user.zip || "",
+      country: user.country || "United States",
+      status: user.status || "active",
+    })
+    setEditUserDialog(true)
+  }
+
+  const updateUser = async () => {
+    try {
+      setUpdatingUser(true)
+
+      // Validation
+      if (!editUserForm.name || !editUserForm.email) {
+        toast({
+          title: "Error",
+          description: "Name and email are required",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(editUserForm.email)) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const accessToken = localStorage.getItem("accessToken")
+
+      const response = await fetch(`/api/users/${selectedUser.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(editUserForm),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "User Updated",
+          description: `User ${editUserForm.name} has been updated successfully`,
+        })
+
+        // Update local state
+        setUsers((prevUsers) =>
+          prevUsers.map((user) => (user.id === selectedUser.id ? { ...user, ...editUserForm } : user)),
+        )
+
+        // Update selected user
+        setSelectedUser({ ...selectedUser, ...editUserForm })
+
+        setEditUserDialog(false)
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update user",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error updating user:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update user",
+        variant: "destructive",
+      })
+    } finally {
+      setUpdatingUser(false)
+    }
   }
 
   const updateUserStatus = async (userId, newStatus) => {
@@ -641,7 +748,6 @@ const AdminUsersComponent = () => {
       toast({
         title: "Error",
         description: "Failed to update user status",
-        variant: "destructive",
       })
     }
   }
@@ -778,6 +884,13 @@ const AdminUsersComponent = () => {
     }))
   }
 
+  const handleEditUserFormChange = (field, value) => {
+    setEditUserForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A"
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -791,10 +904,12 @@ const AdminUsersComponent = () => {
 
   const getOrderStatusIcon = (status) => {
     switch (status) {
-      case "pending":
-        return <Clock size={16} className="text-yellow-400" />
+      case "received":
+        return <Clock size={16} className="text-blue-400" />
       case "processing":
-        return <Package size={16} className="text-blue-400" />
+        return <Package size={16} className="text-yellow-400" />
+      case "assigned_to_driver":
+        return <User size={16} className="text-orange-400" />
       case "shipped":
         return <Truck size={16} className="text-purple-400" />
       case "delivered":
@@ -808,8 +923,9 @@ const AdminUsersComponent = () => {
 
   const getOrderStatusBadge = (status) => {
     const variants = {
-      pending: "bg-yellow-500/20 text-yellow-400",
-      processing: "bg-blue-500/20 text-blue-400",
+      received: "bg-blue-500/20 text-blue-400",
+      processing: "bg-yellow-500/20 text-yellow-400",
+      assigned_to_driver: "bg-orange-500/20 text-orange-400",
       shipped: "bg-purple-500/20 text-purple-400",
       delivered: "bg-green-500/20 text-green-400",
       cancelled: "bg-red-500/20 text-red-400",
@@ -818,7 +934,7 @@ const AdminUsersComponent = () => {
     return (
       <Badge className={`${variants[status] || "bg-gray-500/20 text-gray-400"} border-0`}>
         {getOrderStatusIcon(status)}
-        <span className="ml-1 capitalize">{status}</span>
+        <span className="ml-1 capitalize">{status.replace("_", " ")}</span>
       </Badge>
     )
   }
@@ -949,6 +1065,9 @@ const AdminUsersComponent = () => {
                     <Button variant="outline" size="sm" onClick={() => viewUser(user)} className="border-[#333]">
                       View
                     </Button>
+                    <Button variant="outline" size="sm" onClick={() => editUser(user)} className="border-[#333]">
+                      Edit
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -961,280 +1080,406 @@ const AdminUsersComponent = () => {
       <Dialog open={viewUserDialog} onOpenChange={setViewUserDialog}>
         <DialogContent className="bg-[#111] border border-[#333] text-white max-w-[98vw] w-[98vw] max-h-[95vh] h-[95vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl">User Details</DialogTitle>
+            <DialogTitle className="text-xl">User Details - {selectedUser?.name}</DialogTitle>
             <DialogDescription className="text-beige">
-              View and manage user information, orders, and documents.
+              Complete user information, orders, and documents.
             </DialogDescription>
           </DialogHeader>
 
           {selectedUser && (
             <div className="space-y-6">
-              {/* Tabs */}
-              <Tabs defaultValue="profile" onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-[#222] border border-[#333]">
-                  <TabsTrigger
-                    value="profile"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
-                  >
-                    Profile
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="orders"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
-                  >
-                    Orders
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="documents"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black"
-                  >
-                    Documents
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="profile" className="mt-4 space-y-4">
-                  <h3 className="text-lg font-semibold">User Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* User Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Basic Info */}
+                <div className="bg-[#222] p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <User size={20} className="mr-2 text-[#D4AF37]" />
+                    Basic Information
+                  </h3>
+                  <div className="space-y-2">
                     <div>
-                      <p className="text-beige">Name:</p>
+                      <p className="text-beige text-sm">Name:</p>
                       <p className="text-white">{selectedUser.name}</p>
                     </div>
                     <div>
-                      <p className="text-beige">Email:</p>
-                      <p className="text-white">{selectedUser.email}</p>
+                      <p className="text-beige text-sm">Email:</p>
+                      <p className="text-white text-xs">{selectedUser.email}</p>
                     </div>
                     <div>
-                      <p className="text-beige">Role:</p>
-                      <p className="text-white">{getRoleBadge(selectedUser.role)}</p>
+                      <p className="text-beige text-sm">Role:</p>
+                      <div className="mt-1">{getRoleBadge(selectedUser.role)}</div>
                     </div>
                     <div>
-                      <p className="text-beige">Status:</p>
-                      <p className="text-white">{getStatusBadge(selectedUser.status)}</p>
+                      <p className="text-beige text-sm">Status:</p>
+                      <div className="mt-1">{getStatusBadge(selectedUser.status)}</div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                <div className="bg-[#222] p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <Phone size={20} className="mr-2 text-green-500" />
+                    Contact Information
+                  </h3>
+                  <div className="space-y-2">
                     <div>
-                      <p className="text-beige">Phone:</p>
+                      <p className="text-beige text-sm">Phone:</p>
                       <p className="text-white">{selectedUser.phone || "N/A"}</p>
                     </div>
                     <div>
-                      <p className="text-beige">Address:</p>
-                      <p className="text-white">
-                        {selectedUser.street || "N/A"}, {selectedUser.city || "N/A"}, {selectedUser.state || "N/A"},{" "}
-                        {selectedUser.zip || "N/A"}, {selectedUser.country || "N/A"}
-                      </p>
+                      <p className="text-beige text-sm">Customer ID:</p>
+                      <p className="text-white font-mono text-xs">{selectedUser.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-beige text-sm">Joined:</p>
+                      <p className="text-white text-sm">{formatDate(selectedUser.createdAt)}</p>
                     </div>
                   </div>
+                </div>
 
-                  <h3 className="text-lg font-semibold mt-4">Update Status</h3>
-                  <div className="flex space-x-4">
+                {/* Address Info */}
+                <div className="bg-[#222] p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <MapPin size={20} className="mr-2 text-red-500" />
+                    Address
+                  </h3>
+                  <div className="space-y-1">
+                    <p className="text-white text-sm">{selectedUser.street || "N/A"}</p>
+                    <p className="text-white text-sm">
+                      {selectedUser.city || "N/A"}, {selectedUser.state || "N/A"} {selectedUser.zip || "N/A"}
+                    </p>
+                    <p className="text-white text-sm">{selectedUser.country || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* User Statistics */}
+              {userStats && (
+                <div className="bg-[#222] p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <DollarSign size={20} className="mr-2 text-[#D4AF37]" />
+                    Order Statistics
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-[#D4AF37]">{userStats.totalOrders}</p>
+                      <p className="text-beige text-sm">Total Orders</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-400">${userStats.totalSpent.toFixed(2)}</p>
+                      <p className="text-beige text-sm">Total Spent</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-400">{userStats.completedOrders}</p>
+                      <p className="text-beige text-sm">Completed</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-yellow-400">${userStats.averageOrderValue.toFixed(2)}</p>
+                      <p className="text-beige text-sm">Avg Order</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Orders Section */}
+              <div className="bg-[#222] p-4 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center">
+                    <ShoppingBag size={20} className="mr-2 text-purple-500" />
+                    Recent Orders
+                  </h3>
+                  <Button variant="outline" size="sm" onClick={openManualOrderDialog} className="border-[#333]">
+                    Create Order
+                  </Button>
+                </div>
+                {loadingUserData ? (
+                  <p className="text-gray-400">Loading orders...</p>
+                ) : userOrders.length === 0 ? (
+                  <p className="text-gray-400">No orders found for this user.</p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {userOrders.slice(0, 10).map((order) => (
+                      <div key={order.id} className="flex items-center justify-between p-3 bg-[#111] rounded">
+                        <div>
+                          <p className="text-white font-medium">{order.id}</p>
+                          <p className="text-beige text-sm">{formatDate(order.createdAt)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[#D4AF37] font-medium">${order.total.toFixed(2)}</p>
+                          {getOrderStatusBadge(order.status)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Documents Section */}
+              <div className="bg-[#222] p-4 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-lg flex items-center">
+                    <FileText size={20} className="mr-2 text-blue-500" />
+                    User Documents
+                  </h3>
+                  <div>
+                    <input
+                      type="file"
+                      id="attachment-upload"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          handleAttachmentUpload(file)
+                        }
+                      }}
+                    />
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateUserStatus(selectedUser.id, "active")}
-                      className="border-[#333]"
+                      onClick={() => document.getElementById("attachment-upload").click()}
+                      className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+                      disabled={uploadingDocument}
                     >
-                      Mark as Active
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateUserStatus(selectedUser.id, "inactive")}
-                      className="border-[#333]"
-                    >
-                      Mark as Inactive
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateUserStatus(selectedUser.id, "banned")}
-                      className="border-[#333]"
-                    >
-                      Ban User
+                      <Upload size={16} className="mr-2" />
+                      {uploadingDocument ? "Uploading..." : "Upload Document"}
                     </Button>
                   </div>
+                </div>
 
-                  {userStats && (
-                    <div className="space-y-4 mt-4">
-                      <h3 className="text-lg font-semibold">User Statistics</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-beige">Total Orders:</p>
-                          <p className="text-white">{userStats.totalOrders}</p>
-                        </div>
-                        <div>
-                          <p className="text-beige">Total Spent:</p>
-                          <p className="text-white">${userStats.totalSpent.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-beige">Completed Orders:</p>
-                          <p className="text-white">{userStats.completedOrders}</p>
-                        </div>
-                        <div>
-                          <p className="text-beige">Pending Orders:</p>
-                          <p className="text-white">{userStats.pendingOrders}</p>
-                        </div>
-                        <div>
-                          <p className="text-beige">Cancelled Orders:</p>
-                          <p className="text-white">{userStats.cancelledOrders}</p>
-                        </div>
-                        <div>
-                          <p className="text-beige">Average Order Value:</p>
-                          <p className="text-white">${userStats.averageOrderValue.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-beige">First Order Date:</p>
-                          <p className="text-white">{formatDate(userStats.firstOrderDate)}</p>
-                        </div>
-                        <div>
-                          <p className="text-beige">Last Order Date:</p>
-                          <p className="text-white">{formatDate(userStats.lastOrderDate)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-
-                {/* Orders Tab */}
-                <TabsContent value="orders" className="mt-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">User Orders</h3>
-                    <Button variant="outline" size="sm" onClick={openManualOrderDialog} className="border-[#333]">
-                      Create Order
-                    </Button>
+                {loadingAttachments ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="animate-spin mx-auto mb-4" size={32} />
+                    <p className="text-beige">Loading documents...</p>
                   </div>
-                  {loadingUserData ? (
-                    <p className="text-gray-400">Loading orders...</p>
-                  ) : userOrders.length === 0 ? (
-                    <p className="text-gray-400">No orders found for this user.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full leading-normal">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                              Order ID
-                            </th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                              Date
-                            </th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                              Total
-                            </th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {userOrders.map((order) => (
-                            <tr key={order.id} className="border-b border-gray-700 hover:bg-[#111]">
-                              <td className="px-5 py-5 text-sm">
-                                <p className="text-white whitespace-no-wrap">{order.id}</p>
-                              </td>
-                              <td className="px-5 py-5 text-sm">
-                                <p className="text-gray-200 whitespace-no-wrap">{formatDate(order.createdAt)}</p>
-                              </td>
-                              <td className="px-5 py-5 text-sm">
-                                <p className="text-white whitespace-no-wrap">${order.total.toFixed(2)}</p>
-                              </td>
-                              <td className="px-5 py-5 text-sm">
-                                <span className="relative inline-block px-3 py-1 font-semibold leading-tight">
-                                  {getOrderStatusBadge(order.status)}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </TabsContent>
-
-                {/* Documents Tab */}
-                <TabsContent value="documents" className="mt-4 space-y-4">
-                  <div className="bg-[#222] p-4 rounded-lg">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold text-lg">User Documents</h3>
-                      <div>
-                        <input
-                          type="file"
-                          id="attachment-upload"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files[0]
-                            if (file) {
-                              handleAttachmentUpload(file)
-                            }
-                          }}
-                        />
-                        <Button
-                          onClick={() => document.getElementById("attachment-upload").click()}
-                          className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
-                          disabled={uploadingDocument}
-                        >
-                          <Upload size={16} className="mr-2" />
-                          {uploadingDocument ? "Uploading..." : "Upload Document"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {loadingAttachments ? (
-                      <div className="text-center py-8">
-                        <RefreshCw className="animate-spin mx-auto mb-4" size={32} />
-                        <p className="text-beige">Loading documents...</p>
-                      </div>
-                    ) : userAttachments.length > 0 ? (
-                      <div className="space-y-3">
-                        {userAttachments.map((doc, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
-                            <div>
-                              <p className="font-medium">{doc.fileName || doc.name || "Document"}</p>
-                              <p className="text-sm text-beige">
-                                Uploaded: {formatDate(doc.createdAt)} • {doc.fileType}
-                              </p>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              {doc.verified && (
-                                <Badge className="bg-green-500/20 text-green-400 border-0">Verified</Badge>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => previewDocument(doc)}
-                                className="border-[#333]"
-                              >
-                                <Eye size={16} className="mr-1" />
-                                View
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => deleteUserAttachment(doc.id)}
-                                className="border-red-500 text-red-400 hover:bg-red-500/10"
-                              >
-                                <X size={16} className="mr-1" />
-                                Delete
-                              </Button>
-                            </div>
+                ) : userAttachments.length > 0 ? (
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {userAttachments.map((doc, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          {getDocumentIcon(doc.fileType)}
+                          <div>
+                            <p className="font-medium">{doc.fileName || doc.name || "Document"}</p>
+                            <p className="text-sm text-beige">
+                              Uploaded: {formatDate(doc.createdAt)} • {doc.fileType}
+                            </p>
                           </div>
-                        ))}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {doc.verified && <Badge className="bg-green-500/20 text-green-400 border-0">Verified</Badge>}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => previewDocument(doc)}
+                            className="border-[#333]"
+                          >
+                            <Eye size={16} className="mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteUserAttachment(doc.id)}
+                            className="border-red-500 text-red-400 hover:bg-red-500/10"
+                          >
+                            <X size={16} className="mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Upload size={48} className="mx-auto text-gray-400 mb-4" />
-                        <h3 className="text-lg font-semibold text-white mb-2">No Documents</h3>
-                        <p className="text-beige">No documents have been uploaded for this user.</p>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                </TabsContent>
-              </Tabs>
+                ) : (
+                  <div className="text-center py-8">
+                    <Upload size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">No Documents</h3>
+                    <p className="text-beige">No documents have been uploaded for this user.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Status Update Actions */}
+              <div className="bg-[#222] p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-3">Update User Status</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateUserStatus(selectedUser.id, "active")}
+                    className="border-green-500 text-green-400 hover:bg-green-500/10"
+                  >
+                    Mark as Active
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateUserStatus(selectedUser.id, "inactive")}
+                    className="border-yellow-500 text-yellow-400 hover:bg-yellow-500/10"
+                  >
+                    Mark as Inactive
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateUserStatus(selectedUser.id, "banned")}
+                    className="border-red-500 text-red-400 hover:bg-red-500/10"
+                  >
+                    Ban User
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
+      {/* Edit User Dialog */}
+      <Dialog open={editUserDialog} onOpenChange={setEditUserDialog}>
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center">
+              <Edit className="mr-2" size={20} />
+              Edit User - {selectedUser?.name}
+            </DialogTitle>
+            <DialogDescription className="text-beige">Update user information and settings.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Name</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter name"
+                  value={editUserForm.name}
+                  onChange={(e) => handleEditUserFormChange("name", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Email</Label>
+                <Input
+                  type="email"
+                  placeholder="Enter email"
+                  value={editUserForm.email}
+                  onChange={(e) => handleEditUserFormChange("email", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Role</Label>
+                <Select value={editUserForm.role} onValueChange={(value) => handleEditUserFormChange("role", value)}>
+                  <SelectTrigger className="bg-black border-[#333]">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#111] border-[#333]">
+                    <SelectItem value="customer">Customer</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="moderator">Moderator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Status</Label>
+                <Select
+                  value={editUserForm.status}
+                  onValueChange={(value) => handleEditUserFormChange("status", value)}
+                >
+                  <SelectTrigger className="bg-black border-[#333]">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#111] border-[#333]">
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="banned">Banned</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Phone</Label>
+                <Input
+                  type="tel"
+                  placeholder="Enter phone number"
+                  value={editUserForm.phone}
+                  onChange={(e) => handleEditUserFormChange("phone", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Street</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter street address"
+                  value={editUserForm.street}
+                  onChange={(e) => handleEditUserFormChange("street", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">City</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter city"
+                  value={editUserForm.city}
+                  onChange={(e) => handleEditUserFormChange("city", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">State</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter state"
+                  value={editUserForm.state}
+                  onChange={(e) => handleEditUserFormChange("state", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Zip</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter zip code"
+                  value={editUserForm.zip}
+                  onChange={(e) => handleEditUserFormChange("zip", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Country</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter country"
+                  value={editUserForm.country}
+                  onChange={(e) => handleEditUserFormChange("country", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#333]">
+            <Button variant="outline" onClick={() => setEditUserDialog(false)} className="border-[#333]">
+              Cancel
+            </Button>
+            <Button onClick={updateUser} disabled={updatingUser} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+              {updatingUser ? (
+                <>
+                  <RefreshCw size={16} className="mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Save size={16} className="mr-2" />
+                  Update User
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Add User Dialog */}
       <Dialog open={addUserDialog} onOpenChange={setAddUserDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-6xl w-[60vw] max-h-[85vh] overflow-hidden">
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">Add New User</DialogTitle>
             <DialogDescription className="text-beige">
@@ -1243,132 +1488,120 @@ const AdminUsersComponent = () => {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Name</label>
-              <Input
-                type="text"
-                placeholder="Enter name"
-                value={addUserForm.name}
-                onChange={(e) => handleAddUserFormChange("name", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Email</label>
-              <Input
-                type="email"
-                placeholder="Enter email"
-                value={addUserForm.email}
-                onChange={(e) => handleAddUserFormChange("email", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Password</label>
-              <Input
-                type="password"
-                placeholder="Enter password"
-                value={addUserForm.password}
-                onChange={(e) => handleAddUserFormChange("password", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Confirm Password</label>
-              <Input
-                type="password"
-                placeholder="Confirm password"
-                value={addUserForm.confirmPassword}
-                onChange={(e) => handleAddUserFormChange("confirmPassword", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Role</label>
-              <Select value={addUserForm.role} onValueChange={(value) => handleAddUserFormChange("role", value)}>
-                <SelectTrigger className="bg-black border-[#333]">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#111] border-[#333]">
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="moderator">Moderator</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Phone</label>
-              <Input
-                type="tel"
-                placeholder="Enter phone number"
-                value={addUserForm.phone}
-                onChange={(e) => handleAddUserFormChange("phone", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Street</label>
-              <Input
-                type="text"
-                placeholder="Enter street address"
-                value={addUserForm.street}
-                onChange={(e) => handleAddUserFormChange("street", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">City</label>
-              <Input
-                type="text"
-                placeholder="Enter city"
-                value={addUserForm.city}
-                onChange={(e) => handleAddUserFormChange("city", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">State</label>
-              <Input
-                type="text"
-                placeholder="Enter state"
-                value={addUserForm.state}
-                onChange={(e) => handleAddUserFormChange("state", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Zip</label>
-              <Input
-                type="text"
-                placeholder="Enter zip code"
-                value={addUserForm.zip}
-                onChange={(e) => handleAddUserFormChange("zip", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Country</label>
-              <Input
-                type="text"
-                placeholder="Enter country"
-                value={addUserForm.country}
-                onChange={(e) => handleAddUserFormChange("country", e.target.value)}
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-                disabled
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Status</label>
-              <Select value={addUserForm.status} onValueChange={(value) => handleAddUserFormChange("status", value)}>
-                <SelectTrigger className="bg-black border-[#333]">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#111] border-[#333]">
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="banned">Banned</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Name</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter name"
+                  value={addUserForm.name}
+                  onChange={(e) => handleAddUserFormChange("name", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Email</Label>
+                <Input
+                  type="email"
+                  placeholder="Enter email"
+                  value={addUserForm.email}
+                  onChange={(e) => handleAddUserFormChange("email", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Password</Label>
+                <Input
+                  type="password"
+                  placeholder="Enter password"
+                  value={addUserForm.password}
+                  onChange={(e) => handleAddUserFormChange("password", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Confirm Password</Label>
+                <Input
+                  type="password"
+                  placeholder="Confirm password"
+                  value={addUserForm.confirmPassword}
+                  onChange={(e) => handleAddUserFormChange("confirmPassword", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Role</Label>
+                <Select value={addUserForm.role} onValueChange={(value) => handleAddUserFormChange("role", value)}>
+                  <SelectTrigger className="bg-black border-[#333]">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#111] border-[#333]">
+                    <SelectItem value="customer">Customer</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="moderator">Moderator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Phone</Label>
+                <Input
+                  type="tel"
+                  placeholder="Enter phone number"
+                  value={addUserForm.phone}
+                  onChange={(e) => handleAddUserFormChange("phone", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Street</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter street address"
+                  value={addUserForm.street}
+                  onChange={(e) => handleAddUserFormChange("street", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">City</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter city"
+                  value={addUserForm.city}
+                  onChange={(e) => handleAddUserFormChange("city", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">State</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter state"
+                  value={addUserForm.state}
+                  onChange={(e) => handleAddUserFormChange("state", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Zip</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter zip code"
+                  value={addUserForm.zip}
+                  onChange={(e) => handleAddUserFormChange("zip", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-beige mb-2">Country</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter country"
+                  value={addUserForm.country}
+                  onChange={(e) => handleAddUserFormChange("country", e.target.value)}
+                  className="bg-black border-[#333] focus:border-[#D4AF37]"
+                />
+              </div>
             </div>
           </div>
 
@@ -1377,7 +1610,17 @@ const AdminUsersComponent = () => {
               Cancel
             </Button>
             <Button onClick={addUser} disabled={addingUser} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
-              {addingUser ? <>Adding User...</> : "Add User"}
+              {addingUser ? (
+                <>
+                  <RefreshCw size={16} className="mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <PlusCircle size={16} className="mr-2" />
+                  Add User
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -1385,146 +1628,108 @@ const AdminUsersComponent = () => {
 
       {/* Manual Order Dialog */}
       <Dialog open={manualOrderDialog} onOpenChange={setManualOrderDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl flex items-center">
-              <PlusCircle className="mr-2" size={20} />
-              Create Manual Order for {selectedUser?.name}
-            </DialogTitle>
-            <DialogDescription className="text-beige">Select products and create an order manually</DialogDescription>
+            <DialogTitle className="text-xl">Create Manual Order</DialogTitle>
+            <DialogDescription className="text-beige">Create a new order for the selected user.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Order Items */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-lg">Order Items</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addOrderItem}
-                  className="border-[#333] text-[#D4AF37] hover:bg-[#D4AF37]/10"
-                >
-                  <PlusCircle size={16} className="mr-2" />
-                  Add Item
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {manualOrderForm.items.map((item, index) => (
-                  <div key={index} className="bg-[#222] p-4 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-beige mb-2">Product</label>
-                        <Select
-                          value={item.productId}
-                          onValueChange={(value) => updateOrderItem(index, "productId", value)}
-                        >
-                          <SelectTrigger className="bg-black border-[#333]">
-                            <SelectValue placeholder="Select a product" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#111] border-[#333] max-h-60">
-                            {loadingProducts ? (
-                              <div className="p-2 text-center text-gray-400">Loading products...</div>
-                            ) : products.length === 0 ? (
-                              <div className="p-2 text-center text-gray-400">No products available</div>
-                            ) : (
-                              products.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  <div className="flex items-center justify-between w-full">
-                                    <span>{product.name}</span>
-                                    <span className="text-[#D4AF37] ml-2">${product.price}</span>
-                                  </div>
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                        {item.product && (
-                          <div className="mt-2 text-xs text-gray-400">
-                            <p>Category: {item.product.category}</p>
-                            <p>Stock: {item.product.stock || 0} available</p>
-                          </div>
+            <div className="space-y-2">
+              <Label className="block text-sm font-medium text-beige mb-2">Order Items</Label>
+              {manualOrderForm.items.map((item, index) => (
+                <div key={index} className="grid grid-cols-4 gap-4 items-center">
+                  <div>
+                    <Label className="block text-sm font-medium text-beige mb-2">Product</Label>
+                    <Select
+                      value={item.productId}
+                      onValueChange={(value) => updateOrderItem(index, "productId", value)}
+                    >
+                      <SelectTrigger className="bg-black border-[#333]">
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#111] border-[#333]">
+                        {loadingProducts ? (
+                          <SelectItem value="loading" disabled>
+                            Loading...
+                          </SelectItem>
+                        ) : products.length === 0 ? (
+                          <SelectItem value="no-products" disabled>
+                            No products found
+                          </SelectItem>
+                        ) : (
+                          products.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.name}
+                            </SelectItem>
+                          ))
                         )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-beige mb-2">Quantity</label>
-                        <Input
-                          type="number"
-                          min="1"
-                          max={item.product?.stock || 999}
-                          value={item.quantity}
-                          onChange={(e) => updateOrderItem(index, "quantity", Number.parseInt(e.target.value) || 1)}
-                          className="bg-black border-[#333] focus:border-[#D4AF37]"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="block text-sm font-medium text-beige mb-2">Quantity</Label>
+                    <Input
+                      type="number"
+                      placeholder="Quantity"
+                      value={item.quantity}
+                      onChange={(e) => updateOrderItem(index, "quantity", Number.parseInt(e.target.value))}
+                      className="bg-black border-[#333] focus:border-[#D4AF37]"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    {item.product && (
+                      <div className="flex items-center justify-between p-3 bg-[#222] rounded-lg">
                         <div>
-                          <p className="text-sm text-beige">Subtotal</p>
-                          <p className="text-[#D4AF37] font-medium">
-                            ${item.product ? (item.product.price * item.quantity).toFixed(2) : "0.00"}
-                          </p>
+                          <p className="text-white font-medium">{item.product.name}</p>
+                          <p className="text-beige text-sm">Price: ${item.product.price.toFixed(2)}</p>
                         </div>
-                        {manualOrderForm.items.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeOrderItem(index)}
-                            className="border-red-500 text-red-400 hover:bg-red-500/10"
-                          >
-                            <X size={16} />
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeOrderItem(index)}
+                          className="border-red-500 text-red-400 hover:bg-red-500/10"
+                        >
+                          <X size={16} className="mr-1" />
+                          Remove
+                        </Button>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Order Summary */}
-              <div className="bg-[#222] p-4 rounded-lg mt-4">
-                <h4 className="font-semibold mb-3">Order Summary</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-beige">Subtotal:</span>
-                    <span>${calculateOrderTotal().toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-beige">Tax (8%):</span>
-                    <span>${(calculateOrderTotal() * 0.08).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-beige">Shipping:</span>
-                    <span>Free</span>
-                  </div>
-                  <div className="border-t border-[#333] pt-2 mt-2">
-                    <div className="flex justify-between font-semibold text-lg">
-                      <span>Total:</span>
-                      <span className="text-[#D4AF37]">${(calculateOrderTotal() * 1.08).toFixed(2)}</span>
-                    </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addOrderItem} className="border-[#333]">
+                <PlusCircle size={16} className="mr-1" />
+                Add Item
+              </Button>
             </div>
 
             {/* Shipping Address */}
             <div>
-              <label className="block text-sm font-medium text-beige mb-2">Custom Shipping Address (Optional)</label>
-              <Input
+              <Label className="block text-sm font-medium text-beige mb-2">Shipping Address</Label>
+              <Textarea
+                placeholder="Enter shipping address"
                 value={manualOrderForm.shippingAddress}
                 onChange={(e) => setManualOrderForm((prev) => ({ ...prev, shippingAddress: e.target.value }))}
-                placeholder={`Default: ${selectedUser?.street || "User address"}, ${selectedUser?.city || ""}, ${selectedUser?.state || ""}`}
+                className="bg-black border-[#333] focus:border-[#D4AF37]"
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <Label className="block text-sm font-medium text-beige mb-2">Notes</Label>
+              <Textarea
+                placeholder="Enter notes"
+                value={manualOrderForm.notes}
+                onChange={(e) => setManualOrderForm((prev) => ({ ...prev, notes: e.target.value }))}
                 className="bg-black border-[#333] focus:border-[#D4AF37]"
               />
             </div>
 
             {/* Payment Method */}
             <div>
-              <label className="block text-sm font-medium text-beige mb-2">Payment Method</label>
+              <Label className="block text-sm font-medium text-beige mb-2">Payment Method</Label>
               <Select
                 value={manualOrderForm.paymentMethod}
                 onValueChange={(value) => setManualOrderForm((prev) => ({ ...prev, paymentMethod: value }))}
@@ -1534,79 +1739,76 @@ const AdminUsersComponent = () => {
                 </SelectTrigger>
                 <SelectContent className="bg-[#111] border-[#333]">
                   <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="credit">Credit Card</SelectItem>
+                  <SelectItem value="paypal">PayPal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-beige mb-2">Order Notes (Optional)</label>
-              <Textarea
-                value={manualOrderForm.notes}
-                onChange={(e) => setManualOrderForm((prev) => ({ ...prev, notes: e.target.value }))}
-                placeholder="Add any special instructions or notes for this order..."
-                className="bg-black border-[#333] focus:border-[#D4AF37]"
-                rows={3}
-              />
+            {/* Order Total */}
+            <div className="text-right">
+              <h3 className="text-lg font-semibold">
+                Total: <span className="text-[#D4AF37]">${calculateOrderTotal().toFixed(2)}</span>
+              </h3>
             </div>
+          </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-[#333]">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setManualOrderDialog(false)
-                  setManualOrderForm({
-                    items: [{ productId: "", product: null, quantity: 1 }],
-                    shippingAddress: "",
-                    notes: "",
-                    paymentMethod: "cash",
-                  })
-                }}
-                className="border-[#333]"
-                disabled={creatingOrder}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={createManualOrder}
-                disabled={creatingOrder || calculateOrderTotal() === 0}
-                className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
-              >
-                {creatingOrder ? (
-                  <>
-                    <RefreshCw size={16} className="mr-2 animate-spin" />
-                    Creating Order...
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag size={16} className="mr-2" />
-                    Create Order (${(calculateOrderTotal() * 1.08).toFixed(2)})
-                  </>
-                )}
-              </Button>
-            </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#333]">
+            <Button variant="outline" onClick={() => setManualOrderDialog(false)} className="border-[#333]">
+              Cancel
+            </Button>
+            <Button
+              onClick={createManualOrder}
+              disabled={creatingOrder}
+              className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+            >
+              {creatingOrder ? (
+                <>
+                  <RefreshCw size={16} className="mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <ShoppingBag size={16} className="mr-2" />
+                  Create Order
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Document Preview Dialog */}
       <Dialog open={documentPreviewDialog} onOpenChange={setDocumentPreviewDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">Document Preview</DialogTitle>
             <DialogDescription className="text-beige">Preview the selected document.</DialogDescription>
           </DialogHeader>
-          {documentPreviewUrl && <iframe src={documentPreviewUrl} width="100%" height="600px" />}
+
+          {documentPreviewUrl && (
+            <div className="flex justify-center items-center">
+              {documentPreviewUrl.endsWith(".pdf") ? (
+                <iframe src={documentPreviewUrl} width="100%" height="600px" />
+              ) : (
+                <img
+                  src={documentPreviewUrl || "/placeholder.svg"}
+                  alt="Document Preview"
+                  className="max-w-full max-h-full"
+                />
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#333]">
+            <Button variant="outline" onClick={() => setDocumentPreviewDialog(false)} className="border-[#333]">
+              Close
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
   )
 }
 
-export default function AdminUsers() {
-  return <AdminUsersComponent />
-}
+export default AdminUsersComponent

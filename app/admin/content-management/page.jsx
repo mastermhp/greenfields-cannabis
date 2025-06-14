@@ -355,10 +355,15 @@ export default function ContentManagementPage() {
       const formData = new FormData()
       formData.append("file", file)
 
-      // Instead of using a preset, we'll use the API directly with our backend
-      // This avoids exposing Cloudinary credentials in the frontend
+      // Get access token
+      const accessToken = localStorage.getItem("accessToken")
+
+      // Upload to Cloudinary via our API
       const response = await fetch("/api/upload", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: formData,
       })
 
@@ -368,15 +373,18 @@ export default function ContentManagementPage() {
 
       const data = await response.json()
 
-      if (data.secure_url) {
+      if (data.secure_url || data.url) {
+        const imageUrl = data.secure_url || data.url
+        const publicId = data.public_id
+
         // Update the appropriate content state
         if (activeTab === "home") {
           setHomeContent((prev) => ({
             ...prev,
             [section]: {
               ...prev[section],
-              [field]: data.secure_url,
-              [`${field}Id`]: data.public_id,
+              [field]: imageUrl,
+              [`${field}Id`]: publicId,
             },
           }))
         } else if (activeTab === "about") {
@@ -384,8 +392,8 @@ export default function ContentManagementPage() {
             ...prev,
             [section]: {
               ...prev[section],
-              [field]: data.secure_url,
-              [`${field}Id`]: data.public_id,
+              [field]: imageUrl,
+              [`${field}Id`]: publicId,
             },
           }))
         } else if (activeTab === "contact") {
@@ -393,8 +401,8 @@ export default function ContentManagementPage() {
             ...prev,
             [section]: {
               ...prev[section],
-              [field]: data.secure_url,
-              [`${field}Id`]: data.public_id,
+              [field]: imageUrl,
+              [`${field}Id`]: publicId,
             },
           }))
         }
@@ -442,11 +450,15 @@ export default function ContentManagementPage() {
     try {
       setSaving(true)
 
-      const requestBody = { page, section: "main", content }
+      const accessToken = localStorage.getItem("accessToken")
+      const requestBody = { page, content }
 
       const response = await fetch("/api/content-management", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify(requestBody),
       })
 
@@ -470,6 +482,11 @@ export default function ContentManagementPage() {
           title: "Success",
           description: `${page.charAt(0).toUpperCase() + page.slice(1)} content updated successfully`,
         })
+
+        // Force a page refresh to see the changes
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
       } else {
         throw new Error(data.message || "Failed to update content")
       }
@@ -690,56 +707,6 @@ export default function ContentManagementPage() {
                     note="Upload a high-quality background image for the hero section. Recommended size: 1920x1080px (16:9 ratio). This image will be the main visual element visitors see first."
                     aspectRatio="16:9"
                   />
-
-                  {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <TextInputField
-                      label="Hero Title"
-                      value={homeContent.hero?.title || ""}
-                      onChange={(value) =>
-                        setHomeContent((prev) => ({
-                          ...prev,
-                          hero: { ...prev.hero, title: value },
-                        }))
-                      }
-                      placeholder="Main headline text"
-                    />
-
-                    <TextInputField
-                      label="Hero Subtitle"
-                      value={homeContent.hero?.subtitle || ""}
-                      onChange={(value) =>
-                        setHomeContent((prev) => ({
-                          ...prev,
-                          hero: { ...prev.hero, subtitle: value },
-                        }))
-                      }
-                      placeholder="Supporting text under the headline"
-                    />
-
-                    <TextInputField
-                      label="Primary CTA Button Text"
-                      value={homeContent.hero?.ctaText || ""}
-                      onChange={(value) =>
-                        setHomeContent((prev) => ({
-                          ...prev,
-                          hero: { ...prev.hero, ctaText: value },
-                        }))
-                      }
-                      placeholder="e.g., Shop Now"
-                    />
-
-                    <TextInputField
-                      label="Secondary CTA Button Text"
-                      value={homeContent.hero?.ctaSecondaryText || ""}
-                      onChange={(value) =>
-                        setHomeContent((prev) => ({
-                          ...prev,
-                          hero: { ...prev.hero, ctaSecondaryText: value },
-                        }))
-                      }
-                      placeholder="e.g., Learn More"
-                    />
-                  </div> */}
                 </CardContent>
               </Card>
 
@@ -1443,65 +1410,6 @@ export default function ContentManagementPage() {
                         )}
                       </div>
                     </div>
-                    {/* <div className="grid md:grid-cols-3 gap-4 p-4 border border-[#2a2a2a] rounded">
-                      <div className="md:col-span-1 space-y-2">
-                        {" "}
-                        <Label className="text-gray-400">
-                          Express Shipping
-                        </Label>
-                        {renderInputField(
-                          "smExpTitle",
-                          "Title",
-                          "shippingPolicy.sections.shippingMethods.express.title"
-                        )}
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        {renderTextareaField(
-                          "smExpDesc",
-                          "Description",
-                          "shippingPolicy.sections.shippingMethods.express.description",
-                          4
-                        )}
-                        {renderTextareaField(
-                          "smExpDetails",
-                          "Details (one item per line)",
-                          "shippingPolicy.sections.shippingMethods.express.details",
-                          4
-                        )}
-                      </div>
-                    </div>
-                    <div className="grid md:grid-cols-3 gap-4 p-4 border border-[#2a2a2a] rounded">
-                      <div className="md:col-span-1 space-y-2">
-                        {" "}
-                        <Label className="text-gray-400">
-                          Same-Day Delivery
-                        </Label>
-                        {renderInputField(
-                          "smSmdTitle",
-                          "Title",
-                          "shippingPolicy.sections.shippingMethods.sameDay.title"
-                        )}
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        {renderTextareaField(
-                          "smSmdDesc",
-                          "Description",
-                          "shippingPolicy.sections.shippingMethods.sameDay.description",
-                          4
-                        )}
-                        {renderTextareaField(
-                          "smSmdDetails",
-                          "Details (one item per line)",
-                          "shippingPolicy.sections.shippingMethods.sameDay.details",
-                          4
-                        )}
-                        {renderInputField(
-                          "smSmdEligNote",
-                          "Eligibility Note",
-                          "shippingPolicy.sections.shippingMethods.sameDay.eligibilityNote"
-                        )}
-                      </div>
-                    </div> */}
                   </div>
 
                   {/* Delivery Information Subsection */}
@@ -1642,49 +1550,6 @@ export default function ContentManagementPage() {
                   </div>
                 </div>
 
-                {/* Other Policies (as simple textareas) */}
-                {/* <div className="space-y-2">
-                  <Label
-                    htmlFor="returnPolicy"
-                    className="text-gray-300 text-xl gold-text"
-                  >
-                    General Return Policy
-                  </Label>
-                  <Textarea
-                    id="returnPolicy"
-                    value={policyContent.returnPolicy}
-                    onChange={(e) =>
-                      setPolicyContent((prev) => ({
-                        ...prev,
-                        returnPolicy: e.target.value,
-                      }))
-                    }
-                    className="bg-[#222] border-[#444] text-white min-h-[150px]"
-                    rows={6}
-                  />
-                </div> */}
-
-                {/* <div className="space-y-2">
-                  <Label
-                    htmlFor="privacyPolicy"
-                    className="text-gray-300 text-xl gold-text"
-                  >
-                    Privacy Policy
-                  </Label>
-                  <Textarea
-                    id="privacyPolicy"
-                    value={policyContent.privacyPolicy}
-                    onChange={(e) =>
-                      setPolicyContent((prev) => ({
-                        ...prev,
-                        privacyPolicy: e.target.value,
-                      }))
-                    }
-                    className="bg-[#222] border-[#444] text-white min-h-[150px]"
-                    rows={6}
-                  />
-                </div> */}
-
                 {/* Terms & Conditions Section */}
                 <div className="space-y-6 border border-[#444] p-6 rounded-lg">
                   <h3 className="text-2xl font-semibold gold-text border-b border-[#333] pb-3 mb-6">
@@ -1729,10 +1594,8 @@ export default function ContentManagementPage() {
                                 )}
                               </div>
                             ))}
-                          {/* You could add buttons here to add/remove paragraphs or sections if needed */}
                         </div>
                       ))}
-                    {/* For now, adding/removing sections would be manual in code or require a more complex UI */}
                     <p className="text-sm text-gray-500">
                       Note: To add or remove sections/paragraphs, you might need to adjust the default structure in the
                       component code for now.

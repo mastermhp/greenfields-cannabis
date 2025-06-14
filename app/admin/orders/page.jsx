@@ -10,7 +10,6 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Download,
   Edit,
   X,
   Printer,
@@ -26,6 +25,8 @@ import {
   RefreshCw,
   FileText,
   ImageIcon,
+  Plus,
+  UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -66,6 +67,34 @@ const AdminOrders = () => {
   const [activeTab, setActiveTab] = useState("details")
   const [customerDocuments, setCustomerDocuments] = useState([])
   const [loadingDocuments, setLoadingDocuments] = useState(false)
+  const [products, setProducts] = useState([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+
+  // Fetch products for adding to orders
+  const fetchProducts = async () => {
+    try {
+      setLoadingProducts(true)
+      const accessToken = localStorage.getItem("accessToken")
+
+      if (!accessToken) return
+
+      const response = await fetch("/api/products", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setProducts(data.products || [])
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
 
   // Fetch orders from API
   const fetchOrders = async () => {
@@ -146,6 +175,7 @@ const AdminOrders = () => {
 
   useEffect(() => {
     fetchOrders()
+    fetchProducts()
   }, [])
 
   useEffect(() => {
@@ -258,10 +288,12 @@ const AdminOrders = () => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "pending":
+      case "received":
         return <Clock size={16} className="text-yellow-400" />
       case "processing":
         return <Package size={16} className="text-blue-400" />
+      case "assigned_to_driver":
+        return <UserCheck size={16} className="text-orange-400" />
       case "shipped":
         return <Truck size={16} className="text-purple-400" />
       case "delivered":
@@ -275,17 +307,27 @@ const AdminOrders = () => {
 
   const getStatusBadge = (status) => {
     const variants = {
-      pending: "bg-yellow-500/20 text-yellow-400",
+      received: "bg-yellow-500/20 text-yellow-400",
       processing: "bg-blue-500/20 text-blue-400",
+      assigned_to_driver: "bg-orange-500/20 text-orange-400",
       shipped: "bg-purple-500/20 text-purple-400",
       delivered: "bg-green-500/20 text-green-400",
       cancelled: "bg-red-500/20 text-red-400",
     }
 
+    const statusLabels = {
+      received: "Received",
+      processing: "Processing",
+      assigned_to_driver: "Assigned to Driver",
+      shipped: "Shipped",
+      delivered: "Delivered",
+      cancelled: "Cancelled",
+    }
+
     return (
       <Badge className={`${variants[status] || "bg-gray-500/20 text-gray-400"} border-0`}>
         {getStatusIcon(status)}
-        <span className="ml-1 capitalize">{status}</span>
+        <span className="ml-1">{statusLabels[status] || status}</span>
       </Badge>
     )
   }
@@ -613,113 +655,134 @@ const AdminOrders = () => {
     })
   }
 
+  const addProductToOrder = (product) => {
+    const newItem = {
+      productId: product.id,
+      name: product.name,
+      price: product.basePrice || product.price || 0,
+      quantity: 1,
+      image: product.images?.[0] || "/placeholder.svg",
+    }
+
+    setEditedOrder({
+      ...editedOrder,
+      items: [...(editedOrder.items || []), newItem],
+    })
+
+    toast({
+      title: "Product Added",
+      description: `${product.name} has been added to the order`,
+    })
+  }
+
   const printInvoice = (order) => {
     // Create a printable invoice
     const printWindow = window.open("", "_blank")
     printWindow.document.write(`
-      <html>
-        <head>
-          <title>Invoice - ${order.id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #D4AF37; }
-            .order-info { margin-bottom: 20px; }
-            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            .items-table th { background-color: #f2f2f2; }
-            .total { text-align: right; font-weight: bold; }
-            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
-            .addresses { display: flex; justify-content: space-between; margin-bottom: 20px; }
-            .address-block { width: 45%; }
-            .payment-info { margin-bottom: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="logo">Greenfields Cannabis</div>
-            <h2>Invoice</h2>
+    <html>
+      <head>
+        <title>Invoice - ${order.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #D4AF37; }
+          .order-info { margin-bottom: 20px; }
+          .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          .items-table th { background-color: #f2f2f2; }
+          .total { text-align: right; font-weight: bold; }
+          .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+          .addresses { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .address-block { width: 45%; }
+          .payment-info { margin-bottom: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/logo.png" alt="Greenfields Group INC Logo" style="max-width: 200px; height: auto; margin: 0 auto 10px;">
+          <div class="logo">Greenfields Group INC</div>
+          <h2>Invoice</h2>
+        </div>
+        
+        <div class="order-info">
+          <p><strong>Order ID:</strong> ${order.id}</p>
+          <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+          <p><strong>Status:</strong> ${order.status}</p>
+          <p><strong>Payment Status:</strong> ${order.paymentStatus}</p>
+          ${order.trackingNumber ? `<p><strong>Tracking Number:</strong> ${order.trackingNumber}</p>` : ""}
+        </div>
+        
+        <div class="addresses">
+          <div class="address-block">
+            <h3>Customer Information</h3>
+            <p><strong>Name:</strong> ${order.customer?.name || "N/A"}</p>
+            <p><strong>Email:</strong> ${order.customer?.email || "N/A"}</p>
+            <p><strong>Phone:</strong> ${order.customer?.phone || "N/A"}</p>
+            <p><strong>Customer ID:</strong> ${order.customer?.id || "N/A"}</p>
           </div>
           
-          <div class="order-info">
-            <p><strong>Order ID:</strong> ${order.id}</p>
-            <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-            <p><strong>Status:</strong> ${order.status}</p>
-            <p><strong>Payment Status:</strong> ${order.paymentStatus}</p>
-            ${order.trackingNumber ? `<p><strong>Tracking Number:</strong> ${order.trackingNumber}</p>` : ""}
+          <div class="address-block">
+            <h3>Shipping Address</h3>
+            ${
+              order.shippingAddress
+                ? `
+              <p>${order.shippingAddress.street || ""}</p>
+              <p>${order.shippingAddress.city || ""}, ${order.shippingAddress.state || ""} ${order.shippingAddress.zip || ""}</p>
+              <p>${order.shippingAddress.country || ""}</p>
+            `
+                : "<p>No shipping address provided</p>"
+            }
           </div>
-          
-          <div class="addresses">
-            <div class="address-block">
-              <h3>Customer Information</h3>
-              <p><strong>Name:</strong> ${order.customer?.name || "N/A"}</p>
-              <p><strong>Email:</strong> ${order.customer?.email || "N/A"}</p>
-              <p><strong>Phone:</strong> ${order.customer?.phone || "N/A"}</p>
-              <p><strong>Customer ID:</strong> ${order.customer?.id || "N/A"}</p>
-            </div>
-            
-            <div class="address-block">
-              <h3>Shipping Address</h3>
-              ${
-                order.shippingAddress
-                  ? `
-                <p>${order.shippingAddress.street || ""}</p>
-                <p>${order.shippingAddress.city || ""}, ${order.shippingAddress.state || ""} ${order.shippingAddress.zip || ""}</p>
-                <p>${order.shippingAddress.country || ""}</p>
-              `
-                  : "<p>No shipping address provided</p>"
-              }
-            </div>
-          </div>
-          
-          <h3>Order Items</h3>
-          <table class="items-table">
-            <thead>
+        </div>
+        
+        <h3>Order Items</h3>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              order.items
+                ?.map(
+                  (item) => `
               <tr>
-                <th>Item</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Total</th>
+                <td>${item.name}</td>
+                <td>${item.quantity}</td>
+                <td>$${item.price?.toFixed(2)}</td>
+                <td>$${(item.price * item.quantity)?.toFixed(2)}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${
-                order.items
-                  ?.map(
-                    (item) => `
-                <tr>
-                  <td>${item.name}</td>
-                  <td>${item.quantity}</td>
-                  <td>$${item.price?.toFixed(2)}</td>
-                  <td>$${(item.price * item.quantity)?.toFixed(2)}</td>
-                </tr>
-              `,
-                  )
-                  .join("") || ""
-              }
-            </tbody>
-          </table>
-          
-          <div class="payment-info">
-            <h3>Payment Information</h3>
-            <p><strong>Payment Method:</strong> ${order.paymentMethod || "N/A"}</p>
-            <p><strong>Payment ID:</strong> ${order.paymentId || "N/A"}</p>
-          </div>
-          
-          <div class="total">
-            <p><strong>Subtotal:</strong> $${(order.subtotal || 0).toFixed(2)}</p>
-            <p><strong>Tax:</strong> $${(order.tax || 0).toFixed(2)}</p>
-            <p><strong>Shipping:</strong> $${(order.shippingCost || 0).toFixed(2)}</p>
-            <p style="font-size: 18px;"><strong>Total: $${order.total?.toFixed(2)}</strong></p>
-          </div>
-          
-          <div class="footer">
-            <p>Thank you for your business!</p>
-            <p>Greenfields Cannabis | 123 Cannabis Street, Green Valley, CA 90210 | info@greenfields.com | (555) 123-4567</p>
-          </div>
-        </body>
-      </html>
-    `)
+            `,
+                )
+                .join("") || ""
+            }
+          </tbody>
+        </table>
+        
+        <div class="payment-info">
+          <h3>Payment Information</h3>
+          <p><strong>Payment Method:</strong> ${order.paymentMethod || "N/A"}</p>
+          <p><strong>Payment ID:</strong> ${order.paymentId || "N/A"}</p>
+        </div>
+        
+        <div class="total">
+          <p><strong>Subtotal:</strong> $${(order.subtotal || 0).toFixed(2)}</p>
+          <p><strong>Tax:</strong> $${(order.tax || 0).toFixed(2)}</p>
+          <p><strong>Shipping:</strong> $${(order.shippingCost || 0).toFixed(2)}</p>
+          <p style="font-size: 18px;"><strong>Total: $${order.total?.toFixed(2)}</strong></p>
+        </div>
+        
+        <div class="footer">
+          <p>Thank you for your business!</p>
+          <p>Greenfields Group INC | 123 Cannabis Street, Green Valley, CA 90210 | info@greenfields.com | (555) 123-4567</p>
+        </div>
+      </body>
+    </html>
+  `)
     printWindow.document.close()
     setTimeout(() => {
       printWindow.print()
@@ -812,14 +875,14 @@ const AdminOrders = () => {
             Refresh Orders
           </Button>
           {/* <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
-            <Download size={16} className="mr-2" />
-            Export Orders
-          </Button> */}
+          <Download size={16} className="mr-2" />
+          Export Orders
+        </Button> */}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         {[
           {
             title: "Total Orders",
@@ -828,16 +891,22 @@ const AdminOrders = () => {
             icon: <ShoppingBag className="h-8 w-8 text-blue-400" />,
           },
           {
-            title: "Pending",
-            value: orders.filter((o) => o.status === "pending").length,
+            title: "Received",
+            value: orders.filter((o) => o.status === "received").length,
             color: "text-yellow-400",
             icon: <Clock className="h-8 w-8 text-yellow-400" />,
           },
           {
             title: "Processing",
             value: orders.filter((o) => o.status === "processing").length,
-            color: "text-purple-400",
-            icon: <Package className="h-8 w-8 text-purple-400" />,
+            color: "text-blue-400",
+            icon: <Package className="h-8 w-8 text-blue-400" />,
+          },
+          {
+            title: "Assigned to Driver",
+            value: orders.filter((o) => o.status === "assigned_to_driver").length,
+            color: "text-orange-400",
+            icon: <UserCheck className="h-8 w-8 text-orange-400" />,
           },
           {
             title: "Delivered",
@@ -888,8 +957,9 @@ const AdminOrders = () => {
                 </SelectTrigger>
                 <SelectContent className="bg-[#111] border-[#333]">
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="received">Received</SelectItem>
                   <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="assigned_to_driver">Assigned to Driver</SelectItem>
                   <SelectItem value="shipped">Shipped</SelectItem>
                   <SelectItem value="delivered">Delivered</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -1033,12 +1103,12 @@ const AdminOrders = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="bg-[#111] border-[#333]">
                         <DropdownMenuItem
-                          onClick={() => updateOrderStatus(order.id, "pending")}
-                          disabled={order.status === "pending"}
+                          onClick={() => updateOrderStatus(order.id, "received")}
+                          disabled={order.status === "received"}
                           className="hover:bg-[#222]"
                         >
                           <Clock size={16} className="mr-2 text-yellow-400" />
-                          Pending
+                          Received
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => updateOrderStatus(order.id, "processing")}
@@ -1047,6 +1117,14 @@ const AdminOrders = () => {
                         >
                           <Package size={16} className="mr-2 text-blue-400" />
                           Processing
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => updateOrderStatus(order.id, "assigned_to_driver")}
+                          disabled={order.status === "assigned_to_driver"}
+                          className="hover:bg-[#222]"
+                        >
+                          <UserCheck size={16} className="mr-2 text-orange-400" />
+                          Assigned to Driver
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => updateOrderStatus(order.id, "shipped")}
@@ -1208,9 +1286,9 @@ const AdminOrders = () => {
                   </TabsTrigger>
                   <TabsTrigger
                     value="history"
-                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs" 
+                    className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs"
                   >
-                     History
+                    History
                   </TabsTrigger>
                   <TabsTrigger
                     value="documents"
@@ -1495,7 +1573,7 @@ const AdminOrders = () => {
                         </div>
                       </div>
 
-                      {selectedOrder.status !== "pending" && (
+                      {selectedOrder.status !== "received" && (
                         <div className="flex">
                           <div className="mr-4 relative">
                             <div className="w-4 h-4 rounded-full bg-blue-400"></div>
@@ -1509,6 +1587,24 @@ const AdminOrders = () => {
                                 : "Date not recorded"}
                             </p>
                             <p className="text-xs text-gray-400 mt-1">Order status changed to processing</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {(selectedOrder.status === "assigned_to_driver" ||
+                        selectedOrder.status === "shipped" ||
+                        selectedOrder.status === "delivered") && (
+                        <div className="flex">
+                          <div className="mr-4 relative">
+                            <div className="w-4 h-4 rounded-full bg-orange-400"></div>
+                            <div className="absolute top-4 bottom-0 left-1/2 w-0.5 bg-[#333] -translate-x-1/2"></div>
+                          </div>
+                          <div>
+                            <p className="font-medium">Assigned to Driver</p>
+                            <p className="text-sm text-beige">
+                              {selectedOrder.assignedAt ? formatDate(selectedOrder.assignedAt) : "Date not recorded"}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">Order was assigned to delivery driver</p>
                           </div>
                         </div>
                       )}
@@ -1690,6 +1786,50 @@ const AdminOrders = () => {
                 </TabsList>
 
                 <TabsContent value="items" className="mt-4 space-y-4">
+                  {/* Add Product Section */}
+                  <div className="bg-[#222] p-4 rounded-lg">
+                    <h3 className="font-semibold mb-3 flex items-center">
+                      <Plus size={16} className="mr-2 text-green-400" />
+                      Add Product to Order
+                    </h3>
+
+                    {loadingProducts ? (
+                      <div className="text-center py-4">
+                        <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
+                        <p className="text-beige">Loading products...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                        {products.map((product) => (
+                          <div
+                            key={product.id}
+                            className="bg-[#333] p-3 rounded border border-[#444] hover:border-[#D4AF37] transition-colors"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={product.images?.[0] || "/placeholder.svg"}
+                                alt={product.name}
+                                className="w-12 h-12 object-cover rounded"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{product.name}</p>
+                                <p className="text-xs text-beige">${product.basePrice || product.price || 0}</p>
+                                <p className="text-xs text-gray-400">{product.category}</p>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => addProductToOrder(product)}
+                                className="bg-[#D4AF37] text-black hover:bg-[#B8941F] text-xs px-2 py-1"
+                              >
+                                <Plus size={12} />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="bg-[#222] p-4 rounded-lg">
                     <h3 className="font-semibold mb-3">Order Items</h3>
                     <div className="space-y-3">
@@ -2018,8 +2158,9 @@ const AdminOrders = () => {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-[#111] border-[#333]">
-                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="received">Received</SelectItem>
                               <SelectItem value="processing">Processing</SelectItem>
+                              <SelectItem value="assigned_to_driver">Assigned to Driver</SelectItem>
                               <SelectItem value="shipped">Shipped</SelectItem>
                               <SelectItem value="delivered">Delivered</SelectItem>
                               <SelectItem value="cancelled">Cancelled</SelectItem>
