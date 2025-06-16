@@ -51,6 +51,30 @@ export default function ProductsPage() {
     window.history.replaceState({}, "", newUrl)
   }, [sortBy])
 
+  // Add this useEffect after the existing useEffect hooks to watch for URL parameter changes
+  useEffect(() => {
+    const category = searchParams.get("category") || ""
+    const search = searchParams.get("search") || ""
+    const minPrice = Number(searchParams.get("minPrice") || 0)
+    const maxPrice = Number(searchParams.get("maxPrice") || 200)
+    const effects = searchParams.get("effects") ? searchParams.get("effects").split(",") : []
+    const potency = searchParams.get("potency") ? searchParams.get("potency").split(",") : []
+    const sort = searchParams.get("sort") || "name"
+
+    // Update filters when URL parameters change
+    setFilters({
+      category,
+      search,
+      minPrice,
+      maxPrice,
+      effects,
+      potency,
+    })
+
+    // Update sort when URL parameter changes
+    setSortBy(sort)
+  }, [searchParams])
+
   if (loading) {
     return (
       <div className="bg-black min-h-screen">

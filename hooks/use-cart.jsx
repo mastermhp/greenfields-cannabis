@@ -41,8 +41,14 @@ export const CartProvider = ({ children }) => {
   // Add item to cart
   const addToCart = (product, quantity = 1) => {
     setCartItems((prevItems) => {
+      // Use _id as primary identifier, fallback to id
+      const productId = product._id || product.id
+
       // Check if item already exists in cart
-      const existingItemIndex = prevItems.findIndex((item) => item.id === product.id)
+      const existingItemIndex = prevItems.findIndex((item) => {
+        const itemId = item._id || item.id
+        return itemId === productId
+      })
 
       if (existingItemIndex >= 0) {
         // Update quantity if item exists
@@ -53,8 +59,16 @@ export const CartProvider = ({ children }) => {
         }
         return updatedItems
       } else {
-        // Add new item if it doesn't exist
-        return [...prevItems, { ...product, quantity }]
+        // Add new item if it doesn't exist - ensure it has both _id and id for consistency
+        return [
+          ...prevItems,
+          {
+            ...product,
+            quantity,
+            id: productId, // Ensure id is set for consistency
+            _id: productId, // Ensure _id is set for consistency
+          },
+        ]
       }
     })
   }
@@ -66,12 +80,22 @@ export const CartProvider = ({ children }) => {
       return
     }
 
-    setCartItems((prevItems) => prevItems.map((item) => (item.id === productId ? { ...item, quantity } : item)))
+    setCartItems((prevItems) =>
+      prevItems.map((item) => {
+        const itemId = item._id || item.id
+        return itemId === productId ? { ...item, quantity } : item
+      }),
+    )
   }
 
   // Remove item from cart
   const removeFromCart = (productId) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== productId))
+    setCartItems((prevItems) =>
+      prevItems.filter((item) => {
+        const itemId = item._id || item.id
+        return itemId !== productId
+      }),
+    )
   }
 
   // Clear cart
