@@ -6,6 +6,7 @@ import { Send, Check, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
+import emailService from "@/lib/email-service"
 
 const NewsletterForm = ({ className = "", variant = "default" }) => {
   const { toast } = useToast()
@@ -28,9 +29,9 @@ const NewsletterForm = ({ className = "", variant = "default" }) => {
     setLoading(true)
 
     try {
-      console.log("Submitting newsletter subscription for:", email)
+      console.log("Newsletter: Submitting subscription for:", email)
 
-      // Save to database
+      // Save to database first
       const response = await fetch("/api/newsletter", {
         method: "POST",
         headers: {
@@ -40,34 +41,47 @@ const NewsletterForm = ({ className = "", variant = "default" }) => {
       })
 
       const data = await response.json()
-      console.log("Newsletter API response:", data)
+      console.log("Newsletter: API response:", data)
 
       if (data.success) {
+        // Try to send welcome email
+        console.log("Newsletter: Attempting to send welcome email...")
+        const emailResult = await emailService.sendNewsletterWelcome(email)
+
+        if (emailResult.success) {
+          console.log("Newsletter: Welcome email sent successfully")
+          toast({
+            title: "Subscription Successful",
+            description: "Thank you for subscribing! Check your email for confirmation.",
+          })
+        } else {
+          console.warn("Newsletter: Welcome email failed:", emailResult.error)
+          toast({
+            title: "Subscription Successful",
+            description: "You're subscribed! (Email confirmation may take a few minutes)",
+          })
+        }
+
         setSuccess(true)
         setEmail("")
-
-        toast({
-          title: "Subscription Successful",
-          description: data.message || "Thank you for subscribing to our newsletter!",
-        })
 
         // Reset success state after 3 seconds
         setTimeout(() => {
           setSuccess(false)
         }, 3000)
       } else {
-        console.error("Newsletter subscription failed:", data)
+        console.error("Newsletter: Subscription failed:", data)
         toast({
           title: "Subscription Failed",
-          description: data.error || "There was an error subscribing to the newsletter. Please try again.",
+          description: data.error || "There was an error subscribing. Please try again.",
           variant: "destructive",
         })
       }
     } catch (error) {
-      console.error("Newsletter subscription error:", error)
+      console.error("Newsletter: Subscription error:", error)
       toast({
         title: "Subscription Failed",
-        description: "There was an error subscribing to the newsletter. Please try again.",
+        description: "There was an error subscribing. Please try again.",
         variant: "destructive",
       })
     } finally {

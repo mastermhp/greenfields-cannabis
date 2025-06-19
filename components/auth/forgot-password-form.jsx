@@ -28,6 +28,8 @@ export default function ForgotPasswordForm({ onSuccess }) {
     setLoading(true)
 
     try {
+      console.log("ForgotPassword: Processing request for:", email)
+
       // First, generate reset token on server
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
@@ -38,37 +40,35 @@ export default function ForgotPasswordForm({ onSuccess }) {
       })
 
       const data = await response.json()
+      console.log("ForgotPassword: API response:", data)
 
-      if (data.success) {
-        // If we have a reset link, send email using client-side EmailJS
-        if (data.resetLink) {
-          try {
-            const emailResult = await emailService.sendPasswordResetEmail(email, data.resetLink, "User")
+      if (data.success && data.resetLink) {
+        console.log("ForgotPassword: Attempting to send email...")
 
-            if (emailResult.success) {
-              toast({
-                title: "Reset Link Sent",
-                description: "Check your email for the password reset link.",
-              })
-            } else {
-              console.warn("Email sending failed:", emailResult.error)
-              toast({
-                title: "Reset Link Generated",
-                description: "Password reset link generated. Check console for development link.",
-              })
-            }
-          } catch (emailError) {
-            console.warn("Email service error:", emailError)
-            toast({
-              title: "Reset Link Generated",
-              description: "Password reset link generated. Check console for development link.",
-            })
-          }
+        // Send email using client-side EmailJS
+        const emailResult = await emailService.sendPasswordResetEmail(email, data.resetLink, "User")
 
-          // Show development link in console
-          if (process.env.NODE_ENV === "development") {
-            console.log("🔗 Password Reset Link:", data.resetLink)
-          }
+        if (emailResult.success) {
+          console.log("ForgotPassword: Email sent successfully")
+          toast({
+            title: "Reset Link Sent",
+            description: "Check your email for the password reset link.",
+          })
+        } else {
+          console.warn("ForgotPassword: Email sending failed:", emailResult.error)
+          toast({
+            title: "Reset Link Generated",
+            description: "Password reset link created. Check console for development link.",
+          })
+        }
+
+        // Show development link in console
+        if (process.env.NODE_ENV === "development") {
+          console.log("🔗 Password Reset Link:", data.resetLink)
+          toast({
+            title: "Development Mode",
+            description: "Reset link logged to console (development only)",
+          })
         }
 
         if (onSuccess) {
@@ -77,12 +77,12 @@ export default function ForgotPasswordForm({ onSuccess }) {
       } else {
         toast({
           title: "Error",
-          description: data.error || "Failed to send reset email",
+          description: data.error || "Failed to process password reset request",
           variant: "destructive",
         })
       }
     } catch (error) {
-      console.error("Forgot password error:", error)
+      console.error("ForgotPassword: Error:", error)
       toast({
         title: "Error",
         description: "Failed to send reset email. Please try again.",
