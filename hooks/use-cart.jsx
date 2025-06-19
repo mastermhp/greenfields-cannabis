@@ -90,12 +90,15 @@ export const CartProvider = ({ children }) => {
 
   // Remove item from cart
   const removeFromCart = (productId) => {
-    setCartItems((prevItems) =>
-      prevItems.filter((item) => {
+    console.log("Removing item from cart:", productId)
+    setCartItems((prevItems) => {
+      const filteredItems = prevItems.filter((item) => {
         const itemId = item._id || item.id
         return itemId !== productId
-      }),
-    )
+      })
+      console.log("Cart after removal:", filteredItems)
+      return filteredItems
+    })
   }
 
   // Clear cart

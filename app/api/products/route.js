@@ -23,18 +23,20 @@ async function verifyAdmin(request) {
     let token = null
 
     // 1. Check Authorization header
-    const authHeader = request.headers.get("authorization")
+    const authHeader = request.headers.get("authorization") || request.headers.get("Authorization")
+    console.log("Auth header:", authHeader ? "present" : "missing")
+
     if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.replace("Bearer ", "")
-      console.log("Token found in Authorization header")
+      token = authHeader.replace("Bearer ", "").trim()
+      console.log("Token found in Authorization header, length:", token.length)
     }
 
-    // 2. Check cookies
+    // 2. Check cookies if no header token
     if (!token) {
       const cookieToken = request.cookies.get("accessToken")?.value
       if (cookieToken) {
         token = cookieToken
-        console.log("Token found in cookies")
+        console.log("Token found in cookies, length:", token.length)
       }
     }
 
@@ -43,8 +45,15 @@ async function verifyAdmin(request) {
       return { error: "No authentication token provided", status: 401 }
     }
 
+    // Validate token structure
+    const tokenParts = token.split(".")
+    if (tokenParts.length !== 3) {
+      console.log("Invalid token structure, parts:", tokenParts.length)
+      return { error: "Invalid token format", status: 401 }
+    }
+
     console.log("Token found, verifying...")
-    console.log("Token:", token.substring(0, 20) + "..." + token.substring(token.length - 10))
+    console.log("Token preview:", token.substring(0, 20) + "..." + token.substring(token.length - 10))
 
     // Use our custom AuthToken class with await
     const decoded = await AuthToken.verify(token)
@@ -190,13 +199,24 @@ export async function POST(request) {
     console.log("Authentication successful for user:", authResult.user.email)
 
     const data = await request.json()
+    console.log("Product data received:", {
+      name: data.name,
+      category: data.category,
+      weightPricing: data.weightPricing,
+      hasImages: !!data.images?.length,
+    })
 
     // Validate required fields
     if (!data.name || !data.description || !data.category) {
+      console.log("Missing required fields:", {
+        name: !!data.name,
+        description: !!data.description,
+        category: !!data.category,
+      })
       return NextResponse.json(
         {
           success: false,
-          error: "Missing required fields",
+          error: "Missing required fields: name, description, and category are required",
         },
         { status: 400 },
       )
@@ -204,6 +224,7 @@ export async function POST(request) {
 
     // Validate weight pricing
     if (!data.weightPricing || !Array.isArray(data.weightPricing) || data.weightPricing.length === 0) {
+      console.log("Invalid weight pricing:", data.weightPricing)
       return NextResponse.json(
         {
           success: false,
@@ -213,27 +234,124 @@ export async function POST(request) {
       )
     }
 
+    // Validate each weight pricing entry
+    for (let i = 0; i < data.weightPricing.length; i++) {
+      const item = data.weightPricing[i]
+      console.log(`Validating weight pricing entry ${i}:`, item)
+
+      // Check for required fields - allow 0 values but not null/undefined/empty strings
+      if (
+        item.weight === null ||
+        item.weight === undefined ||
+        item.weight === "" ||
+        item.price === null ||
+        item.price === undefined ||
+        item.price === "" ||
+        item.stock === null ||
+        item.stock === undefined ||
+        item.stock === ""
+      ) {
+        console.log(`Missing required fields in weight pricing at index ${i}:`, {
+          weight: item.weight,
+          price: item.price,
+          stock: item.stock,
+        })
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Weight pricing entry ${i + 1} is missing required fields (weight, price, stock)`,
+          },
+          { status: 400 },
+        )
+      }
+
+      // Validate numeric values
+      const weight = Number.parseFloat(item.weight)
+      const price = Number.parseFloat(item.price)
+      const stock = Number.parseInt(item.stock)
+
+      if (isNaN(weight) || weight <= 0) {
+        console.log(`Invalid weight value at index ${i}:`, item.weight)
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Weight pricing entry ${i + 1}: weight must be a positive number`,
+          },
+          { status: 400 },
+        )
+      }
+
+      if (isNaN(price) || price <= 0) {
+        console.log(`Invalid price value at index ${i}:`, item.price)
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Weight pricing entry ${i + 1}: price must be a positive number`,
+          },
+          { status: 400 },
+        )
+      }
+
+      if (isNaN(stock) || stock < 0) {
+        console.log(`Invalid stock value at index ${i}:`, item.stock)
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Weight pricing entry ${i + 1}: stock must be a non-negative number`,
+          },
+          { status: 400 },
+        )
+      }
+
+      console.log(`Weight pricing entry ${i} validated successfully:`, {
+        weight,
+        price,
+        stock,
+      })
+    }
+
     // Connect to database
     const { db } = await connectToDatabase()
 
+    // Get category name if not provided
+    let categoryName = data.categoryName
+    if (!categoryName && data.category) {
+      try {
+        const category = await db.collection(collections.categories).findOne({
+          $or: [{ _id: data.category }, { id: data.category }, { value: data.category }],
+        })
+        if (category) {
+          categoryName = category.name
+        }
+      } catch (error) {
+        console.log("Could not fetch category name:", error.message)
+      }
+    }
+
     // Create product object with new structure
     const product = {
-      name: data.name,
-      description: data.description,
-      fullDescription: data.fullDescription || "",
+      name: data.name.trim(),
+      description: data.description.trim(),
+      fullDescription: data.fullDescription?.trim() || "",
       category: data.category,
-      categoryName: data.categoryName || data.category, // Store both ID and name
-      weightPricing: data.weightPricing,
+      categoryName: categoryName || data.category,
+      weightPricing: data.weightPricing.map((item) => ({
+        weight: Number.parseFloat(item.weight),
+        unit: item.unit || "g",
+        price: Number.parseFloat(item.price),
+        stock: Number.parseInt(item.stock),
+      })),
       basePrice: Number.parseFloat(data.weightPricing[0].price) || 0,
-      discountPercentage: Number.parseInt(data.discountPercentage) || 0,
-      thcContent: Number.parseFloat(data.thcContent) || 0,
-      cbdContent: Number.parseFloat(data.cbdContent) || 0,
-      origin: data.origin || "",
+      discountPercentage: data.discountPercentage ? Number.parseInt(data.discountPercentage) : 0,
+      thcContent: data.thcContent ? Number.parseFloat(data.thcContent) / 100 : 0,
+      cbdContent: data.cbdContent ? Number.parseFloat(data.cbdContent) / 100 : 0,
       effects: data.effects || [],
       inStock: data.inStock !== undefined ? data.inStock : true,
       featured: data.featured || false,
-      images: data.images || [],
+      images: data.images && data.images.length > 0 ? data.images : ["/placeholder.svg?height=400&width=400"],
       cloudinaryIds: data.cloudinaryIds || [],
+      tags: data.tags || [],
+      specifications: data.specifications || [],
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -243,10 +361,19 @@ export async function POST(request) {
       product.salePrice = product.basePrice * (1 - product.discountPercentage / 100)
     }
 
-    console.log("Creating product with category:", product.category, "categoryName:", product.categoryName)
+    console.log("Creating product:", {
+      name: product.name,
+      category: product.category,
+      categoryName: product.categoryName,
+      weightPricingCount: product.weightPricing.length,
+      basePrice: product.basePrice,
+      imagesCount: product.images.length,
+    })
 
     // Insert product into database
     const result = await db.collection("products").insertOne(product)
+
+    console.log("Product created successfully with ID:", result.insertedId)
 
     return NextResponse.json(
       {

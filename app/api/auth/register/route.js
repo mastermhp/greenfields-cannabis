@@ -2,11 +2,26 @@ import { NextResponse } from "next/server"
 import { UserOperations } from "@/lib/database-operations"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
+import { v4 as uuidv4 } from "uuid"
 
 export async function POST(request) {
   try {
-    const { name, email, password, confirmPassword, role, phone, city, state, country, status, adminCreated } =
-      await request.json()
+    const body = await request.json()
+    const {
+      name,
+      email,
+      password,
+      confirmPassword,
+      role,
+      phone,
+      street,
+      city,
+      state,
+      zip,
+      country,
+      status,
+      adminCreated,
+    } = body
 
     // Check if this is an admin creating a user
     let isAdminRequest = false
@@ -133,33 +148,32 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Handle phone number properly
-    const phoneNumber = phone || body.phone || ""
+    // Generate unique ID
+    const userId = uuidv4()
 
     // Prepare user data
     const userData = {
-      id: generateId(),
+      id: userId,
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       role: role || "customer",
-      phone: phoneNumber,
-      street: street || body.street || "",
-      city: city || body.city || "",
-      state: state || body.state || "",
-      zip: zip || body.zip || "",
-      country: country || body.country || "United States",
-      status: status || body.status || "active",
+      phone: phone || "",
+      street: street || "",
+      city: city || "",
+      state: state || "",
+      zip: zip || "",
+      country: country || "United States",
+      status: status || "active",
       isVerified: adminCreated || false, // Auto-verify admin-created users
       createdAt: new Date(),
       updatedAt: new Date(),
     }
 
-    // Add optional fields if provided
-    if (phone) userData.phone = phone.trim()
-    if (city) userData.city = city.trim()
-    if (state) userData.state = state.trim()
-    if (country) userData.country = country.trim()
+    console.log("Creating user with data:", {
+      ...userData,
+      password: "[REDACTED]",
+    })
 
     // Create user
     const user = await UserOperations.createUser(userData)

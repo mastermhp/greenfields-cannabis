@@ -97,6 +97,47 @@ const AdminUsersComponent = () => {
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState("")
   const [documentPreviewDialog, setDocumentPreviewDialog] = useState(false)
 
+  // Helper function to get product price
+  const getProductPrice = (product) => {
+    if (!product) return 0
+
+    // Check different possible price structures
+    if (typeof product.price === "number" && product.price > 0) {
+      return product.price
+    }
+
+    // Check if it's weight-based pricing
+    if (product.weightPricing && Array.isArray(product.weightPricing) && product.weightPricing.length > 0) {
+      const firstPricing = product.weightPricing[0]
+      if (typeof firstPricing.price === "number" && firstPricing.price > 0) {
+        return firstPricing.price
+      }
+    }
+
+    // Check if it's in a pricing object
+    if (product.pricing) {
+      if (typeof product.pricing.price === "number" && product.pricing.price > 0) {
+        return product.pricing.price
+      }
+      if (typeof product.pricing === "number" && product.pricing > 0) {
+        return product.pricing
+      }
+    }
+
+    // Check for basePrice
+    if (typeof product.basePrice === "number" && product.basePrice > 0) {
+      return product.basePrice
+    }
+
+    // Check for cost (as fallback)
+    if (typeof product.cost === "number" && product.cost > 0) {
+      return product.cost
+    }
+
+    console.warn("No valid price found for product:", product)
+    return 0
+  }
+
   // Fix the fetchProducts function to properly handle the response data
   const fetchProducts = async () => {
     try {
@@ -114,7 +155,13 @@ const AdminUsersComponent = () => {
       // Fix: Check for products array in the response
       if (data.success && data.products) {
         console.log("Fetched products:", data.products.length)
+        console.log("Sample product:", data.products[0]) // Debug log
         setProducts(data.products)
+      } else if (data.success && data.data) {
+        // Alternative response structure
+        console.log("Fetched products (alt structure):", data.data.length)
+        console.log("Sample product:", data.data[0]) // Debug log
+        setProducts(data.data)
       } else {
         console.error("No products found in response:", data)
         setProducts([])
@@ -145,7 +192,8 @@ const AdminUsersComponent = () => {
     setManualOrderForm((prev) => {
       const newItems = [...prev.items]
       if (field === "productId") {
-        const selectedProduct = products.find((p) => p.id === value)
+        const selectedProduct = products.find((p) => (p.id || p._id) === value)
+        console.log("Selected product:", selectedProduct) // Debug log
         newItems[index] = {
           ...newItems[index],
           productId: value,
@@ -165,12 +213,16 @@ const AdminUsersComponent = () => {
   }
 
   const calculateOrderTotal = () => {
-    return manualOrderForm.items.reduce((total, item) => {
+    const total = manualOrderForm.items.reduce((total, item) => {
       if (item.product) {
-        return total + item.product.price * item.quantity
+        const price = getProductPrice(item.product)
+        console.log(`Item: ${item.product.name}, Price: ${price}, Quantity: ${item.quantity}`) // Debug log
+        return total + price * item.quantity
       }
       return total
     }, 0)
+    console.log(`Total calculated: ${total}`) // Debug log
+    return total
   }
 
   const createManualOrder = async () => {
@@ -190,7 +242,21 @@ const AdminUsersComponent = () => {
         return
       }
 
-      const subtotal = validItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
+      // Calculate totals with proper price handling
+      const subtotal = validItems.reduce((sum, item) => {
+        const price = getProductPrice(item.product)
+        return sum + price * item.quantity
+      }, 0)
+
+      if (subtotal <= 0) {
+        toast({
+          title: "Error",
+          description: "Order total must be greater than $0. Please check product prices.",
+          variant: "destructive",
+        })
+        return
+      }
+
       const tax = subtotal * 0.08 // 8% tax
       const shipping = 0 // Free shipping for manual orders
       const total = subtotal + tax + shipping
@@ -202,15 +268,18 @@ const AdminUsersComponent = () => {
           email: selectedUser.email,
           phone: selectedUser.phone || "",
         },
-        items: validItems.map((item) => ({
-          productId: item.product.id,
-          name: item.product.name,
-          price: item.product.price,
-          quantity: item.quantity,
-          category: item.product.category,
-          sku: item.product.sku || "",
-          image: item.product.images?.[0] || "",
-        })),
+        items: validItems.map((item) => {
+          const price = getProductPrice(item.product)
+          return {
+            productId: item.product.id || item.product._id,
+            name: item.product.name,
+            price: price,
+            quantity: item.quantity,
+            category: item.product.category,
+            sku: item.product.sku || "",
+            image: item.product.images?.[0] || "",
+          }
+        }),
         subtotal,
         tax,
         shipping,
@@ -238,6 +307,8 @@ const AdminUsersComponent = () => {
         adminCreated: true,
       }
 
+      console.log("Creating order with data:", orderData) // Debug log
+
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
@@ -248,11 +319,12 @@ const AdminUsersComponent = () => {
       })
 
       const data = await response.json()
+      console.log("Order creation response:", data) // Debug log
 
       if (data.success) {
         toast({
-          title: "Order Created",
-          description: `Order ${data.data.id} created successfully for $${total.toFixed(2)}`,
+          title: "Order Created Successfully",
+          description: `Order ${data.data.id} created for $${total.toFixed(2)}`,
         })
         setManualOrderDialog(false)
         setManualOrderForm({
@@ -265,7 +337,7 @@ const AdminUsersComponent = () => {
         fetchUserDetails(selectedUser.id)
       } else {
         toast({
-          title: "Error",
+          title: "Order Creation Failed",
           description: data.error || "Failed to create order",
           variant: "destructive",
         })
@@ -273,8 +345,8 @@ const AdminUsersComponent = () => {
     } catch (error) {
       console.error("Error creating manual order:", error)
       toast({
-        title: "Error",
-        description: "Failed to create order",
+        title: "Order Creation Failed",
+        description: "Failed to create order. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -360,13 +432,13 @@ const AdminUsersComponent = () => {
 
       if (data.success) {
         toast({
-          title: "Success",
+          title: "Document Uploaded",
           description: "Document uploaded successfully",
         })
         fetchUserAttachments(selectedUser.id)
       } else {
         toast({
-          title: "Error",
+          title: "Upload Failed",
           description: data.error || "Failed to upload document",
           variant: "destructive",
         })
@@ -374,7 +446,7 @@ const AdminUsersComponent = () => {
     } catch (error) {
       console.error("Error uploading attachment:", error)
       toast({
-        title: "Error",
+        title: "Upload Failed",
         description: "Failed to upload document",
         variant: "destructive",
       })
@@ -419,13 +491,13 @@ const AdminUsersComponent = () => {
 
       if (data.success) {
         toast({
-          title: "Success",
+          title: "Document Deleted",
           description: "Document deleted successfully",
         })
         fetchUserAttachments(selectedUser.id)
       } else {
         toast({
-          title: "Error",
+          title: "Delete Failed",
           description: data.error || "Failed to delete document",
           variant: "destructive",
         })
@@ -433,8 +505,9 @@ const AdminUsersComponent = () => {
     } catch (error) {
       console.error("Error deleting attachment:", error)
       toast({
-        title: "Error",
+        title: "Delete Failed",
         description: "Failed to delete document",
+        variant: "destructive",
       })
     }
   }
@@ -631,7 +704,7 @@ const AdminUsersComponent = () => {
       // Validation
       if (!editUserForm.name || !editUserForm.email) {
         toast({
-          title: "Error",
+          title: "Validation Error",
           description: "Name and email are required",
           variant: "destructive",
         })
@@ -642,7 +715,7 @@ const AdminUsersComponent = () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(editUserForm.email)) {
         toast({
-          title: "Error",
+          title: "Validation Error",
           description: "Please enter a valid email address",
           variant: "destructive",
         })
@@ -679,7 +752,7 @@ const AdminUsersComponent = () => {
         setEditUserDialog(false)
       } else {
         toast({
-          title: "Error",
+          title: "Update Failed",
           description: data.error || "Failed to update user",
           variant: "destructive",
         })
@@ -687,7 +760,7 @@ const AdminUsersComponent = () => {
     } catch (error) {
       console.error("Error updating user:", error)
       toast({
-        title: "Error",
+        title: "Update Failed",
         description: "Failed to update user",
         variant: "destructive",
       })
@@ -728,7 +801,7 @@ const AdminUsersComponent = () => {
         setUsers((prevUsers) => prevUsers.map((user) => (user.id === userId ? { ...user, status: newStatus } : user)))
 
         toast({
-          title: "User Updated",
+          title: "Status Updated",
           description: `User status updated to ${newStatus}`,
         })
 
@@ -738,7 +811,7 @@ const AdminUsersComponent = () => {
         }
       } else {
         toast({
-          title: "Error",
+          title: "Update Failed",
           description: data.error || "Failed to update user status",
           variant: "destructive",
         })
@@ -746,8 +819,9 @@ const AdminUsersComponent = () => {
     } catch (error) {
       console.error("Error updating user status:", error)
       toast({
-        title: "Error",
+        title: "Update Failed",
         description: "Failed to update user status",
+        variant: "destructive",
       })
     }
   }
@@ -757,7 +831,7 @@ const AdminUsersComponent = () => {
       // Validation
       if (!addUserForm.name || !addUserForm.email || !addUserForm.password) {
         toast({
-          title: "Error",
+          title: "Validation Error",
           description: "Name, email, and password are required",
           variant: "destructive",
         })
@@ -766,7 +840,7 @@ const AdminUsersComponent = () => {
 
       if (addUserForm.password !== addUserForm.confirmPassword) {
         toast({
-          title: "Error",
+          title: "Validation Error",
           description: "Passwords do not match",
           variant: "destructive",
         })
@@ -775,7 +849,7 @@ const AdminUsersComponent = () => {
 
       if (addUserForm.password.length < 6) {
         toast({
-          title: "Error",
+          title: "Validation Error",
           description: "Password must be at least 6 characters long",
           variant: "destructive",
         })
@@ -786,7 +860,7 @@ const AdminUsersComponent = () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(addUserForm.email)) {
         toast({
-          title: "Error",
+          title: "Validation Error",
           description: "Please enter a valid email address",
           variant: "destructive",
         })
@@ -833,7 +907,7 @@ const AdminUsersComponent = () => {
 
       if (data.success) {
         toast({
-          title: "User Added",
+          title: "User Created",
           description: `User ${addUserForm.name} has been created successfully`,
         })
 
@@ -860,7 +934,7 @@ const AdminUsersComponent = () => {
         await fetchUsers()
       } else {
         toast({
-          title: "Error",
+          title: "Creation Failed",
           description: data.error || "Failed to create user",
           variant: "destructive",
         })
@@ -868,7 +942,7 @@ const AdminUsersComponent = () => {
     } catch (error) {
       console.error("Error adding user:", error)
       toast({
-        title: "Error",
+        title: "Creation Failed",
         description: "Failed to create user",
         variant: "destructive",
       })
@@ -1200,13 +1274,16 @@ const AdminUsersComponent = () => {
                 ) : (
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {userOrders.slice(0, 10).map((order) => (
-                      <div key={order.id} className="flex items-center justify-between p-3 bg-[#111] rounded">
+                      <div
+                        key={order.id || order._id}
+                        className="flex items-center justify-between p-3 bg-[#111] rounded"
+                      >
                         <div>
-                          <p className="text-white font-medium">{order.id}</p>
+                          <p className="text-white font-medium">{order.id || order._id}</p>
                           <p className="text-beige text-sm">{formatDate(order.createdAt)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[#D4AF37] font-medium">${order.total.toFixed(2)}</p>
+                          <p className="text-[#D4AF37] font-medium">${(order.total || 0).toFixed(2)}</p>
                           {getOrderStatusBadge(order.status)}
                         </div>
                       </div>
@@ -1252,8 +1329,11 @@ const AdminUsersComponent = () => {
                   </div>
                 ) : userAttachments.length > 0 ? (
                   <div className="space-y-3 max-h-60 overflow-y-auto">
-                    {userAttachments.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-[#111] rounded-lg">
+                    {userAttachments.map((doc) => (
+                      <div
+                        key={doc.id || doc._id || `doc-${doc.fileName}`}
+                        className="flex items-center justify-between p-3 bg-[#111] rounded-lg"
+                      >
                         <div className="flex items-center space-x-3">
                           {getDocumentIcon(doc.fileType)}
                           <div>
@@ -1628,102 +1708,182 @@ const AdminUsersComponent = () => {
 
       {/* Manual Order Dialog */}
       <Dialog open={manualOrderDialog} onOpenChange={setManualOrderDialog}>
-        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#111] border border-[#333] text-white max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">Create Manual Order</DialogTitle>
-            <DialogDescription className="text-beige">Create a new order for the selected user.</DialogDescription>
+            <DialogDescription className="text-beige">Create a new order for {selectedUser?.name}.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Order Items */}
-            <div className="space-y-2">
-              <Label className="block text-sm font-medium text-beige mb-2">Order Items</Label>
+            <div className="space-y-4">
+              <Label className="block text-lg font-medium text-white mb-4">Order Items</Label>
               {manualOrderForm.items.map((item, index) => (
-                <div key={index} className="grid grid-cols-4 gap-4 items-center">
-                  <div>
-                    <Label className="block text-sm font-medium text-beige mb-2">Product</Label>
-                    <Select
-                      value={item.productId}
-                      onValueChange={(value) => updateOrderItem(index, "productId", value)}
-                    >
-                      <SelectTrigger className="bg-black border-[#333]">
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#111] border-[#333]">
-                        {loadingProducts ? (
-                          <SelectItem value="loading" disabled>
-                            Loading...
-                          </SelectItem>
-                        ) : products.length === 0 ? (
-                          <SelectItem value="no-products" disabled>
-                            No products found
-                          </SelectItem>
-                        ) : (
-                          products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name}
+                <div key={`order-item-${index}`} className="bg-[#222] p-4 rounded-lg border border-[#333]">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                    {/* Product Selection */}
+                    <div className="md:col-span-2">
+                      <Label className="block text-sm font-medium text-beige mb-2">Product</Label>
+                      <Select
+                        value={item.productId}
+                        onValueChange={(value) => updateOrderItem(index, "productId", value)}
+                      >
+                        <SelectTrigger className="bg-black border-[#333] h-auto min-h-[60px]">
+                          <SelectValue placeholder="Select product">
+                            {item.product && (
+                              <div className="flex items-center space-x-3 py-2">
+                                <img
+                                  src={item.product.images?.[0] || "/placeholder.svg?height=40&width=40"}
+                                  alt={item.product.name}
+                                  className="w-10 h-10 rounded object-cover"
+                                />
+                                <div className="text-left">
+                                  <p className="font-medium text-white">{item.product.name}</p>
+                                  <p className="text-sm text-[#D4AF37]">${getProductPrice(item.product).toFixed(2)}</p>
+                                </div>
+                              </div>
+                            )}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#111] border-[#333] max-h-60">
+                          {loadingProducts ? (
+                            <SelectItem value="loading" disabled>
+                              <div className="flex items-center space-x-2">
+                                <RefreshCw className="animate-spin" size={16} />
+                                <span>Loading products...</span>
+                              </div>
                             </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="block text-sm font-medium text-beige mb-2">Quantity</Label>
-                    <Input
-                      type="number"
-                      placeholder="Quantity"
-                      value={item.quantity}
-                      onChange={(e) => updateOrderItem(index, "quantity", Number.parseInt(e.target.value))}
-                      className="bg-black border-[#333] focus:border-[#D4AF37]"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    {item.product && (
-                      <div className="flex items-center justify-between p-3 bg-[#222] rounded-lg">
-                        <div>
-                          <p className="text-white font-medium">{item.product.name}</p>
-                          <p className="text-beige text-sm">Price: ${item.product.price.toFixed(2)}</p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeOrderItem(index)}
-                          className="border-red-500 text-red-400 hover:bg-red-500/10"
-                        >
-                          <X size={16} className="mr-1" />
-                          Remove
-                        </Button>
+                          ) : products.length === 0 ? (
+                            <SelectItem value="no-products" disabled>
+                              <div className="flex items-center space-x-2">
+                                <AlertCircle size={16} />
+                                <span>No products found</span>
+                              </div>
+                            </SelectItem>
+                          ) : (
+                            products.map((product) => {
+                              const price = getProductPrice(product)
+                              return (
+                                <SelectItem key={product.id || product._id} value={product.id || product._id}>
+                                  <div className="flex items-center space-x-3 py-2 w-full">
+                                    <img
+                                      src={product.images?.[0] || "/placeholder.svg?height=40&width=40"}
+                                      alt={product.name}
+                                      className="w-10 h-10 rounded object-cover flex-shrink-0"
+                                    />
+                                    <div className="flex-1 text-left">
+                                      <p className="font-medium text-white">{product.name}</p>
+                                      <p className="text-sm text-[#D4AF37]">${price.toFixed(2)}</p>
+                                      <p className="text-xs text-gray-400">{product.category}</p>
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              )
+                            })
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Quantity and Actions */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="block text-sm font-medium text-beige mb-2">Quantity</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            updateOrderItem(index, "quantity", Math.max(1, Number.parseInt(e.target.value) || 1))
+                          }
+                          className="bg-black border-[#333] focus:border-[#D4AF37]"
+                        />
                       </div>
-                    )}
+
+                      {item.product && (
+                        <div className="bg-[#333] p-3 rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-beige">Subtotal:</span>
+                            <span className="font-medium text-[#D4AF37]">
+                              ${(getProductPrice(item.product) * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeOrderItem(index)}
+                            className="w-full border-red-500 text-red-400 hover:bg-red-500/10"
+                          >
+                            <X size={16} className="mr-1" />
+                            Remove Item
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
-              <Button variant="outline" size="sm" onClick={addOrderItem} className="border-[#333]">
-                <PlusCircle size={16} className="mr-1" />
-                Add Item
+
+              <Button
+                variant="outline"
+                onClick={addOrderItem}
+                className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+              >
+                <PlusCircle size={16} className="mr-2" />
+                Add Another Item
               </Button>
+            </div>
+
+            {/* Order Summary */}
+            <div className="bg-[#222] p-4 rounded-lg border border-[#333]">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <DollarSign size={20} className="mr-2 text-[#D4AF37]" />
+                Order Summary
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-beige">Subtotal:</span>
+                  <span className="text-white">${calculateOrderTotal().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-beige">Tax (8%):</span>
+                  <span className="text-white">${(calculateOrderTotal() * 0.08).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-beige">Shipping:</span>
+                  <span className="text-white">$0.00</span>
+                </div>
+                <div className="border-t border-[#333] pt-2 mt-2">
+                  <div className="flex justify-between text-lg font-semibold">
+                    <span className="text-white">Total:</span>
+                    <span className="text-[#D4AF37]">${(calculateOrderTotal() * 1.08).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Shipping Address */}
             <div>
               <Label className="block text-sm font-medium text-beige mb-2">Shipping Address</Label>
               <Textarea
-                placeholder="Enter shipping address"
+                placeholder={`Default: ${selectedUser?.street || ""} ${selectedUser?.city || ""}, ${selectedUser?.state || ""} ${selectedUser?.zip || ""}`}
                 value={manualOrderForm.shippingAddress}
                 onChange={(e) => setManualOrderForm((prev) => ({ ...prev, shippingAddress: e.target.value }))}
                 className="bg-black border-[#333] focus:border-[#D4AF37]"
+                rows={3}
               />
             </div>
 
             {/* Notes */}
             <div>
-              <Label className="block text-sm font-medium text-beige mb-2">Notes</Label>
+              <Label className="block text-sm font-medium text-beige mb-2">Order Notes</Label>
               <Textarea
-                placeholder="Enter notes"
+                placeholder="Add any special instructions or notes for this order..."
                 value={manualOrderForm.notes}
                 onChange={(e) => setManualOrderForm((prev) => ({ ...prev, notes: e.target.value }))}
                 className="bg-black border-[#333] focus:border-[#D4AF37]"
+                rows={3}
               />
             </div>
 
@@ -1738,42 +1898,45 @@ const AdminUsersComponent = () => {
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#111] border-[#333]">
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="credit">Credit Card</SelectItem>
-                  <SelectItem value="paypal">PayPal</SelectItem>
+                  <SelectItem value="cash">💵 Cash Payment</SelectItem>
+                  <SelectItem value="credit">💳 Credit Card</SelectItem>
+                  <SelectItem value="debit">💳 Debit Card</SelectItem>
+                  <SelectItem value="paypal">🅿️ PayPal</SelectItem>
+                  <SelectItem value="bank_transfer">🏦 Bank Transfer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Order Total */}
-            <div className="text-right">
-              <h3 className="text-lg font-semibold">
-                Total: <span className="text-[#D4AF37]">${calculateOrderTotal().toFixed(2)}</span>
-              </h3>
-            </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#333]">
-            <Button variant="outline" onClick={() => setManualOrderDialog(false)} className="border-[#333]">
-              Cancel
-            </Button>
-            <Button
-              onClick={createManualOrder}
-              disabled={creatingOrder}
-              className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
-            >
-              {creatingOrder ? (
-                <>
-                  <RefreshCw size={16} className="mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <ShoppingBag size={16} className="mr-2" />
-                  Create Order
-                </>
-              )}
-            </Button>
+          <div className="flex justify-between items-center pt-6 border-t border-[#333]">
+            <div className="text-left">
+              <p className="text-sm text-beige">Creating order for:</p>
+              <p className="font-medium text-white">
+                {selectedUser?.name} ({selectedUser?.email})
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setManualOrderDialog(false)} className="border-[#333]">
+                Cancel
+              </Button>
+              <Button
+                onClick={createManualOrder}
+                disabled={creatingOrder || calculateOrderTotal() <= 0}
+                className="bg-[#D4AF37] hover:bg-[#B8860B] text-black min-w-[140px]"
+              >
+                {creatingOrder ? (
+                  <>
+                    <RefreshCw size={16} className="mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag size={16} className="mr-2" />
+                    Create Order
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -31,7 +31,7 @@ import { useAuth } from "@/hooks/use-auth"
 const AddProduct = () => {
   const router = useRouter()
   const { toast } = useToast()
-  const { accessToken } = useAuth()
+  const { accessToken, getToken } = useAuth()
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState([])
   const [uploadingImages, setUploadingImages] = useState(false)
@@ -108,6 +108,16 @@ const AddProduct = () => {
 
     setUploadingImages(true)
     try {
+      const token = getToken()
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to upload images",
+          variant: "destructive",
+        })
+        return
+      }
+
       const uploadPromises = Array.from(files).map(async (file) => {
         const formData = new FormData()
         formData.append("file", file)
@@ -116,7 +126,7 @@ const AddProduct = () => {
         const response = await fetch("/api/upload", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: formData,
         })
@@ -226,6 +236,8 @@ const AddProduct = () => {
   }
 
   const validateForm = () => {
+    console.log("Validating form data:", formData)
+
     if (!formData.name.trim()) {
       toast({
         title: "Validation Error",
@@ -253,13 +265,50 @@ const AddProduct = () => {
       return false
     }
 
-    if (formData.weightPricing.some((item) => !item.weight || !item.price || !item.stock)) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all weight, price, and stock fields",
-        variant: "destructive",
-      })
-      return false
+    // Validate weight pricing
+    for (let i = 0; i < formData.weightPricing.length; i++) {
+      const item = formData.weightPricing[i]
+      if (!item.weight || !item.price || !item.stock) {
+        toast({
+          title: "Validation Error",
+          description: `Please fill in all fields for weight option ${i + 1}`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (isNaN(Number.parseFloat(item.weight)) || Number.parseFloat(item.weight) <= 0) {
+        toast({
+          title: "Validation Error",
+          description: `Weight must be a positive number for option ${i + 1}`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (isNaN(Number.parseFloat(item.price)) || Number.parseFloat(item.price) <= 0) {
+        toast({
+          title: "Validation Error",
+          description: `Price must be a positive number for option ${i + 1}`,
+          variant: "destructive",
+        })
+        return false
+      }
+
+      if (
+        item.stock === "" ||
+        item.stock === null ||
+        item.stock === undefined ||
+        isNaN(Number.parseInt(item.stock)) ||
+        Number.parseInt(item.stock) < 0
+      ) {
+        toast({
+          title: "Validation Error",
+          description: `Stock must be a non-negative number for option ${i + 1}`,
+          variant: "destructive",
+        })
+        return false
+      }
     }
 
     return true
@@ -274,6 +323,18 @@ const AddProduct = () => {
 
     setLoading(true)
     try {
+      const token = getToken()
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to create products",
+          variant: "destructive",
+        })
+        return
+      }
+
+      console.log("Preparing product data for submission...")
+
       const productData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -285,27 +346,30 @@ const AddProduct = () => {
           price: Number.parseFloat(item.price),
           stock: Number.parseInt(item.stock),
         })),
-        basePrice: formData.weightPricing[0]?.price || "0",
         discountPercentage: formData.discountPercentage ? Number.parseInt(formData.discountPercentage) : 0,
-        thcContent: formData.thcContent ? Number.parseFloat(formData.thcContent) / 100 : 0,
-        cbdContent: formData.cbdContent ? Number.parseFloat(formData.cbdContent) / 100 : 0,
+        thcContent: formData.thcContent ? Number.parseFloat(formData.thcContent) : 0,
+        cbdContent: formData.cbdContent ? Number.parseFloat(formData.cbdContent) : 0,
         effects: formData.effects,
         inStock: formData.inStock,
         featured: formData.featured,
-        images:
-          formData.images.length > 0
-            ? formData.images.map((img) => img.url)
-            : ["/placeholder.svg?height=400&width=400"],
+        images: formData.images.length > 0 ? formData.images.map((img) => img.url) : [],
         cloudinaryIds: formData.images.length > 0 ? formData.images.map((img) => img.public_id).filter((id) => id) : [],
         tags: formData.tags,
         specifications: formData.specifications,
       }
 
+      console.log("Product data prepared:", {
+        name: productData.name,
+        category: productData.category,
+        weightPricingCount: productData.weightPricing.length,
+        imagesCount: productData.images.length,
+      })
+
       const response = await fetch("/api/products", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(productData),
       })
@@ -319,6 +383,7 @@ const AddProduct = () => {
         })
         router.push("/admin/products")
       } else {
+        console.error("Product creation failed:", data)
         toast({
           title: "Error",
           description: data.error || "Failed to create product",

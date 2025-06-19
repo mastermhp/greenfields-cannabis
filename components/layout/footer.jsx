@@ -4,8 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin, ArrowRight } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import NewsletterForm from "@/components/forms/newsletter-form"
 
 const Footer = () => {
   const currentYear = new Date().getFullYear()
@@ -183,17 +182,7 @@ const Footer = () => {
             <p className="text-beige mb-4">
               Subscribe to our newsletter for exclusive offers, new product alerts, and cannabis education.
             </p>
-            <div className="flex flex-col space-y-3">
-              <Input
-                type="email"
-                placeholder="Your email address"
-                className="bg-[#111] border-[#333] focus:border-[#D4AF37] rounded-none h-12"
-              />
-              <Button className="bg-[#D4AF37] hover:bg-[#B8860B] text-black rounded-none">Subscribe</Button>
-            </div>
-            <p className="text-sm text-gray-400 mt-4">
-              By subscribing, you agree to our Privacy Policy and consent to receive updates from our company.
-            </p>
+            <NewsletterForm variant="footer" />
           </div>
         </div>
 

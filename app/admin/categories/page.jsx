@@ -56,6 +56,11 @@ const CategoriesPage = () => {
         if (Array.isArray(categoriesData)) {
           setCategories(categoriesData)
           console.log("Categories Page: Set categories:", categoriesData.length, "items")
+
+          toast({
+            title: "Categories Loaded",
+            description: `Successfully loaded ${categoriesData.length} categories`,
+          })
         } else {
           console.error("Categories Page: Categories data is not an array:", categoriesData)
           setCategories([])
@@ -73,7 +78,7 @@ const CategoriesPage = () => {
       setError(error.message)
       setCategories([]) // Ensure categories is always an array
       toast({
-        title: "Error",
+        title: "Error Loading Categories",
         description: `Failed to load categories: ${error.message}`,
         variant: "destructive",
       })
@@ -89,7 +94,7 @@ const CategoriesPage = () => {
     // Check file type
     if (!file.type.match(/image\/(jpeg|jpg|png|webp|gif)/i)) {
       toast({
-        title: "Invalid file type",
+        title: "Invalid File Type",
         description: "Please upload an image file (JPEG, PNG, WEBP, GIF)",
         variant: "destructive",
       })
@@ -99,7 +104,7 @@ const CategoriesPage = () => {
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "File too large",
+        title: "File Too Large",
         description: "Image must be less than 5MB",
         variant: "destructive",
       })
@@ -114,6 +119,11 @@ const CategoriesPage = () => {
       setImagePreview(reader.result)
     }
     reader.readAsDataURL(file)
+
+    toast({
+      title: "Image Selected",
+      description: "Image ready for upload",
+    })
   }
 
   const uploadImage = async () => {
@@ -139,6 +149,11 @@ const CategoriesPage = () => {
       if (!data.success) {
         throw new Error(data.error || "Failed to upload image")
       }
+
+      toast({
+        title: "Image Uploaded",
+        description: "Image uploaded successfully",
+      })
 
       return data.url
     } catch (error) {
@@ -169,6 +184,16 @@ const CategoriesPage = () => {
         return
       }
 
+      // Validation
+      if (!formData.name.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Category name is required",
+          variant: "destructive",
+        })
+        return
+      }
+
       // First upload image if there's a new one
       let imageUrl = formData.image
 
@@ -177,7 +202,7 @@ const CategoriesPage = () => {
         imageUrl = await uploadImage()
         if (!imageUrl) {
           toast({
-            title: "Error",
+            title: "Upload Error",
             description: "Failed to upload image. Please try again.",
             variant: "destructive",
           })
@@ -204,7 +229,6 @@ const CategoriesPage = () => {
       }
 
       console.log("Categories Page: Making request with headers:", headers)
-
       console.log("Categories Page: Sending request:", { url, method, categoryData })
 
       const response = await fetch(url, {
@@ -219,8 +243,10 @@ const CategoriesPage = () => {
 
       if (data.success) {
         toast({
-          title: "Success",
-          description: editingId ? "Category updated successfully" : "Category created successfully",
+          title: editingId ? "Category Updated" : "Category Created",
+          description: editingId
+            ? `Category "${formData.name}" updated successfully`
+            : `Category "${formData.name}" created successfully`,
         })
         loadCategories()
         resetForm()
@@ -230,7 +256,7 @@ const CategoriesPage = () => {
     } catch (error) {
       console.error("Categories Page: Submit error:", error)
       toast({
-        title: "Error",
+        title: editingId ? "Update Failed" : "Creation Failed",
         description: error.message,
         variant: "destructive",
       })
@@ -246,6 +272,11 @@ const CategoriesPage = () => {
     setImagePreview(category.image || "")
     setEditingId(category.id || category._id)
     setShowAddForm(true)
+
+    toast({
+      title: "Edit Mode",
+      description: `Editing category "${category.name}"`,
+    })
   }
 
   const handleDelete = async (id) => {
@@ -280,7 +311,7 @@ const CategoriesPage = () => {
 
       if (data.success) {
         toast({
-          title: "Success",
+          title: "Category Deleted",
           description: "Category deleted successfully",
         })
         loadCategories()
@@ -290,7 +321,7 @@ const CategoriesPage = () => {
     } catch (error) {
       console.error("Categories Page: Delete error:", error)
       toast({
-        title: "Error",
+        title: "Delete Failed",
         description: error.message,
         variant: "destructive",
       })
@@ -303,6 +334,11 @@ const CategoriesPage = () => {
     setImagePreview("")
     setEditingId(null)
     setShowAddForm(false)
+
+    toast({
+      title: "Form Reset",
+      description: "Form has been reset",
+    })
   }
 
   if (loading) {
@@ -408,6 +444,10 @@ const CategoriesPage = () => {
                               if (editingId) {
                                 setFormData((prev) => ({ ...prev, image: "" }))
                               }
+                              toast({
+                                title: "Image Removed",
+                                description: "Image has been removed",
+                              })
                             }}
                             className="absolute top-2 right-2 bg-black/70 p-1 rounded-full"
                           >
@@ -494,10 +534,10 @@ const CategoriesPage = () => {
                       Edit
                     </Button>
                     <Button
-                      onClick={() => handleDelete(category?.id || category?._id)}
-                      variant="destructive"
+                      onClick={() => handleDelete(category.id || category._id)}
+                      variant="outline"
                       size="sm"
-                      className="flex-1 bg-[#D4AF37]/10 border-2 border-red-900 text-red-600 hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37]"
+                      className="border-red-500 text-red-400 hover:bg-red-500/10"
                     >
                       <Trash2 size={16} className="mr-2" />
                       Delete
@@ -508,20 +548,15 @@ const CategoriesPage = () => {
             </motion.div>
           ))
         ) : (
-          <Card className="bg-[#111] border-[#333] col-span-1 md:col-span-2 lg:col-span-3">
-            <CardContent className="p-12 text-center">
-              <Package size={48} className="mx-auto text-gray-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No categories found</h3>
-              <p className="text-beige mb-4">Create your first category to get started</p>
-              <Button
-                onClick={() => setShowAddForm(true)}
-                className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
-              >
-                <Plus size={16} className="mr-2" />
-                Add Category
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="col-span-full text-center py-12">
+            <Package size={64} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-2">No Categories Found</h3>
+            <p className="text-beige mb-4">Get started by creating your first category.</p>
+            <Button onClick={() => setShowAddForm(true)} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+              <Plus size={16} className="mr-2" />
+              Add Your First Category
+            </Button>
+          </div>
         )}
       </div>
     </div>

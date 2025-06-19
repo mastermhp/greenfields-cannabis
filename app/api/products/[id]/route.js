@@ -108,6 +108,17 @@ export async function PUT(request, { params }) {
     const body = await request.json()
     console.log("Updating product with data:", JSON.stringify(body, null, 2))
 
+    // Add validation for the product ID format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid product ID format",
+        },
+        { status: 400 },
+      )
+    }
+
     // Validate required fields for new weight-based pricing structure
     const requiredFields = ["name", "description", "category"]
     for (const field of requiredFields) {
@@ -213,6 +224,7 @@ export async function PUT(request, { params }) {
       images: body.images || ["/placeholder.svg?height=400&width=400"],
       cloudinaryIds: body.cloudinaryIds || [],
       tags: body.tags || [],
+      specifications: body.specifications || [],
       strain: body.strain || "",
       genetics: body.genetics || "",
       updatedAt: new Date(),
@@ -225,7 +237,7 @@ export async function PUT(request, { params }) {
         weight: Number.parseFloat(option.weight),
         unit: option.unit,
         price: Number.parseFloat(option.price),
-        stock: option.stock || Number.parseInt(body.stock) || 0, // Use individual stock or fallback to general stock
+        stock: Number.parseInt(option.stock) || 0,
       }))
 
       // Set base price from the first weight option or provided basePrice
@@ -238,7 +250,7 @@ export async function PUT(request, { params }) {
       productData.inStock = productData.stock > 0
     } else {
       // Traditional pricing structure (backward compatibility)
-      productData.price = Number.parseFloat(body.price)
+      productData.price = Number.parseFloat(body.price || body.basePrice || 0)
       productData.basePrice = productData.price
       productData.stock = Number.parseInt(body.stock) || 0
       productData.inStock = productData.stock > 0
@@ -251,6 +263,8 @@ export async function PUT(request, { params }) {
     if (body.discountPercentage !== undefined) {
       const discount = Number.parseInt(body.discountPercentage)
       productData.discountPercentage = isNaN(discount) ? 0 : Math.max(0, Math.min(100, discount))
+    } else {
+      productData.discountPercentage = 0
     }
 
     console.log("Processed product data:", JSON.stringify(productData, null, 2))
