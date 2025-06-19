@@ -23,7 +23,7 @@ export async function POST(request) {
 
     // Find user by email (case insensitive)
     const user = await db.collection(collections.users).findOne({
-      email: { $regex: new RegExp(`^${email}$`, "i") },
+      email: { $regex: new RegExp(`^${email.trim()}$`, "i") },
     })
 
     console.log("User found:", user ? "Yes" : "No")
@@ -61,6 +61,8 @@ export async function POST(request) {
       success: true,
       message: "Password reset link generated successfully.",
       resetLink, // Send back to client for EmailJS
+      userEmail: user.email,
+      userName: user.name || "User",
       // Remove this in production - only for testing
       ...(process.env.NODE_ENV === "development" && {
         debug: {
