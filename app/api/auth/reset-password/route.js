@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
 import { connectToDatabase, collections } from "@/lib/mongodb"
-import { PasswordHash } from "@/lib/auth"
+import bcrypt from "bcryptjs"
 
 export async function POST(request) {
   try {
     const { token, password } = await request.json()
+
+    console.log("Password reset attempt with token:", token ? "Present" : "Missing")
 
     if (!token || !password) {
       return NextResponse.json(
@@ -32,8 +34,10 @@ export async function POST(request) {
     // Find user with valid reset token
     const user = await db.collection(collections.users).findOne({
       resetToken: token,
-      resetTokenExpiry: { $gt: new Date() },
+      resetTokenExpiry: { $gt: new Date() }, // Token must not be expired
     })
+
+    console.log("User found with valid token:", user ? "Yes" : "No")
 
     if (!user) {
       return NextResponse.json(
@@ -45,8 +49,9 @@ export async function POST(request) {
       )
     }
 
-    // Hash new password
-    const hashedPassword = await PasswordHash.hash(password)
+    // Hash the new password
+    const saltRounds = 12
+    const hashedPassword = await bcrypt.hash(password, saltRounds)
 
     // Update user password and remove reset token
     await db.collection(collections.users).updateOne(
@@ -54,17 +59,21 @@ export async function POST(request) {
       {
         $set: {
           password: hashedPassword,
+          passwordUpdated: new Date(),
         },
         $unset: {
           resetToken: "",
           resetTokenExpiry: "",
+          resetTokenCreated: "",
         },
       },
     )
 
+    console.log("Password reset successful for user:", user.email)
+
     return NextResponse.json({
       success: true,
-      message: "Password has been reset successfully",
+      message: "Password reset successfully",
     })
   } catch (error) {
     console.error("Reset password error:", error)
