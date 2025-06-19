@@ -272,6 +272,272 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Forgot password function
+  const forgotPassword = async (email) => {
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Reset Email Sent",
+          description: "Check your email for password reset instructions.",
+        })
+        return { success: true, message: data.message }
+      } else {
+        toast({
+          title: "Reset Failed",
+          description: data.error || "Could not send reset email. Please try again.",
+          variant: "destructive",
+        })
+        return { success: false, error: data.error }
+      }
+    } catch (error) {
+      console.error("Forgot password failed:", error)
+      toast({
+        title: "Reset Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+      return { success: false, error: "Reset failed. Please try again." }
+    }
+  }
+
+  // Reset password function
+  const resetPassword = async (token, password, confirmPassword) => {
+    try {
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token, password, confirmPassword }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Password Reset Successful",
+          description: "Your password has been updated. You can now log in.",
+        })
+        return { success: true, message: data.message }
+      } else {
+        toast({
+          title: "Reset Failed",
+          description: data.error || "Could not reset password. Please try again.",
+          variant: "destructive",
+        })
+        return { success: false, error: data.error }
+      }
+    } catch (error) {
+      console.error("Reset password failed:", error)
+      toast({
+        title: "Reset Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+      return { success: false, error: "Reset failed. Please try again." }
+    }
+  }
+
+  // Update user profile
+  const updateProfile = async (profileData) => {
+    try {
+      const token = getToken()
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to update your profile.",
+          variant: "destructive",
+        })
+        return { success: false, error: "Not authenticated" }
+      }
+
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(profileData),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setUser(data.user)
+        toast({
+          title: "Profile Updated",
+          description: "Your profile has been updated successfully.",
+        })
+        return { success: true, user: data.user }
+      } else {
+        toast({
+          title: "Update Failed",
+          description: data.error || "Could not update profile. Please try again.",
+          variant: "destructive",
+        })
+        return { success: false, error: data.error }
+      }
+    } catch (error) {
+      console.error("Profile update failed:", error)
+      toast({
+        title: "Update Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+      return { success: false, error: "Update failed. Please try again." }
+    }
+  }
+
+  // Change password
+  const changePassword = async (currentPassword, newPassword, confirmPassword) => {
+    try {
+      const token = getToken()
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to change your password.",
+          variant: "destructive",
+        })
+        return { success: false, error: "Not authenticated" }
+      }
+
+      const response = await fetch("/api/user/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Password Changed",
+          description: "Your password has been updated successfully.",
+        })
+        return { success: true, message: data.message }
+      } else {
+        toast({
+          title: "Change Failed",
+          description: data.error || "Could not change password. Please try again.",
+          variant: "destructive",
+        })
+        return { success: false, error: data.error }
+      }
+    } catch (error) {
+      console.error("Password change failed:", error)
+      toast({
+        title: "Change Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+      return { success: false, error: "Change failed. Please try again." }
+    }
+  }
+
+  // Delete account
+  const deleteAccount = async (password) => {
+    try {
+      const token = getToken()
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to delete your account.",
+          variant: "destructive",
+        })
+        return { success: false, error: "Not authenticated" }
+      }
+
+      const response = await fetch("/api/user/delete-account", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Account Deleted",
+          description: "Your account has been deleted successfully.",
+        })
+        logout()
+        return { success: true, message: data.message }
+      } else {
+        toast({
+          title: "Delete Failed",
+          description: data.error || "Could not delete account. Please try again.",
+          variant: "destructive",
+        })
+        return { success: false, error: data.error }
+      }
+    } catch (error) {
+      console.error("Account deletion failed:", error)
+      toast({
+        title: "Delete Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+      return { success: false, error: "Delete failed. Please try again." }
+    }
+  }
+
+  // Admin login function
+  const adminLogin = async (email, password, rememberMe = false) => {
+    return await login(email, password, rememberMe, true)
+  }
+
+  // Check if user is admin
+  const isAdmin = () => {
+    return user && (user.role === "admin" || user.isAdmin)
+  }
+
+  // Check if user has specific permission
+  const hasPermission = (permission) => {
+    if (!user) return false
+    if (isAdmin()) return true
+    return user.permissions && user.permissions.includes(permission)
+  }
+
+  // Refresh user data
+  const refreshUser = async () => {
+    try {
+      const token = getToken()
+      if (!token) return false
+
+      const response = await fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const userData = await response.json()
+        setUser(userData.user)
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error("User refresh failed:", error)
+      return false
+    }
+  }
+
   const value = {
     user,
     isAuthenticated,
@@ -285,6 +551,15 @@ export const AuthProvider = ({ children }) => {
     checkAuth,
     setUser,
     setIsAuthenticated,
+    forgotPassword,
+    resetPassword,
+    updateProfile,
+    changePassword,
+    deleteAccount,
+    adminLogin,
+    isAdmin,
+    hasPermission,
+    refreshUser,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

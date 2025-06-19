@@ -12,7 +12,7 @@ import Image from "next/image"
 import { useAuth } from "@/hooks/use-auth"
 
 const CategoriesPage = () => {
-  const { accessToken } = useAuth()
+  const { user, accessToken, loading: authLoading } = useAuth()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
@@ -27,6 +27,19 @@ const CategoriesPage = () => {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
   const { toast } = useToast()
+
+  // Add authentication check
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to access the admin panel",
+        variant: "destructive",
+      })
+      // Optionally redirect to login
+      return
+    }
+  }, [authLoading, user])
 
   useEffect(() => {
     loadCategories()
@@ -174,11 +187,11 @@ const CategoriesPage = () => {
     console.log("Categories Page: Submitting form...")
 
     try {
-      // Check if user is authenticated
-      if (!accessToken) {
+      // Check authentication first
+      if (!user || !user.isAdmin) {
         toast({
           title: "Authentication Error",
-          description: "You must be logged in to manage categories. Please refresh the page and try again.",
+          description: "Admin access required. Please log in as an administrator.",
           variant: "destructive",
         })
         return
@@ -223,9 +236,11 @@ const CategoriesPage = () => {
         "Content-Type": "application/json",
       }
 
-      // Only add Authorization header if we have a valid token
+      // Add Authorization header with user token or session
       if (accessToken) {
         headers.Authorization = `Bearer ${accessToken}`
+      } else if (user?.token) {
+        headers.Authorization = `Bearer ${user.token}`
       }
 
       console.log("Categories Page: Making request with headers:", headers)
@@ -285,11 +300,11 @@ const CategoriesPage = () => {
     console.log("Categories Page: Deleting category:", id)
 
     try {
-      // Check if user is authenticated
-      if (!accessToken) {
+      // Check authentication first
+      if (!user || !user.isAdmin) {
         toast({
           title: "Authentication Error",
-          description: "You must be logged in to delete categories.",
+          description: "Admin access required to delete categories.",
           variant: "destructive",
         })
         return
@@ -298,6 +313,8 @@ const CategoriesPage = () => {
       const headers = {}
       if (accessToken) {
         headers.Authorization = `Bearer ${accessToken}`
+      } else if (user?.token) {
+        headers.Authorization = `Bearer ${user.token}`
       }
 
       const response = await fetch(`/api/categories/${id}`, {
@@ -339,6 +356,38 @@ const CategoriesPage = () => {
       title: "Form Reset",
       description: "Form has been reset",
     })
+  }
+
+  if (authLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF37] mx-auto mb-4"></div>
+            <p className="text-beige">Loading...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user || !user.isAdmin) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
+            <p className="text-beige mb-4">You need administrator privileges to access this page.</p>
+            <Button
+              onClick={() => (window.location.href = "/login")}
+              className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+            >
+              Go to Login
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {

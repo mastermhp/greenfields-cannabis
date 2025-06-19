@@ -65,16 +65,24 @@ export async function POST(request) {
   try {
     console.log("Categories API: Creating new category...")
 
+    // Get the authorization header
+    const authHeader = request.headers.get("authorization")
+    console.log("Categories API: Auth header present:", !!authHeader)
+
     // Verify authentication
     const authResult = await verifyAuth(request)
-    console.log("Categories API: Auth result:", authResult)
+    console.log("Categories API: Auth result:", {
+      auth: !!authResult.auth,
+      error: authResult.error,
+      userId: authResult.auth?.id,
+    })
 
     if (!authResult.auth || authResult.error) {
       console.log("Categories API: Authentication failed:", authResult.error)
       return NextResponse.json(
         {
           success: false,
-          error: "Unauthorized",
+          error: "Unauthorized - Please log in as an administrator",
         },
         { status: 401 },
       )
@@ -82,7 +90,13 @@ export async function POST(request) {
 
     // Check if user is admin
     const user = authResult.auth
-    if (!user.isAdmin && !user.role === "admin") {
+    console.log("Categories API: User role check:", {
+      isAdmin: user.isAdmin,
+      role: user.role,
+      email: user.email,
+    })
+
+    if (!user.isAdmin && user.role !== "admin") {
       console.log("Categories API: User is not admin:", user)
       return NextResponse.json(
         {
@@ -95,7 +109,7 @@ export async function POST(request) {
 
     // Get request body
     const data = await request.json()
-    console.log("Categories API: Received data:", data)
+    console.log("Categories API: Received data:", { name: data.name, hasImage: !!data.image })
 
     if (!data.name) {
       return NextResponse.json(
@@ -138,11 +152,11 @@ export async function POST(request) {
       updatedAt: new Date(),
     }
 
-    console.log("Categories API: Creating category:", newCategory)
+    console.log("Categories API: Creating category:", { name: newCategory.name, id: categoryId })
 
     // Insert new category
     const result = await db.collection(collections.categories).insertOne(newCategory)
-    console.log("Categories API: Insert result:", result)
+    console.log("Categories API: Insert result:", { success: !!result.insertedId })
 
     return NextResponse.json({
       success: true,
@@ -155,7 +169,7 @@ export async function POST(request) {
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to create category",
+        error: "Failed to create category: " + error.message,
       },
       { status: 500 },
     )
