@@ -851,10 +851,22 @@ const AdminUsersComponent = () => {
         return
       }
 
-      if (addUserForm.password.length < 6) {
+      // Enhanced password validation
+      const passwordValidation = {
+        length: addUserForm.password.length >= 8,
+        uppercase: /[A-Z]/.test(addUserForm.password),
+        lowercase: /[a-z]/.test(addUserForm.password),
+        number: /\d/.test(addUserForm.password),
+        special: /[@$!%*?&]/.test(addUserForm.password),
+      }
+
+      const isPasswordValid = Object.values(passwordValidation).every(Boolean)
+
+      if (!isPasswordValid) {
         toast({
-          title: "Validation Error",
-          description: "Password must be at least 6 characters long",
+          title: "Password Requirements Not Met",
+          description:
+            "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character (@$!%*?&)",
           variant: "destructive",
         })
         return
@@ -924,8 +936,8 @@ const AdminUsersComponent = () => {
       if (data.success) {
         console.log("User created successfully")
         toast({
-          title: "User Created",
-          description: `User ${addUserForm.name} has been created successfully`,
+          title: "User Created Successfully",
+          description: `User ${addUserForm.name} has been created with email ${addUserForm.email}`,
         })
 
         // Reset form
@@ -951,17 +963,28 @@ const AdminUsersComponent = () => {
         await fetchUsers()
       } else {
         console.log("User creation failed:", data.error)
-        toast({
-          title: "Creation Failed",
-          description: data.error || "Failed to create user",
-          variant: "destructive",
-        })
+
+        // Enhanced error handling for password issues
+        if (data.error && data.error.toLowerCase().includes("password")) {
+          toast({
+            title: "Password Error",
+            description:
+              "Password must be at least 8 characters with uppercase, lowercase, number, and special character (@$!%*?&)",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Creation Failed",
+            description: data.error || "Failed to create user. Please check all fields and try again.",
+            variant: "destructive",
+          })
+        }
       }
     } catch (error) {
       console.error("Error adding user:", error)
       toast({
         title: "Creation Failed",
-        description: "Failed to create user",
+        description: "Network error occurred. Please check your connection and try again.",
         variant: "destructive",
       })
     } finally {
@@ -1617,6 +1640,75 @@ const AdminUsersComponent = () => {
                   onChange={(e) => handleAddUserFormChange("password", e.target.value)}
                   className="bg-black border-[#333] focus:border-[#D4AF37]"
                 />
+
+                {/* Password Requirements */}
+                {addUserForm.password && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm font-medium text-beige">Password Requirements:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        {addUserForm.password.length >= 8 ? (
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-400" />
+                        )}
+                        <span
+                          className={`text-xs ${addUserForm.password.length >= 8 ? "text-green-400" : "text-red-400"}`}
+                        >
+                          At least 8 characters
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {/[A-Z]/.test(addUserForm.password) ? (
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-400" />
+                        )}
+                        <span
+                          className={`text-xs ${/[A-Z]/.test(addUserForm.password) ? "text-green-400" : "text-red-400"}`}
+                        >
+                          One uppercase letter
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {/[a-z]/.test(addUserForm.password) ? (
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-400" />
+                        )}
+                        <span
+                          className={`text-xs ${/[a-z]/.test(addUserForm.password) ? "text-green-400" : "text-red-400"}`}
+                        >
+                          One lowercase letter
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {/\d/.test(addUserForm.password) ? (
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-400" />
+                        )}
+                        <span
+                          className={`text-xs ${/\d/.test(addUserForm.password) ? "text-green-400" : "text-red-400"}`}
+                        >
+                          One number
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {/[@$!%*?&]/.test(addUserForm.password) ? (
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-400" />
+                        )}
+                        <span
+                          className={`text-xs ${/[@$!%*?&]/.test(addUserForm.password) ? "text-green-400" : "text-red-400"}`}
+                        >
+                          One special character (@$!%*?&)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <Label className="block text-sm font-medium text-beige mb-2">Confirm Password</Label>
@@ -1627,6 +1719,22 @@ const AdminUsersComponent = () => {
                   onChange={(e) => handleAddUserFormChange("confirmPassword", e.target.value)}
                   className="bg-black border-[#333] focus:border-[#D4AF37]"
                 />
+
+                {/* Password Match Indicator */}
+                {addUserForm.confirmPassword && (
+                  <div className="flex items-center space-x-2 mt-2">
+                    {addUserForm.password === addUserForm.confirmPassword ? (
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-400" />
+                    )}
+                    <span
+                      className={`text-xs ${addUserForm.password === addUserForm.confirmPassword ? "text-green-400" : "text-red-400"}`}
+                    >
+                      Passwords match
+                    </span>
+                  </div>
+                )}
               </div>
               <div>
                 <Label className="block text-sm font-medium text-beige mb-2">Role</Label>
@@ -1708,7 +1816,23 @@ const AdminUsersComponent = () => {
             <Button variant="outline" onClick={() => setAddUserDialog(false)} className="border-[#333]">
               Cancel
             </Button>
-            <Button onClick={addUser} disabled={addingUser} className="bg-[#D4AF37] hover:bg-[#B8860B] text-black">
+            <Button
+              onClick={addUser}
+              disabled={
+                addingUser ||
+                !addUserForm.name ||
+                !addUserForm.email ||
+                !addUserForm.password ||
+                !addUserForm.confirmPassword ||
+                addUserForm.password !== addUserForm.confirmPassword ||
+                addUserForm.password.length < 8 ||
+                !/[A-Z]/.test(addUserForm.password) ||
+                !/[a-z]/.test(addUserForm.password) ||
+                !/\d/.test(addUserForm.password) ||
+                !/[@$!%*?&]/.test(addUserForm.password)
+              }
+              className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+            >
               {addingUser ? (
                 <>
                   <RefreshCw size={16} className="mr-2 animate-spin" />
