@@ -12,7 +12,7 @@ import Image from "next/image"
 import { useAuth } from "@/hooks/use-auth"
 
 const CategoriesPage = () => {
-  const { user, accessToken, loading: authLoading } = useAuth()
+  const { user, accessToken, loading: authLoading, refreshToken, checkAuth } = useAuth()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
@@ -44,6 +44,52 @@ const CategoriesPage = () => {
   useEffect(() => {
     loadCategories()
   }, [])
+
+  // Helper function to make authenticated requests with automatic token refresh
+  const makeAuthenticatedRequest = async (url, options = {}) => {
+    const makeRequest = async (token) => {
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    }
+
+    // First attempt with current token
+    const currentToken = accessToken || localStorage.getItem("accessToken")
+
+    if (!currentToken) {
+      throw new Error("No authentication token available")
+    }
+
+    console.log("Making authenticated request to:", url)
+    console.log("Using token (first 20 chars):", currentToken.substring(0, 20) + "...")
+
+    let response = await makeRequest(currentToken)
+
+    // If unauthorized, try to refresh token and retry
+    if (response.status === 401) {
+      console.log("Token expired, attempting refresh...")
+
+      const refreshSuccess = await refreshToken()
+      if (refreshSuccess) {
+        // Get the new token and retry
+        const newToken = localStorage.getItem("accessToken")
+        if (newToken) {
+          console.log("Retrying request with new token...")
+          response = await makeRequest(newToken)
+        } else {
+          throw new Error("Failed to get new token after refresh")
+        }
+      } else {
+        throw new Error("Token refresh failed - please log in again")
+      }
+    }
+
+    return response
+  }
 
   const loadCategories = async () => {
     try {
@@ -232,23 +278,15 @@ const CategoriesPage = () => {
         image: imageUrl,
       }
 
-      const headers = {
-        "Content-Type": "application/json",
-      }
-
-      // Add Authorization header with user token or session
-      if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`
-      } else if (user?.token) {
-        headers.Authorization = `Bearer ${user.token}`
-      }
-
-      console.log("Categories Page: Making request with headers:", headers)
+      console.log("Categories Page: Making authenticated request...")
       console.log("Categories Page: Sending request:", { url, method, categoryData })
 
-      const response = await fetch(url, {
+      // Use the authenticated request helper
+      const response = await makeAuthenticatedRequest(url, {
         method,
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(categoryData),
       })
 
@@ -270,11 +308,23 @@ const CategoriesPage = () => {
       }
     } catch (error) {
       console.error("Categories Page: Submit error:", error)
-      toast({
-        title: editingId ? "Update Failed" : "Creation Failed",
-        description: error.message,
-        variant: "destructive",
-      })
+
+      // Handle specific authentication errors
+      if (error.message.includes("Token refresh failed") || error.message.includes("No authentication token")) {
+        toast({
+          title: "Session Expired",
+          description: "Your session has expired. Please log in again.",
+          variant: "destructive",
+        })
+        // Optionally redirect to login
+        // window.location.href = "/login"
+      } else {
+        toast({
+          title: editingId ? "Update Failed" : "Creation Failed",
+          description: error.message,
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -310,16 +360,11 @@ const CategoriesPage = () => {
         return
       }
 
-      const headers = {}
-      if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`
-      } else if (user?.token) {
-        headers.Authorization = `Bearer ${user.token}`
-      }
+      console.log("Categories Page: Making authenticated delete request...")
 
-      const response = await fetch(`/api/categories/${id}`, {
+      // Use the authenticated request helper
+      const response = await makeAuthenticatedRequest(`/api/categories/${id}`, {
         method: "DELETE",
-        headers,
       })
 
       console.log("Categories Page: Delete response status:", response.status)
@@ -337,11 +382,21 @@ const CategoriesPage = () => {
       }
     } catch (error) {
       console.error("Categories Page: Delete error:", error)
-      toast({
-        title: "Delete Failed",
-        description: error.message,
-        variant: "destructive",
-      })
+
+      // Handle specific authentication errors
+      if (error.message.includes("Token refresh failed") || error.message.includes("No authentication token")) {
+        toast({
+          title: "Session Expired",
+          description: "Your session has expired. Please log in again.",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Delete Failed",
+          description: error.message,
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -355,6 +410,16 @@ const CategoriesPage = () => {
     toast({
       title: "Form Reset",
       description: "Form has been reset",
+    })
+  }
+
+  // Add a function to manually refresh authentication
+  const handleRefreshAuth = async () => {
+    console.log("Manually refreshing authentication...")
+    await checkAuth()
+    toast({
+      title: "Authentication Refreshed",
+      description: "Your session has been refreshed",
     })
   }
 
@@ -378,12 +443,21 @@ const CategoriesPage = () => {
           <div className="text-center">
             <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
             <p className="text-beige mb-4">You need administrator privileges to access this page.</p>
-            <Button
-              onClick={() => (window.location.href = "/login")}
-              className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
-            >
-              Go to Login
-            </Button>
+            <div className="space-x-4">
+              <Button
+                onClick={() => (window.location.href = "/login")}
+                className="bg-[#D4AF37] hover:bg-[#B8860B] text-black"
+              >
+                Go to Login
+              </Button>
+              <Button
+                onClick={handleRefreshAuth}
+                variant="outline"
+                className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+              >
+                Refresh Session
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -420,14 +494,28 @@ const CategoriesPage = () => {
         <div>
           <h1 className="text-3xl font-bold gold-text">Categories Management</h1>
           <p className="text-beige mt-2">Manage your product categories</p>
+          {/* Debug info */}
+          <p className="text-xs text-gray-500 mt-1">
+            User: {user?.email} | Admin: {user?.isAdmin ? "Yes" : "No"} | Token: {accessToken ? "Present" : "Missing"}
+          </p>
         </div>
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
-        >
-          <Plus size={16} className="mr-2" />
-          Add Category
-        </Button>
+        <div className="flex space-x-2">
+          <Button
+            onClick={handleRefreshAuth}
+            variant="outline"
+            size="sm"
+            className="border-[#333] text-beige hover:bg-[#333]"
+          >
+            Refresh Auth
+          </Button>
+          <Button
+            onClick={() => setShowAddForm(true)}
+            className="bg-[#D4AF37] hover:bg-[#D4AF37]/10 hover:border-2 hover:border-[#D4AF37] hover:cursor-pointer transition-all duration-500 hover:text-[#D4AF37] text-black"
+          >
+            <Plus size={16} className="mr-2" />
+            Add Category
+          </Button>
+        </div>
       </div>
 
       {/* Error Message */}
