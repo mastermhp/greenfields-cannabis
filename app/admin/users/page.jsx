@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { useAuth } from "@/hooks/use-auth"
 
 const AdminUsersComponent = () => {
   const { toast } = useToast()
@@ -48,6 +49,7 @@ const AdminUsersComponent = () => {
   const [userOrders, setUserOrders] = useState([])
   const [userStats, setUserStats] = useState(null)
   const [loadingUserData, setLoadingUserData] = useState(false)
+  const { getToken } = useAuth() // Move useAuth hook to the top
 
   const [addUserDialog, setAddUserDialog] = useState(false)
   const [addUserForm, setAddUserForm] = useState({
@@ -364,8 +366,8 @@ const AdminUsersComponent = () => {
     try {
       setLoading(true)
 
-      // Get the access token from localStorage
-      const accessToken = localStorage.getItem("accessToken")
+      // Get the access token using the getToken function from useAuth
+      const accessToken = getToken()
 
       if (!accessToken) {
         toast({
@@ -418,7 +420,7 @@ const AdminUsersComponent = () => {
       formData.append("documentType", "general")
 
       // Get the access token from localStorage
-      const accessToken = localStorage.getItem("accessToken")
+      const accessToken = getToken()
 
       const response = await fetch("/api/user-documents", {
         method: "POST",
@@ -458,7 +460,7 @@ const AdminUsersComponent = () => {
   const fetchUserAttachments = async (userId) => {
     try {
       setLoadingAttachments(true)
-      const accessToken = localStorage.getItem("accessToken")
+      const accessToken = getToken()
       const response = await fetch(`/api/user-documents?userId=${userId}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -479,7 +481,7 @@ const AdminUsersComponent = () => {
 
   const deleteUserAttachment = async (documentId) => {
     try {
-      const accessToken = localStorage.getItem("accessToken")
+      const accessToken = getToken()
       const response = await fetch(`/api/user-documents/${documentId}`, {
         method: "DELETE",
         headers: {
@@ -522,8 +524,8 @@ const AdminUsersComponent = () => {
     try {
       setLoadingUserData(true)
 
-      // Get the access token from localStorage
-      const accessToken = localStorage.getItem("accessToken")
+      // Get the access token using the getToken function from useAuth
+      const accessToken = getToken()
 
       if (!accessToken) {
         toast({
@@ -722,7 +724,7 @@ const AdminUsersComponent = () => {
         return
       }
 
-      const accessToken = localStorage.getItem("accessToken")
+      const accessToken = getToken()
 
       const response = await fetch(`/api/users/${selectedUser.id}`, {
         method: "PATCH",
@@ -772,7 +774,7 @@ const AdminUsersComponent = () => {
   const updateUserStatus = async (userId, newStatus) => {
     try {
       // Get the access token from localStorage
-      const accessToken = localStorage.getItem("accessToken")
+      const accessToken = getToken()
 
       if (!accessToken) {
         toast({
@@ -828,6 +830,8 @@ const AdminUsersComponent = () => {
 
   const addUser = async () => {
     try {
+      console.log("Starting addUser function...")
+
       // Validation
       if (!addUserForm.name || !addUserForm.email || !addUserForm.password) {
         toast({
@@ -867,12 +871,15 @@ const AdminUsersComponent = () => {
         return
       }
 
+      console.log("Validation passed, setting loading state...")
       setAddingUser(true)
 
-      // Get the access token from localStorage
-      const accessToken = localStorage.getItem("accessToken")
+      // Get the access token using the getToken function from useAuth
+      const accessToken = getToken()
+      console.log("Retrieved token:", accessToken ? "Token present" : "No token")
 
       if (!accessToken) {
+        console.log("No access token found")
         toast({
           title: "Error",
           description: "Authentication required. Please log in again.",
@@ -881,31 +888,41 @@ const AdminUsersComponent = () => {
         return
       }
 
+      const requestBody = {
+        name: addUserForm.name,
+        email: addUserForm.email.toLowerCase(),
+        password: addUserForm.password,
+        role: addUserForm.role,
+        phone: addUserForm.phone,
+        street: addUserForm.street,
+        city: addUserForm.city,
+        state: addUserForm.state,
+        zip: addUserForm.zip,
+        country: addUserForm.country,
+        status: addUserForm.status,
+        adminCreated: true,
+      }
+
+      console.log("Making API request with body:", requestBody)
+      console.log("Using token:", accessToken.substring(0, 20) + "...")
+
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          name: addUserForm.name,
-          email: addUserForm.email.toLowerCase(),
-          password: addUserForm.password,
-          role: addUserForm.role,
-          phone: addUserForm.phone,
-          street: addUserForm.street,
-          city: addUserForm.city,
-          state: addUserForm.state,
-          zip: addUserForm.zip,
-          country: addUserForm.country,
-          status: addUserForm.status,
-          adminCreated: true,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
+      console.log("API Response status:", response.status)
+      console.log("API Response headers:", Object.fromEntries(response.headers.entries()))
+
       const data = await response.json()
+      console.log("API Response data:", data)
 
       if (data.success) {
+        console.log("User created successfully")
         toast({
           title: "User Created",
           description: `User ${addUserForm.name} has been created successfully`,
@@ -933,6 +950,7 @@ const AdminUsersComponent = () => {
         // Refresh users list
         await fetchUsers()
       } else {
+        console.log("User creation failed:", data.error)
         toast({
           title: "Creation Failed",
           description: data.error || "Failed to create user",
@@ -947,6 +965,7 @@ const AdminUsersComponent = () => {
         variant: "destructive",
       })
     } finally {
+      console.log("Setting loading state to false")
       setAddingUser(false)
     }
   }

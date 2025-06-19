@@ -37,17 +37,19 @@ export const AuthProvider = ({ children }) => {
 
   // Get token function
   const getToken = () => {
-    // First try from state
-    if (accessToken) {
-      return accessToken
-    }
-
-    // Then try from localStorage
+    // Always try localStorage first for the most up-to-date token
     const storedToken = localStorage.getItem("accessToken")
     if (storedToken) {
-      // Update state if found in localStorage
-      setAccessToken(storedToken)
+      // Update state if it's different from what we have
+      if (storedToken !== accessToken) {
+        setAccessToken(storedToken)
+      }
       return storedToken
+    }
+
+    // Fallback to state if localStorage is empty
+    if (accessToken) {
+      return accessToken
     }
 
     return null
@@ -90,7 +92,11 @@ export const AuthProvider = ({ children }) => {
       } else if (response.status === 401) {
         // Token expired, try to refresh
         console.log("Token expired, attempting refresh")
-        await refreshToken()
+        const refreshSuccess = await refreshToken()
+        if (!refreshSuccess) {
+          setLoading(false)
+          return
+        }
       } else {
         // Clear invalid token
         console.log("Invalid token, clearing from storage")
