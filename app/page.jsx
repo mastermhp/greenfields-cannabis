@@ -133,7 +133,7 @@ export default function Home() {
             src={content.hero?.backgroundImage || "/greenfieldsbg.jpeg"}
             alt="Premium Cannabis"
             fill
-            className="object-cover"
+            className=""
             priority
           />
           <div className="absolute inset-0 bg-black/50" />

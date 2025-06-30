@@ -1142,7 +1142,7 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-between">
+                  <div className="md:flex justify-between ">
                     <Button
                       type="button"
                       onClick={() => setStep(1)}
@@ -1153,7 +1153,7 @@ export default function CheckoutPage() {
                       Back to Shipping
                     </Button>
 
-                    <Button type="submit" className="bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all duration-1000 cursor-pointer text-black text-lg py-6 rounded-none">
+                    <Button type="submit" className="bg-[#D4AF37] hover:bg-[#D4AF37]/20 hover:border hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all duration-1000 cursor-pointer text-black text-lg py-6 rounded-none md:mt-0 mt-4">
                       Continue to Payment <ChevronRight className="ml-2" size={16} />
                     </Button>
                   </div>

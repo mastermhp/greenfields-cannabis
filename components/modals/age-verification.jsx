@@ -79,11 +79,11 @@ const AgeVerification = ({ isOpen, onVerified }) => {
 
           <div className="text-center mb-8">
             <Image
-              src="/placeholder.svg?height=80&width=80"
+              src="/logo.png"
               alt="Greenfields Logo"
               width={80}
               height={80}
-              className="mx-auto mb-4"
+              className="mx-auto mb-4 w-32 h-32"
             />
             <h2 className="text-2xl md:text-3xl font-bold text-[#D4AF37]">Age Verification</h2>
           </div>
