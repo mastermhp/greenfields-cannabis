@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
 
 const CategoriesPage = () => {
   const { user, accessToken, loading: authLoading, refreshToken, checkAuth } = useAuth()
@@ -453,7 +453,7 @@ const CategoriesPage = () => {
               <Button
                 onClick={handleRefreshAuth}
                 variant="outline"
-                className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 bg-transparent"
               >
                 Refresh Session
               </Button>
@@ -504,7 +504,7 @@ const CategoriesPage = () => {
             onClick={handleRefreshAuth}
             variant="outline"
             size="sm"
-            className="border-[#333] text-beige hover:bg-[#333]"
+            className="border-[#333] text-beige hover:bg-[#333] bg-transparent"
           >
             Refresh Auth
           </Button>
@@ -527,7 +527,7 @@ const CategoriesPage = () => {
             onClick={loadCategories}
             variant="outline"
             size="sm"
-            className="mt-2 border-red-900 text-red-500 hover:bg-red-900/10"
+            className="mt-2 border-red-900 text-red-500 hover:bg-red-900/10 bg-transparent"
           >
             Try Again
           </Button>
@@ -620,7 +620,7 @@ const CategoriesPage = () => {
                       </>
                     )}
                   </Button>
-                  <Button type="button" variant="outline" onClick={resetForm} className="border-[#333]">
+                  <Button type="button" variant="outline" onClick={resetForm} className="border-[#333] bg-transparent">
                     <X size={16} className="mr-2" />
                     Cancel
                   </Button>

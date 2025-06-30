@@ -25,8 +25,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
 
 const AddProduct = () => {
   const router = useRouter()
@@ -378,10 +378,14 @@ const AddProduct = () => {
 
       if (data.success) {
         toast({
-          title: "Product Added",
-          description: "Product has been created successfully",
+          title: "Product Added Successfully",
+          description: `Product "${formData.name}" has been created successfully`,
         })
-        router.push("/admin/products")
+
+        // Add a small delay before redirect to ensure toast is visible
+        setTimeout(() => {
+          router.push("/admin/products")
+        }, 1500)
       } else {
         console.error("Product creation failed:", data)
         toast({
@@ -501,7 +505,7 @@ const AddProduct = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="border-[#333] h-8"
+                      className="border-[#333] h-8 bg-transparent"
                       onClick={addWeightPricing}
                     >
                       <Plus size={14} className="mr-1" /> Add Weight Option
@@ -769,7 +773,7 @@ const AddProduct = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    className="border-[#333]"
+                    className="border-[#333] bg-transparent"
                     onClick={() => document.getElementById("image-upload").click()}
                     disabled={uploadingImages}
                   >
@@ -830,7 +834,12 @@ const AddProduct = () => {
                     className="bg-black border-[#333] focus:border-[#D4AF37] text-white"
                     onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
                   />
-                  <Button type="button" variant="outline" onClick={addTag} className="border-[#333] hover:bg-[#222]">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addTag}
+                    className="border-[#333] hover:bg-[#222] bg-transparent"
+                  >
                     <Plus size={16} />
                   </Button>
                 </div>
@@ -879,7 +888,7 @@ const AddProduct = () => {
                       type="button"
                       variant="outline"
                       onClick={addSpecification}
-                      className="border-[#333] hover:bg-[#222]"
+                      className="border-[#333] hover:bg-[#222] bg-transparent"
                     >
                       <Plus size={16} />
                     </Button>

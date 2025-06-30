@@ -2,6 +2,7 @@ import { Inter } from "next/font/google"
 import CartProvider from "@/components/providers/cart-provider"
 import AuthProvider from "@/components/providers/auth-provider"
 import { Toaster } from "@/components/ui/sonner"
+import { Toaster as RadixToaster } from "@/components/ui/toaster"
 import "@/app/globals.css"
 import ClientLayout from "@/components/layout/client-layout"
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }) {
           <CartProvider>
             <ClientLayout>{children}</ClientLayout>
             <Toaster />
+            <RadixToaster />
           </CartProvider>
         </AuthProvider>
       </body>
